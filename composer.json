@@ -1,0 +1,21 @@
+{
+    "name": "diego-ninja/granite",
+    "description": "A simple library to build immutable and serializable objects",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Ninja\\Granite\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Diego Rin",
+            "email": "yosoy@diego.ninja"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": "^8.3|^8.4"
+    }
+}

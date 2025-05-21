@@ -1,0 +1,4 @@
+vendor
+.idea
+tester.php
+composer.lock
