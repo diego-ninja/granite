@@ -2,3 +2,4 @@ vendor
 .idea
 tester.php
 composer.lock
+src/TestDTO.php
