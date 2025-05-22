@@ -152,6 +152,11 @@ final class GraniteValidator
                             $collection->add($rule);
                         }
                     }
+                    elseif ($ruleDefinition instanceof ValidationRule) {
+                        $collection->add($ruleDefinition);
+                    } else {
+                        throw new InvalidArgumentException("Invalid rule definition for property '$property'");
+                    }
                 }
             }
 

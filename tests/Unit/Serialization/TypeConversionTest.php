@@ -165,7 +165,10 @@ use Tests\Fixtures\Enums\Priority;
             'name' => 'John Doe',
             'address' => [
                 'street' => '123 Main St',
-                'city' => 'New York'
+                'city' => 'New York',
+                'state' => 'NY',
+                'zipCode' => '10001',
+                'country' => 'US'
             ]
         ];
 

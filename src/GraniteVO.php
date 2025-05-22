@@ -117,7 +117,7 @@ abstract readonly class GraniteVO extends GraniteDTO
      * @throws InvalidArgumentException If validation fails
      * @throws ReflectionException
      * @throws DateMalformedStringException
-     * @throws ValidationException
+     * @throws ValidationException|Exceptions\SerializationException
      */
     public function with(array $modifications): static
     {

@@ -39,4 +39,5 @@ readonly class Email
         }
 
         return $rule;
-    }}
+    }
+}

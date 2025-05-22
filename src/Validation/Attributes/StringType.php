@@ -31,8 +31,13 @@ readonly class StringType
      *
      * @return Rules\StringType
      */
-    public function aRule(): Rules\StringType
+    public function asRule(): Rules\StringType
     {
-        return new Rules\StringType($this->message);
+        $rule = new Rules\StringType();
+        if ($this->message !== null) {
+            $rule->withMessage($this->message);
+        }
+
+        return $rule;
     }
 }
