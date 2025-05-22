@@ -4,6 +4,7 @@
 ![PHP Version](https://img.shields.io/packagist/php-v/diego-ninja/granite.svg?style=flat&color=blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
+[![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
 
 A lightweight zero-dependency PHP library for building immutable, serializable objects with validation capabilities.
 
@@ -296,6 +297,7 @@ final readonly class Product extends GraniteVO
 ## 🙏 Credits
 
 This project is developed and maintained by 🥷 [Diego Rin](https://diego.ninja) in his free time.
+
 If you find this project useful, please consider giving it a ⭐ on GitHub!
 
 ## License
