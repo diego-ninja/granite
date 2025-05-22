@@ -5,6 +5,7 @@ namespace Tests\Fixtures\DTOs;
 
 use DateTimeInterface;
 use Ninja\Granite\GraniteDTO;
+use Tests\Fixtures\VOs\Address;
 
 final readonly class UserDTO extends GraniteDTO
 {
@@ -12,6 +13,7 @@ final readonly class UserDTO extends GraniteDTO
         public int                $id,
         public string             $name,
         public string             $email,
+        public Address  $address,
         public ?DateTimeInterface $createdAt = null
     ) {}
 }

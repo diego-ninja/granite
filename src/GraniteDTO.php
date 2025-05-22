@@ -24,7 +24,6 @@ abstract readonly class GraniteDTO implements GraniteObject
      * @param string|array|GraniteObject $data Source data
      * @return static New instance
      * @throws DateMalformedStringException
-     * @throws ReflectionException
      * @throws Exceptions\ReflectionException
      */
     public static function from(string|array|GraniteObject $data): static
@@ -160,7 +159,7 @@ abstract readonly class GraniteDTO implements GraniteObject
             if (is_string($value) || is_int($value)) {
                 // For BackedEnum (with values)
                 if (is_subclass_of($typeName, BackedEnum::class)) {
-                    return $typeName::from($value);
+                    return $typeName::tryFrom($value);
                 }
 
                 // For UnitEnum (without values)
