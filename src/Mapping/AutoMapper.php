@@ -190,16 +190,26 @@ class AutoMapper implements Mapper
                 continue;
             }
 
+            // Get profile mapping first
+            $profileMapping = $this->getProfileMapping($sourceType, $destinationType, $propertyName);
+
+            // Determine source property
+            $source = $mappingInfo['source'] ?? $propertyName;
+
+            // If profile mapping has a source defined, use that instead
+            if ($profileMapping !== null && $profileMapping->getSourceProperty() !== null) {
+                $source = $profileMapping->getSourceProperty();
+            }
+
             $config[$propertyName] = [
-                'source' => $mappingInfo['source'] ?? $propertyName,
+                'source' => $source,
                 'transformer' => $mappingInfo['transformer'] ?? null,
-                'profile_mapping' => $this->getProfileMapping($sourceType, $destinationType, $propertyName)
+                'profile_mapping' => $profileMapping
             ];
         }
 
         return $config;
     }
-
     /**
      * Get property mapping info from attributes.
      */
