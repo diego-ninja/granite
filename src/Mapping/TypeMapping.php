@@ -2,12 +2,12 @@
 
 namespace Ninja\Granite\Mapping;
 
-class TypeMapping
+final readonly class TypeMapping
 {
     public function __construct(
         private MappingProfile $profile,
-        private string $sourceType,
-        private string $destinationType
+        private string         $sourceType,
+        private string         $destinationType
     ) {}
 
     /**

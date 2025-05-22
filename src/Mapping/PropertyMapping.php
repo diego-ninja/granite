@@ -2,6 +2,8 @@
 
 namespace Ninja\Granite\Mapping;
 
+use Ninja\Granite\Contracts\Transformer;
+
 class PropertyMapping
 {
     private ?string $sourceProperty = null;

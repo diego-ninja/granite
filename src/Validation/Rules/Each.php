@@ -9,7 +9,7 @@ class Each extends AbstractRule
     /**
      * The index of the item that failed validation.
      */
-    private ?int $currentIndex = null;
+    private string|int|null $currentIndex = null;
 
     /**
      * The rule that failed for the current item.
@@ -35,6 +35,9 @@ class Each extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
+        $this->currentIndex = null;
+        $this->failedRule = null;
+
         // If not an array, or empty, there's nothing to validate
         if (!is_array($value) || empty($value)) {
             return true;
@@ -73,13 +76,13 @@ class Each extends AbstractRule
     protected function defaultMessage(string $property): string
     {
         if ($this->currentIndex !== null) {
-            $itemProperty = sprintf("%s[%d]", $property, $this->currentIndex);
+            $itemProperty = sprintf("%s[%s]", $property, $this->currentIndex);
 
             if ($this->failedRule !== null) {
                 return $this->failedRule->message($itemProperty);
             }
 
-            return sprintf("Item at index %d in %s is invalid", $this->currentIndex, $property);
+            return sprintf("Item at index %s in %s is invalid", $this->currentIndex, $property);
         }
 
         return sprintf("All items in %s must be valid", $property);
