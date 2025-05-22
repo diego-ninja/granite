@@ -5,6 +5,7 @@ namespace Ninja\Granite;
 use DateMalformedStringException;
 use InvalidArgumentException;
 use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\Validation\GraniteValidator;
 use Ninja\Granite\Validation\RuleExtractor;
 use ReflectionException;
@@ -19,6 +20,7 @@ abstract readonly class GraniteVO extends GraniteDTO
      * @throws InvalidArgumentException If validation fails
      * @throws ReflectionException
      * @throws DateMalformedStringException
+     * @throws ValidationException
      */
     public static function from(string|array|GraniteObject $data): static
     {
@@ -115,6 +117,7 @@ abstract readonly class GraniteVO extends GraniteDTO
      * @throws InvalidArgumentException If validation fails
      * @throws ReflectionException
      * @throws DateMalformedStringException
+     * @throws ValidationException
      */
     public function with(array $modifications): static
     {

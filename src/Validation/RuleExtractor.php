@@ -34,7 +34,7 @@ class RuleExtractor
 
                 // Check if this attribute has a toRule method
                 if (method_exists($attrInstance, 'asRule')) {
-                    $rule = $attrInstance->toRule();
+                    $rule = $attrInstance->asRule();
                     if ($rule instanceof ValidationRule) {
                         $propertyRules[] = $rule;
                     }

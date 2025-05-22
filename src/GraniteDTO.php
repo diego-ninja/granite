@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
 use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Serialization\MetadataCache;
 use Ninja\Granite\Support\ReflectionCache;
 use ReflectionException;
@@ -24,6 +25,7 @@ abstract readonly class GraniteDTO implements GraniteObject
      * @return static New instance
      * @throws DateMalformedStringException
      * @throws ReflectionException
+     * @throws Exceptions\ReflectionException
      */
     public static function from(string|array|GraniteObject $data): static
     {
@@ -47,12 +49,16 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
-     * @throws ReflectionException
+     * @throws Exceptions\ReflectionException
      */
     private static function createEmptyInstance(): object
     {
-        $reflection = ReflectionCache::getClass(static::class);
-        return $reflection->newInstanceWithoutConstructor();
+        try {
+            $reflection = ReflectionCache::getClass(static::class);
+            return $reflection->newInstanceWithoutConstructor();
+        } catch (ReflectionException $e) {
+            throw Exceptions\ReflectionException::classNotFound(static::class);
+        }
     }
 
     /**
@@ -60,9 +66,9 @@ abstract readonly class GraniteDTO implements GraniteObject
      * @param array $data Data to hydrate with
      * @return static Hydrated instance
      * @throws DateMalformedStringException
-     * @throws ReflectionException
+     * @throws Exceptions\ReflectionException
      */
-    private static function hydrateInstance(GraniteObject $instance, array $data): static
+    private static function hydrateInstance(GraniteObject $instance, array $data): GraniteObject
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
 
@@ -195,6 +201,7 @@ abstract readonly class GraniteDTO implements GraniteObject
      * @return array Serialized array
      * @throws RuntimeException If a property cannot be serialized
      * @throws ReflectionException
+     * @throws SerializationException
      */
     public function array(): array
     {
@@ -230,7 +237,7 @@ abstract readonly class GraniteDTO implements GraniteObject
      * @param string $propertyName The property name (for error reporting)
      * @param mixed $value The value to serialize
      * @return mixed Serialized value
-     * @throws RuntimeException If the value cannot be serialized
+     * @throws SerializationException If the value cannot be serialized
      */
     private function serializeValue(string $propertyName, mixed $value): mixed
     {
@@ -257,11 +264,7 @@ abstract readonly class GraniteDTO implements GraniteObject
             return $value->array();
         }
 
-        throw new RuntimeException(sprintf(
-            'Cannot serialize property "%s" of type "%s"',
-            $propertyName,
-            get_debug_type($value)
-        ));
+        throw SerializationException::unsupportedType(static::class, $propertyName, get_debug_type($value));
     }
 
     /**

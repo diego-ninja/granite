@@ -30,15 +30,19 @@ final class ReflectionCache
      *
      * @param string $class Class name
      * @return ReflectionClass Reflection instance
-     * @throws ReflectionException
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public static function getClass(string $class): ReflectionClass
     {
-        if (!isset(self::$classCache[$class])) {
-            self::$classCache[$class] = new ReflectionClass($class);
-        }
+        try {
+            if (!isset(self::$classCache[$class])) {
+                self::$classCache[$class] = new ReflectionClass($class);
+            }
 
-        return self::$classCache[$class];
+            return self::$classCache[$class];
+        } catch (ReflectionException $e) {
+            throw \Ninja\Granite\Exceptions\ReflectionException::classNotFound($class);
+        }
     }
 
     /**
@@ -46,7 +50,7 @@ final class ReflectionCache
      *
      * @param string $class Class name
      * @return ReflectionProperty[] Array of reflection properties
-     * @throws ReflectionException
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public static function getPublicProperties(string $class): array
     {

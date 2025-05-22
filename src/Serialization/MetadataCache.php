@@ -23,7 +23,7 @@ class MetadataCache
      *
      * @param string $class Class name
      * @return Metadata Serialization metadata
-     * @throws ReflectionException
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public static function getMetadata(string $class): Metadata
     {
@@ -39,7 +39,7 @@ class MetadataCache
      *
      * @param string $class Class name
      * @return Metadata Built metadata
-     * @throws ReflectionException
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     private static function buildMetadata(string $class): Metadata
     {
@@ -89,12 +89,16 @@ class MetadataCache
      * @param string $class Class name
      * @param string $methodName Method name
      * @return mixed Method result
-     * @throws ReflectionException
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     private static function invokeProtectedStaticMethod(string $class, string $methodName): mixed
     {
-        $reflectionMethod = new ReflectionMethod($class, $methodName);
-        $reflectionMethod->setAccessible(true);
-        return $reflectionMethod->invoke(null);
+        try {
+            $reflectionMethod = new ReflectionMethod($class, $methodName);
+            $reflectionMethod->setAccessible(true);
+            return $reflectionMethod->invoke(null);
+        } catch (ReflectionException $e) {
+            throw new \Ninja\Granite\Exceptions\ReflectionException($class, $methodName, $e->getMessage());
+        }
     }
 }

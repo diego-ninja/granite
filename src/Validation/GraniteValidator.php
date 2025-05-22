@@ -3,6 +3,7 @@
 namespace Ninja\Granite\Validation;
 
 use InvalidArgumentException;
+use Ninja\Granite\Exceptions\ValidationException;
 
 final class GraniteValidator
 {
@@ -80,7 +81,7 @@ final class GraniteValidator
      *
      * @param array $data Data to validate
      * @param string $objectName Object name for error messages
-     * @throws InvalidArgumentException If validation fails
+     * @throws ValidationException If validation fails
      */
     public function validate(array $data, string $objectName = 'Object'): void
     {
@@ -109,12 +110,7 @@ final class GraniteValidator
 
         // Throw exception with validation errors if any
         if (!empty($errors)) {
-            throw new InvalidArgumentException(
-                sprintf('Validation failed for %s: %s',
-                    $objectName,
-                    json_encode($errors)
-                )
-            );
+            throw new ValidationException($objectName, $errors);
         }
     }
 
