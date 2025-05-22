@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
 
-A lightweight zero-dependncy PHP library for building immutable, serializable objects with validation capabilities.
+A lightweight zero-dependency PHP library for building immutable, serializable objects with validation capabilities.
 
 ## Overview
 

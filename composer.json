@@ -1,6 +1,20 @@
 {
     "name": "diego-ninja/granite",
-    "description": "A simple library to build immutable and serializable objects",
+    "description": "A lightweight zero-dependency PHP library for building immutable, serializable objects with validation capabilities.",
+    "keywords": [
+        "immutable",
+        "serializable",
+        "objects",
+        "php",
+        "dto",
+        "value-object",
+        "data-transfer-object",
+        "data-object",
+        "data-structure",
+        "auto-mapping",
+        "auto-mapper",
+        "data-mapper"
+    ],
     "type": "library",
     "license": "MIT",
     "autoload": {
@@ -19,7 +33,7 @@
             "email": "yosoy@diego.ninja"
         }
     ],
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "require": {
         "php": "^8.3|^8.4"
     },
