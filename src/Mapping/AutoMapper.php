@@ -2,24 +2,32 @@
 
 namespace Ninja\Granite\Mapping;
 
-// src/Mapping/AutoMapper.php
-namespace Ninja\Granite\Mapping;
-
 use Exception;
-use Ninja\Granite\Contracts\Mapper;
 use Ninja\Granite\Contracts\GraniteObject;
-use Ninja\Granite\Contracts\Transformer;
 use Ninja\Granite\Exceptions\GraniteException;
-use Ninja\Granite\Exceptions\MappingException;
-use Ninja\Granite\Support\ReflectionCache;
-use Ninja\Granite\Mapping\Attributes\MapFrom;
-use Ninja\Granite\Mapping\Attributes\MapWith;
 use Ninja\Granite\Mapping\Attributes\Ignore;
+use Ninja\Granite\Mapping\Attributes\MapBidirectional;
+use Ninja\Granite\Mapping\Attributes\MapCollection;
+use Ninja\Granite\Mapping\Attributes\MapDefault;
+use Ninja\Granite\Mapping\Attributes\MapFrom;
+use Ninja\Granite\Mapping\Attributes\MapWhen;
+use Ninja\Granite\Mapping\Attributes\MapWith;
+use Ninja\Granite\Mapping\Cache\CacheFactory;
+use Ninja\Granite\Mapping\Contracts\Mapper;
+use Ninja\Granite\Mapping\Contracts\MappingCache;
+use Ninja\Granite\Mapping\Contracts\MappingStorage;
+use Ninja\Granite\Mapping\Contracts\Transformer;
+use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Ninja\Granite\Mapping\Traits\MappingStorageTrait;
+use Ninja\Granite\Support\ReflectionCache;
+use ReflectionClass;
 use ReflectionException;
 use ReflectionProperty;
 
-class AutoMapper implements Mapper
+class AutoMapper implements Mapper, MappingStorage
 {
+    use MappingStorageTrait;
+
     /**
      * Registered mapping profiles.
      *
@@ -28,33 +36,174 @@ class AutoMapper implements Mapper
     private array $profiles = [];
 
     /**
-     * Cache for mapping configurations.
-     *
-     * @var array<string, array>
+     * Mapping configuration cache.
      */
-    private array $mappingCache = [];
+    private MappingCache $cache;
 
-    public function __construct(array $profiles = [])
-    {
+    /**
+     * Whether to warm up the cache with profiles.
+     */
+    private bool $warmupCache;
+
+    /**
+     * Constructor.
+     *
+     * @param array $profiles Optional mapping profiles to register
+     * @param string $cacheType Cache type ('memory', 'shared', 'persistent')
+     * @param bool $warmupCache Whether to warm up the cache with profiles
+     */
+    public function __construct(
+        array $profiles = [],
+        string $cacheType = 'shared',
+        bool $warmupCache = true
+    ) {
+        $this->cache = CacheFactory::create($cacheType);
+        $this->warmupCache = $warmupCache;
+
         foreach ($profiles as $profile) {
             $this->addProfile($profile);
+        }
+
+        if ($warmupCache && !empty($profiles)) {
+            $this->warmupCache();
         }
     }
 
     /**
      * Add a mapping profile.
+     *
+     * @param MappingProfile $profile Mapping profile to add
+     * @return $this For method chaining
      */
     public function addProfile(MappingProfile $profile): self
     {
         $this->profiles[] = $profile;
+
+        if ($this->warmupCache) {
+            $this->warmupProfileCache($profile);
+        }
+
         return $this;
     }
 
     /**
-     * {@inheritdoc}
-     * @throws MappingException
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
-     * @throws GraniteException
+     * Warm up cache with all profiles.
+     *
+     * @return void
+     */
+    private function warmupCache(): void
+    {
+        foreach ($this->profiles as $profile) {
+            $this->warmupProfileCache($profile);
+        }
+    }
+
+    /**
+     * Warm up cache with a specific profile.
+     *
+     * @param MappingProfile $profile Mapping profile
+     * @return void
+     */
+    private function warmupProfileCache(MappingProfile $profile): void
+    {
+        // Reflection to get all mappings from profile
+        $reflection = new ReflectionClass($profile);
+        $mappingsProperty = $reflection->getProperty('mappings');
+        $mappingsProperty->setAccessible(true);
+
+        $mappings = $mappingsProperty->getValue($profile);
+
+        // Extract and cache configurations
+        foreach ($mappings as $key => $propertyMappings) {
+            list($sourceType, $destinationType) = explode('->', $key);
+
+            // Only cache if not already cached
+            if (!$this->cache->has($sourceType, $destinationType)) {
+                $config = $this->buildMappingConfiguration($sourceType, $destinationType);
+                $this->cache->put($sourceType, $destinationType, $config);
+            }
+        }
+    }
+
+    /**
+     * Create a new mapping from source to destination.
+     *
+     * @param string $sourceType Source type name
+     * @param string $destinationType Destination type name
+     * @return TypeMapping Type mapping configuration
+     */
+    public function createMap(string $sourceType, string $destinationType): TypeMapping
+    {
+        return new TypeMapping($this, $sourceType, $destinationType);
+    }
+
+    /**
+     * Create bidirectional mappings between two types.
+     *
+     * @param string $typeA First type name
+     * @param string $typeB Second type name
+     * @return BidirectionalTypeMapping Bidirectional mapping configuration
+     */
+    public function createMapBidirectional(string $typeA, string $typeB): BidirectionalTypeMapping
+    {
+        return new BidirectionalTypeMapping($this, $typeA, $typeB);
+    }
+
+    /**
+     * Creates a reverse mapping based on an existing mapping.
+     *
+     * @param string $sourceType Original source type
+     * @param string $destinationType Original destination type
+     * @return TypeMapping The reverse mapping
+     * @throws MappingException If the original mapping doesn't exist
+     */
+    public function createReverseMap(string $sourceType, string $destinationType): TypeMapping
+    {
+        // Check if we have the original mapping
+        $cacheKey = $sourceType . '->' . $destinationType;
+        if (!isset($this->mappingCache[$cacheKey])) {
+            throw new MappingException(
+                $sourceType,
+                $destinationType,
+                "Cannot create reverse mapping: original mapping does not exist"
+            );
+        }
+
+        // Get original mapping config
+        $originalConfig = $this->mappingCache[$cacheKey];
+
+        // Create the reverse mapping
+        $reverseMapping = $this->createMap($destinationType, $sourceType);
+
+        // Loop through original mappings and create reverse mappings
+        foreach ($originalConfig as $destProp => $config) {
+            $sourceProp = $config['source'];
+
+            // Skip if no explicit source property (we can't reverse implicit mappings)
+            if ($sourceProp === null || $sourceProp === $destProp) {
+                continue;
+            }
+
+            // Skip properties with complex transformers (can't reverse automatically)
+            if ($config['transformer'] !== null) {
+                continue;
+            }
+
+            // Create reverse mapping
+            $reverseMapping->forMember($sourceProp, fn($m) => $m->mapFrom($destProp));
+        }
+
+        return $reverseMapping->seal();
+    }
+
+    /**
+     * Map from source object/array to destination type.
+     *
+     * @template T
+     * @param mixed $source Source data
+     * @param string $destinationType Destination class name
+     * @return T Mapped object
+     * @throws MappingException|GraniteException If mapping fails
      */
     public function map(mixed $source, string $destinationType): object
     {
@@ -81,13 +230,17 @@ class AutoMapper implements Mapper
             throw $e;
         } catch (Exception $e) {
             $sourceType = is_object($source) ? get_class($source) : gettype($source);
-            throw new MappingException($sourceType, $destinationType, $e->getMessage(), null, 0, $e);        }
+            throw new MappingException($sourceType, $destinationType, $e->getMessage(), null, 0, $e);
+        }
     }
 
     /**
-     * {@inheritdoc}
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
-     * @throws MappingException
+     * Map from source to an existing destination object.
+     *
+     * @param mixed $source Source data
+     * @param object $destination Destination object to populate
+     * @return object Updated destination object
+     * @throws MappingException If mapping fails
      */
     public function mapTo(mixed $source, object $destination): object
     {
@@ -101,8 +254,13 @@ class AutoMapper implements Mapper
     }
 
     /**
-     * {@inheritdoc}
-     * @throws \Ninja\Granite\Exceptions\ReflectionException|MappingException|GraniteException
+     * Map array of objects.
+     *
+     * @template T
+     * @param array $source Array of source objects
+     * @param string $destinationType Destination class name
+     * @return T[] Array of mapped objects
+     * @throws MappingException|GraniteException If mapping fails
      */
     public function mapArray(array $source, string $destinationType): array
     {
@@ -114,9 +272,76 @@ class AutoMapper implements Mapper
     }
 
     /**
+     * Get mapping from all registered profiles.
+     *
+     * @param string $sourceType Source type name
+     * @param string $destinationType Destination type name
+     * @param string $property Property name
+     * @return PropertyMapping|null Property mapping or null if not found
+     */
+    public function getMapping(string $sourceType, string $destinationType, string $property): ?PropertyMapping
+    {
+        // Check direct mappings first
+        $mapping = $this->getMappingFromStorage($sourceType, $destinationType, $property);
+        if ($mapping !== null) {
+            return $mapping;
+        }
+
+        // Then check profiles
+        foreach ($this->profiles as $profile) {
+            $mapping = $profile->getMapping($sourceType, $destinationType, $property);
+            if ($mapping !== null) {
+                return $mapping;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get mapping from direct storage.
+     *
+     * @param string $sourceType Source type name
+     * @param string $destinationType Destination type name
+     * @param string $property Property name
+     * @return PropertyMapping|null Property mapping or null if not found
+     */
+    private function getMappingFromStorage(string $sourceType, string $destinationType, string $property): ?PropertyMapping
+    {
+        $key = $sourceType . '->' . $destinationType;
+        return $this->mappings[$key][$property] ?? null;
+    }
+    /**
+     * Get all mappings for a type pair from all sources.
+     *
+     * @param string $sourceType Source type name
+     * @param string $destinationType Destination type name
+     * @return array<string, PropertyMapping> Property mappings indexed by property name
+     */
+    public function getMappingsForTypes(string $sourceType, string $destinationType): array
+    {
+        $key = $sourceType . '->' . $destinationType;
+        $result = $this->mappings[$key] ?? [];
+
+        // Merge mappings from profiles
+        foreach ($this->profiles as $profile) {
+            $profileMappings = $profile->getMappingsForTypes($sourceType, $destinationType);
+            foreach ($profileMappings as $property => $mapping) {
+                if (!isset($result[$property])) {
+                    $result[$property] = $mapping;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Normalize source data to array format.
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
-     * @throws MappingException
+     *
+     * @param mixed $source Source data
+     * @return array Normalized data as array
+     * @throws MappingException If source type is not supported
      */
     private function normalizeSource(mixed $source): array
     {
@@ -137,101 +362,157 @@ class AutoMapper implements Mapper
 
     /**
      * Convert object to array using reflection.
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
+     *
+     * @param object $source Source object
+     * @return array Object data as array
+     * @throws MappingException If reflection fails
      */
     private function objectToArray(object $source): array
     {
-        $result = [];
-        $properties = ReflectionCache::getPublicProperties(get_class($source));
+        try {
+            $result = [];
+            $properties = ReflectionCache::getPublicProperties(get_class($source));
 
-        foreach ($properties as $property) {
-            if ($property->isInitialized($source)) {
-                $result[$property->getName()] = $property->getValue($source);
+            foreach ($properties as $property) {
+                if ($property->isInitialized($source)) {
+                    $result[$property->getName()] = $property->getValue($source);
+                }
             }
-        }
 
-        return $result;
+            return $result;
+        } catch (Exception $e) {
+            throw MappingException::unsupportedSourceType($source);
+        }
     }
 
     /**
      * Get mapping configuration for source to destination.
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
+     *
+     * @param mixed $source Source data
+     * @param string $destinationType Destination type name
+     * @return array Mapping configuration
      */
     private function getMappingConfiguration(mixed $source, string $destinationType): array
     {
         $sourceType = is_object($source) ? get_class($source) : 'array';
-        $cacheKey = $sourceType . '->' . $destinationType;
 
-        if (isset($this->mappingCache[$cacheKey])) {
-            return $this->mappingCache[$cacheKey];
+        // Check cache first
+        if ($this->cache->has($sourceType, $destinationType)) {
+            return $this->cache->get($sourceType, $destinationType);
         }
 
+        // Build and cache if not found
         $config = $this->buildMappingConfiguration($sourceType, $destinationType);
-        $this->mappingCache[$cacheKey] = $config;
+        $this->cache->put($sourceType, $destinationType, $config);
 
         return $config;
     }
 
     /**
      * Build mapping configuration.
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
+     *
+     * @param string $sourceType Source type name
+     * @param string $destinationType Destination type name
+     * @return array Mapping configuration
      */
     private function buildMappingConfiguration(string $sourceType, string $destinationType): array
     {
         $config = [];
 
-        $destinationProperties = ReflectionCache::getPublicProperties($destinationType);
+        try {
+            $destinationProperties = ReflectionCache::getPublicProperties($destinationType);
 
-        foreach ($destinationProperties as $property) {
-            $propertyName = $property->getName();
-            $mappingInfo = $this->getPropertyMappingInfo($property);
+            foreach ($destinationProperties as $property) {
+                $propertyName = $property->getName();
+                $mappingInfo = $this->getPropertyMappingInfo($property);
 
-            if ($mappingInfo['ignore']) {
-                continue;
+                if ($mappingInfo['ignore']) {
+                    continue;
+                }
+
+                // Get profile mapping first
+                $profileMapping = $this->getMapping($sourceType, $destinationType, $propertyName);
+
+                // Determine source property
+                $source = $mappingInfo['source'] ?? $propertyName;
+
+                // If profile mapping has a source defined, use that instead
+                if ($profileMapping !== null && $profileMapping->getSourceProperty() !== null) {
+                    $source = $profileMapping->getSourceProperty();
+                }
+
+                // Set up the transformer
+                $transformer = $mappingInfo['transformer'] ?? null;
+
+                // If this is a collection, create a collection transformer
+                if ($mappingInfo['isCollection'] && $mappingInfo['collectionConfig'] !== null) {
+                    $collectionConfig = $mappingInfo['collectionConfig'];
+                    $transformer = $collectionConfig->createTransformer($this);
+                }
+
+                $config[$propertyName] = [
+                    'source' => $source,
+                    'transformer' => $transformer,
+                    'profile_mapping' => $profileMapping,
+                    'condition' => $mappingInfo['condition'] ?? null,
+                    'defaultValue' => $mappingInfo['defaultValue'] ?? null,
+                    'hasDefaultValue' => $mappingInfo['hasDefaultValue'] ?? false
+                ];
             }
 
-            // Get profile mapping first
-            $profileMapping = $this->getProfileMapping($sourceType, $destinationType, $propertyName);
-
-            // Determine source property
-            $source = $mappingInfo['source'] ?? $propertyName;
-
-            // If profile mapping has a source defined, use that instead
-            if ($profileMapping !== null && $profileMapping->getSourceProperty() !== null) {
-                $source = $profileMapping->getSourceProperty();
-            }
-
-            $config[$propertyName] = [
-                'source' => $source,
-                'transformer' => $mappingInfo['transformer'] ?? null,
-                'profile_mapping' => $profileMapping
-            ];
+            return $config;
+        } catch (Exception $e) {
+            // Return empty config if something fails
+            return [];
         }
-
-        return $config;
     }
+
     /**
      * Get property mapping info from attributes.
+     *
+     * @param ReflectionProperty $property Property reflection
+     * @return array Property mapping info
      */
     private function getPropertyMappingInfo(ReflectionProperty $property): array
     {
         $info = [
             'ignore' => false,
             'source' => null,
-            'transformer' => null
+            'transformer' => null,
+            'condition' => null,
+            'defaultValue' => null,
+            'hasDefaultValue' => false,
+            'isCollection' => false,
+            'collectionConfig' => null,
+            'bidirectional' => null
         ];
 
         $attributes = $property->getAttributes();
 
         foreach ($attributes as $attribute) {
-            $instance = $attribute->newInstance();
+            try {
+                $instance = $attribute->newInstance();
 
-            if ($instance instanceof Ignore) {
-                $info['ignore'] = true;
-            } elseif ($instance instanceof MapFrom) {
-                $info['source'] = $instance->source;
-            } elseif ($instance instanceof MapWith) {
-                $info['transformer'] = $instance->transformer;
+                if ($instance instanceof Ignore) {
+                    $info['ignore'] = true;
+                } elseif ($instance instanceof MapFrom) {
+                    $info['source'] = $instance->source;
+                } elseif ($instance instanceof MapWith) {
+                    $info['transformer'] = $instance->transformer;
+                } elseif ($instance instanceof MapWhen) {
+                    $info['condition'] = $instance->condition;
+                } elseif ($instance instanceof MapDefault) {
+                    $info['defaultValue'] = $instance->value;
+                    $info['hasDefaultValue'] = true;
+                } elseif ($instance instanceof MapCollection) {
+                    $info['isCollection'] = true;
+                    $info['collectionConfig'] = $instance;
+                } elseif ($instance instanceof MapBidirectional) {
+                    $info['bidirectional'] = $instance->otherProperty;
+                }
+            } catch (Exception $e) {
+                // Skip attributes that can't be instantiated
+                continue;
             }
         }
 
@@ -239,22 +520,11 @@ class AutoMapper implements Mapper
     }
 
     /**
-     * Get mapping from profiles.
-     */
-    private function getProfileMapping(string $sourceType, string $destinationType, string $propertyName): ?PropertyMapping
-    {
-        foreach ($this->profiles as $profile) {
-            $mapping = $profile->getMapping($sourceType, $destinationType, $propertyName);
-            if ($mapping !== null) {
-                return $mapping;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Apply mappings to source data.
+     *
+     * @param array $sourceData Source data
+     * @param array $mappingConfig Mapping configuration
+     * @return array Transformed data
      */
     private function applyMappings(array $sourceData, array $mappingConfig): array
     {
@@ -264,18 +534,50 @@ class AutoMapper implements Mapper
             $sourceKey = $config['source'];
             $transformer = $config['transformer'];
             $profileMapping = $config['profile_mapping'];
+            $condition = $config['condition'] ?? null;
+            $defaultValue = $config['defaultValue'] ?? null;
+            $hasDefaultValue = $config['hasDefaultValue'] ?? false;
+
+            // Check condition if set
+            if ($condition !== null) {
+                if (is_callable($condition)) {
+                    if (!$condition($sourceData)) {
+                        if ($hasDefaultValue) {
+                            $result[$destinationProperty] = $defaultValue;
+                        }
+                        continue;
+                    }
+                } elseif (is_string($condition) && method_exists($destinationProperty, $condition)) {
+                    if (!$destinationProperty::$condition($sourceData)) {
+                        if ($hasDefaultValue) {
+                            $result[$destinationProperty] = $defaultValue;
+                        }
+                        continue;
+                    }
+                }
+            }
 
             // Get source value
             $sourceValue = $this->getSourceValue($sourceData, $sourceKey);
 
             // Apply transformations
-            if ($transformer !== null) {
-                $sourceValue = $this->applyTransformer($sourceValue, $transformer);
-            } elseif ($profileMapping !== null) {
-                $sourceValue = $profileMapping->transform($sourceValue, $sourceData);
+            if ($profileMapping !== null) {
+                // If there's a profile mapping, use that to transform
+                $transformedValue = $profileMapping->transform($sourceValue, $sourceData);
+                $result[$destinationProperty] = $transformedValue;
+            } elseif ($transformer !== null) {
+                // If there's a direct transformer
+                $transformedValue = $this->applyTransformer($sourceValue, $transformer, $sourceData);
+                $result[$destinationProperty] = $transformedValue;
+            } else {
+                // No transformation
+                $result[$destinationProperty] = $sourceValue;
             }
 
-            $result[$destinationProperty] = $sourceValue;
+            // Apply default value if value is null and default is set
+            if ($result[$destinationProperty] === null && $hasDefaultValue) {
+                $result[$destinationProperty] = $defaultValue;
+            }
         }
 
         return $result;
@@ -283,6 +585,10 @@ class AutoMapper implements Mapper
 
     /**
      * Get source value using dot notation support.
+     *
+     * @param array $sourceData Source data
+     * @param string $key Property key
+     * @return mixed Property value
      */
     private function getSourceValue(array $sourceData, string $key): mixed
     {
@@ -295,6 +601,10 @@ class AutoMapper implements Mapper
 
     /**
      * Get nested value using dot notation.
+     *
+     * @param array $data Source data
+     * @param string $key Nested property key (using dot notation)
+     * @return mixed Property value
      */
     private function getNestedValue(array $data, string $key): mixed
     {
@@ -313,23 +623,32 @@ class AutoMapper implements Mapper
 
     /**
      * Apply transformer to value.
+     *
+     * @param mixed $value Value to transform
+     * @param mixed $transformer Transformer to apply
+     * @param array $sourceData Source data for context
+     * @return mixed Transformed value
      */
-    private function applyTransformer(mixed $value, mixed $transformer): mixed
+    private function applyTransformer(mixed $value, mixed $transformer, array $sourceData = []): mixed
     {
         if (is_callable($transformer)) {
-            return $transformer($value);
+            return $transformer($value, $sourceData);
         }
 
         if ($transformer instanceof Transformer) {
-            return $transformer->transform($value);
+            return $transformer->transform($value, $sourceData);
         }
 
         return $value;
     }
 
     /**
-     * Create object from array data.
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
+     * Create an object from array data.
+     *
+     * @param array $data Object data
+     * @param string $className Class name
+     * @return object Created object
+     * @throws MappingException|\Ninja\Granite\Exceptions\ReflectionException If object creation fails
      */
     private function createObjectFromArray(array $data, string $className): object
     {
@@ -339,25 +658,124 @@ class AutoMapper implements Mapper
 
             return $this->populateObject($instance, $data);
         } catch (ReflectionException $e) {
-            throw new \Ninja\Granite\Exceptions\ReflectionException($className, "Unable to create instance", $e->getMessage());
+            throw new MappingException('array', $className, "Failed to create instance: " . $e->getMessage());
         }
     }
 
     /**
      * Populate an existing object with data.
-     * @throws \Ninja\Granite\Exceptions\ReflectionException
+     *
+     * @param object $object Object to populate
+     * @param array $data Data to set
+     * @return object Populated object
+     * @throws MappingException If population fails
      */
     private function populateObject(object $object, array $data): object
     {
-        $properties = ReflectionCache::getPublicProperties(get_class($object));
+        try {
+            $properties = ReflectionCache::getPublicProperties(get_class($object));
 
-        foreach ($properties as $property) {
-            $propertyName = $property->getName();
-            if (array_key_exists($propertyName, $data)) {
-                $property->setValue($object, $data[$propertyName]);
+            foreach ($properties as $property) {
+                $propertyName = $property->getName();
+                if (array_key_exists($propertyName, $data)) {
+                    $property->setValue($object, $data[$propertyName]);
+                }
+            }
+
+            return $object;
+        } catch (Exception $e) {
+            throw new MappingException('array', get_class($object), "Failed to populate object: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Create mappings from type configurations with bidirectional support.
+     *
+     * @param array $typeConfigs Type configurations
+     * @return void
+     * @throws MappingException
+     */
+    public function processBidirectionalMappings(array $typeConfigs): void
+    {
+        // First pass: identify bidirectional mappings
+        $bidirectionalPairs = [];
+
+        foreach ($typeConfigs as $sourceType => $destTypeConfigs) {
+            foreach ($destTypeConfigs as $destType => $propertyConfigs) {
+                foreach ($propertyConfigs as $destProp => $config) {
+                    if (isset($config['bidirectional'])) {
+                        $bidirectionalPairs[$sourceType][$destType][$destProp] = $config['bidirectional'];
+                    }
+                }
             }
         }
 
-        return $object;
+        // Second pass: create bidirectional mappings
+        foreach ($bidirectionalPairs as $typeA => $typeBMappings) {
+            foreach ($typeBMappings as $typeB => $propMappings) {
+                $biMapping = $this->createMapBidirectional($typeA, $typeB);
+
+                foreach ($propMappings as $propA => $propB) {
+                    $biMapping->forMembers($propA, $propB);
+                }
+
+                $biMapping->seal();
+            }
+        }
+    }
+
+    /**
+     * Clear mapping cache.
+     *
+     * @return $this For method chaining
+     */
+    public function clearCache(): self
+    {
+        $this->cache->clear();
+        return $this;
+    }
+
+    /**
+     * Set cache warming.
+     *
+     * @param bool $enabled Whether to enable cache warming
+     * @return $this For method chaining
+     */
+    public function setCacheWarming(bool $enabled): self
+    {
+        $this->warmupCache = $enabled;
+
+        if ($enabled && !empty($this->profiles)) {
+            $this->warmupCache();
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get the current cache.
+     *
+     * @return MappingCache Current cache
+     */
+    public function getCache(): MappingCache
+    {
+        return $this->cache;
+    }
+
+    /**
+     * Set a different cache.
+     *
+     * @param MappingCache $cache New cache
+     * @return $this For method chaining
+     */
+    public function setCache(MappingCache $cache): self
+    {
+        $this->cache = $cache;
+
+        if ($this->warmupCache && !empty($this->profiles)) {
+            $this->warmupCache();
+        }
+
+        return $this;
     }
 }

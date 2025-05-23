@@ -2,8 +2,8 @@
 
 namespace Ninja\Granite\Mapping\Transformers;
 
-use Ninja\Granite\Contracts\Mapper;
-use Ninja\Granite\Contracts\Transformer;
+use Ninja\Granite\Mapping\Contracts\Mapper;
+use Ninja\Granite\Mapping\Contracts\Transformer;
 
 final readonly class ArrayTransformer implements Transformer
 {

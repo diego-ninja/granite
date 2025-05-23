@@ -2,7 +2,7 @@
 
 namespace Tests\Fixtures\Automapper;
 
-use Ninja\Granite\Contracts\Transformer;
+use Ninja\Granite\Mapping\Contracts\Transformer;
 
 class TestTransformer implements Transformer
 {

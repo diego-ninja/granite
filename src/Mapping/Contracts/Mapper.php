@@ -1,6 +1,6 @@
 <?php
 
-namespace Ninja\Granite\Contracts;
+namespace Ninja\Granite\Mapping\Contracts;
 
 interface Mapper
 {

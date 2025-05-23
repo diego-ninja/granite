@@ -3,9 +3,9 @@
 namespace Ninja\Granite\Mapping\Transformers;
 
 use DateMalformedStringException;
-use DateTimeInterface;
 use DateTimeImmutable;
-use Ninja\Granite\Contracts\Transformer;
+use DateTimeInterface;
+use Ninja\Granite\Mapping\Contracts\Transformer;
 
 final readonly class DateTimeTransformer implements Transformer
 {

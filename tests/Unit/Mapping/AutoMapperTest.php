@@ -5,14 +5,13 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Mapping;
 
-use Tests\Fixtures\Automapper\DTO\ComplexDTO;
-use Tests\Fixtures\Automapper\TestMappingProfile;
 use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\Contracts\Mapper;
+use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MappingProfile;
-use Ninja\Granite\Contracts\Mapper;
-use Ninja\Granite\Exceptions\MappingException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\Automapper\DTO\ComplexDTO;
 use Tests\Fixtures\Automapper\DTO\DestinationDTO;
 use Tests\Fixtures\Automapper\DTO\IgnoreDTO;
 use Tests\Fixtures\Automapper\DTO\MappedDTO;
@@ -20,9 +19,10 @@ use Tests\Fixtures\Automapper\DTO\NestedMappingDTO;
 use Tests\Fixtures\Automapper\DTO\ProfileMappedDTO;
 use Tests\Fixtures\Automapper\DTO\TransformerDTO;
 use Tests\Fixtures\Automapper\SourceObject;
-use Tests\Helpers\TestCase;
-use Tests\Fixtures\DTOs\UserDTO;
+use Tests\Fixtures\Automapper\TestMappingProfile;
 use Tests\Fixtures\DTOs\SimpleDTO;
+use Tests\Fixtures\DTOs\UserDTO;
+use Tests\Helpers\TestCase;
 
 #[CoversClass(AutoMapper::class)]
 class AutoMapperTest extends TestCase
