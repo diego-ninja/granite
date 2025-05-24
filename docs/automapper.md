@@ -1,446 +1,865 @@
 # AutoMapper
 
-Granite includes a powerful AutoMapper that allows you to automatically map data between different object structures. This is particularly useful when converting between DTOs, entities, API responses, and other data models.
+Granite's AutoMapper provides powerful object-to-object mapping capabilities with automatic property matching, custom transformations, and convention-based mapping. It's perfect for converting between DTOs, entities, API responses, and other data structures.
 
 ## Table of Contents
 
 - [Basic Usage](#basic-usage)
-- [Mapping with Attributes](#mapping-with-attributes)
-- [Mapping Profiles](#mapping-profiles)
-- [Custom Transformers](#custom-transformers)
-- [Nested Property Mapping](#nested-property-mapping)
+- [Mapping Configuration](#mapping-configuration)
+- [Property Attributes](#property-attributes)
+- [Custom Transformations](#custom-transformations)
 - [Collection Mapping](#collection-mapping)
+- [Convention-Based Mapping](#convention-based-mapping)
+- [Mapping Profiles](#mapping-profiles)
 - [Bidirectional Mapping](#bidirectional-mapping)
-- [Conditional Mapping](#conditional-mapping)
-- [Built-in Transformers](#built-in-transformers)
-- [Mapping to Existing Objects](#mapping-to-existing-objects)
-- [Advanced Features](#advanced-features)
-- [Performance Considerations](#performance-considerations)
+- [Advanced Scenarios](#advanced-scenarios)
+- [Performance Optimization](#performance-optimization)
 
 ## Basic Usage
+
+### Simple Mapping
 
 ```php
 <?php
 
 use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\GraniteDTO;
 
-// Source and destination objects
+// Source DTO
+final readonly class UserEntity extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $firstName,
+        public string $lastName,
+        public string $email,
+        public DateTime $createdAt
+    ) {}
+}
+
+// Destination DTO
+final readonly class UserResponse extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $firstName,
+        public string $lastName,
+        public string $email
+    ) {}
+}
+
+// Basic mapping - properties match by name
+$mapper = new AutoMapper();
 $userEntity = UserEntity::from([
     'id' => 1,
     'firstName' => 'John',
     'lastName' => 'Doe',
-    'email' => 'john@example.com'
+    'email' => 'john@example.com',
+    'createdAt' => '2023-01-15T10:30:00Z'
 ]);
 
-$mapper = new AutoMapper();
-
-// Simple mapping (properties with same names are mapped automatically)
-$userDto = $mapper->map($userEntity, UserDTO::class);
-
-// Map arrays
-$userDtos = $mapper->mapArray($userEntities, UserDTO::class);
+$userResponse = $mapper->map($userEntity, UserResponse::class);
+// Result: UserResponse with id, firstName, lastName, email
+// createdAt is omitted since it doesn't exist in destination
 ```
 
-## Mapping with Attributes
-
-You can control mapping behavior using attributes on destination properties:
+### Array to Object Mapping
 
 ```php
-<?php
+$userData = [
+    'id' => 1,
+    'firstName' => 'John',
+    'lastName' => 'Doe',
+    'email' => 'john@example.com'
+];
 
-use Ninja\Granite\GraniteDTO;
+$userResponse = $mapper->map($userData, UserResponse::class);
+```
+
+### Collection Mapping
+
+```php
+$userEntities = [
+    UserEntity::from(['id' => 1, 'firstName' => 'John', 'lastName' => 'Doe', 'email' => 'john@example.com']),
+    UserEntity::from(['id' => 2, 'firstName' => 'Jane', 'lastName' => 'Smith', 'email' => 'jane@example.com'])
+];
+
+$userResponses = $mapper->mapArray($userEntities, UserResponse::class);
+// Returns array of UserResponse objects
+```
+
+## Mapping Configuration
+
+### Explicit Property Mapping
+
+Configure custom property mappings when names don't match:
+
+```php
+final readonly class UserEntity extends GraniteDTO
+{
+    public function __construct(
+        public int $userId,
+        public string $fullName,
+        public string $emailAddress,
+        public string $phoneNumber
+    ) {}
+}
+
+final readonly class UserDto extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $name,
+        public string $email,
+        public string $phone
+    ) {}
+}
+
+// Configure explicit mapping
+$mapper = new AutoMapper();
+$mapping = $mapper->createMap(UserEntity::class, UserDto::class)
+    ->forMember('id', fn($m) => $m->mapFrom('userId'))
+    ->forMember('name', fn($m) => $m->mapFrom('fullName'))
+    ->forMember('email', fn($m) => $m->mapFrom('emailAddress'))
+    ->forMember('phone', fn($m) => $m->mapFrom('phoneNumber'))
+    ->seal();
+
+$userEntity = UserEntity::from([
+    'userId' => 1,
+    'fullName' => 'John Doe',
+    'emailAddress' => 'john@example.com',
+    'phoneNumber' => '+1-555-0123'
+]);
+
+$userDto = $mapper->map($userEntity, UserDto::class);
+```
+
+### Ignoring Properties
+
+```php
+$mapping = $mapper->createMap(UserEntity::class, UserDto::class)
+    ->forMember('sensitiveData', fn($m) => $m->ignore())
+    ->seal();
+```
+
+### Default Values
+
+```php
+$mapping = $mapper->createMap(UserEntity::class, UserDto::class)
+    ->forMember('status', fn($m) => $m->defaultValue('active'))
+    ->forMember('role', fn($m) => $m->defaultValue('user'))
+    ->seal();
+```
+
+### Conditional Mapping
+
+```php
+$mapping = $mapper->createMap(UserEntity::class, UserDto::class)
+    ->forMember('adminData', fn($m) => 
+        $m->mapFrom('internalData')
+          ->onlyIf(fn($sourceData) => $sourceData['userType'] === 'admin')
+    )
+    ->seal();
+```
+
+## Property Attributes
+
+Use attributes for simple, declarative mapping configuration:
+
+### Basic Mapping Attributes
+
+```php
 use Ninja\Granite\Mapping\Attributes\MapFrom;
-use Ninja\Granite\Mapping\Attributes\MapWith;
 use Ninja\Granite\Mapping\Attributes\Ignore;
 use Ninja\Granite\Mapping\Attributes\MapDefault;
 use Ninja\Granite\Mapping\Attributes\MapWhen;
+
+final readonly class UserResponse extends GraniteDTO
+{
+    public function __construct(
+        // Map from different property name
+        #[MapFrom('userId')]
+        public int $id,
+        
+        #[MapFrom('fullName')]
+        public string $name,
+        
+        // Ignore during mapping
+        #[Ignore]
+        public ?string $internalId = null,
+        
+        // Use default value
+        #[MapDefault('active')]
+        public string $status,
+        
+        // Conditional mapping
+        #[MapWhen(fn($data) => isset($data['isAdmin']) && $data['isAdmin'])]
+        #[MapFrom('adminEmail')]
+        public ?string $email = null
+    ) {}
+}
+```
+
+### Collection Mapping
+
+```php
 use Ninja\Granite\Mapping\Attributes\MapCollection;
-use Ninja\Granite\Mapping\Transformers\DateTimeTransformer;
+
+final readonly class TeamResponse extends GraniteDTO
+{
+    public function __construct(
+        public string $name,
+        
+        // Map array of objects
+        #[MapCollection(UserResponse::class)]
+        public array $members,
+        
+        // Map collection with preserved keys
+        #[MapCollection(ProjectResponse::class, preserveKeys: true)]
+        public array $projects
+    ) {}
+}
+```
+
+### Nested Object Mapping
+
+```php
+final readonly class CompanyResponse extends GraniteDTO
+{
+    public function __construct(
+        public string $name,
+        
+        // Nested object mapping
+        #[MapFrom('primaryAddress')]
+        public AddressResponse $address,
+        
+        #[MapFrom('contactPerson')]
+        public UserResponse $contact
+    ) {}
+}
+```
+
+## Custom Transformations
+
+### Using Transformers
+
+Create custom transformation logic:
+
+```php
+use Ninja\Granite\Mapping\Contracts\Transformer;
+
+class FullNameTransformer implements Transformer
+{
+    public function transform(mixed $value, array $sourceData = []): mixed
+    {
+        if (isset($sourceData['firstName']) && isset($sourceData['lastName'])) {
+            return $sourceData['firstName'] . ' ' . $sourceData['lastName'];
+        }
+        
+        return $value;
+    }
+}
+
+// Use in mapping configuration
+$mapping = $mapper->createMap(UserEntity::class, UserResponse::class)
+    ->forMember('fullName', fn($m) => 
+        $m->mapFrom('firstName')->using(new FullNameTransformer())
+    )
+    ->seal();
+```
+
+### Using Callbacks
+
+```php
+$mapping = $mapper->createMap(UserEntity::class, UserResponse::class)
+    ->forMember('displayName', fn($m) => 
+        $m->using(function($value, $sourceData) {
+            $first = $sourceData['firstName'] ?? '';
+            $last = $sourceData['lastName'] ?? '';
+            return trim($first . ' ' . $last);
+        })
+    )
+    ->forMember('age', fn($m) => 
+        $m->mapFrom('birthDate')
+          ->using(function($birthDate) {
+              return $birthDate ? (new DateTime())->diff($birthDate)->y : null;
+          })
+    )
+    ->seal();
+```
+
+### Static Method Transformers
+
+```php
+class DateTransformers
+{
+    public static function toAge(DateTime $birthDate): int
+    {
+        return (new DateTime())->diff($birthDate)->y;
+    }
+    
+    public static function formatDate(DateTime $date): string
+    {
+        return $date->format('Y-m-d');
+    }
+}
+
+$mapping = $mapper->createMap(UserEntity::class, UserResponse::class)
+    ->forMember('age', fn($m) => 
+        $m->mapFrom('birthDate')->using([DateTransformers::class, 'toAge'])
+    )
+    ->forMember('joinDate', fn($m) => 
+        $m->mapFrom('createdAt')->using([DateTransformers::class, 'formatDate'])
+    )
+    ->seal();
+```
+
+### Attribute-based Transformers
+
+```php
+use Ninja\Granite\Mapping\Attributes\MapWith;
 
 final readonly class UserResponse extends GraniteDTO
 {
     public function __construct(
         public int $id,
         
-        #[MapFrom('firstName')]
-        public string $name,
+        #[MapWith(new FullNameTransformer())]
+        public string $fullName,
         
-        #[MapFrom('lastName')]  
-        public string $surname,
-        
-        public string $email,
-        
-        #[MapWith(new DateTimeTransformer('Y-m-d'))]
-        #[MapFrom('createdAt')]
-        public string $joinDate,
-        
-        #[MapDefault('Guest')]
-        public string $role,
-        
-        #[MapWhen('isActive')]
-        public bool $enabled,
-        
-        #[MapCollection(destinationType: PostDTO::class)]
-        public array $posts,
-        
-        #[Ignore]
-        public array $internalData = []
+        #[MapWith([DateTransformers::class, 'toAge'])]
+        #[MapFrom('birthDate')]
+        public int $age
     ) {}
 }
 ```
 
-### Available Mapping Attributes
+## Collection Mapping
 
-- **`#[MapFrom('sourceProperty')]`** - Maps from a different source property name
-- **`#[MapWith(transformer)]`** - Applies a transformation to the value
-- **`#[Ignore]`** - Excludes the property from mapping
-- **`#[MapBidirectional]`** - Enables automatic bidirectional mapping between classes
-- **`#[MapCollection(destinationType: Class::class, preserveKeys: false, recursive: false)]`** - Maps arrays or collections of objects to a typed collection
-- **`#[MapDefault(value)]`** - Sets a default value when source property is null
-- **`#[MapWhen(condition)]`** - Only maps the property when the condition is true
+### Simple Collections
+
+```php
+// Array of scalars
+$mapping = $mapper->createMap(SourceClass::class, DestinationClass::class)
+    ->forMember('tags', fn($m) => $m->mapFrom('labels'))
+    ->seal();
+
+// Array of objects
+$mapping = $mapper->createMap(TeamEntity::class, TeamResponse::class)
+    ->forMember('members', fn($m) => 
+        $m->mapFrom('users')->asCollection(UserResponse::class)
+    )
+    ->seal();
+```
+
+### Advanced Collection Mapping
+
+```php
+use Ninja\Granite\Mapping\Transformers\CollectionTransformer;
+
+$mapping = $mapper->createMap(ProjectEntity::class, ProjectResponse::class)
+    ->forMember('tasks', fn($m) => 
+        $m->using(new CollectionTransformer(
+            mapper: $mapper,
+            destinationType: TaskResponse::class,
+            preserveKeys: true,
+            recursive: true,  // Handle nested collections
+            itemTransformer: function($task) {
+                // Custom transformation for each item
+                $task['priority'] = strtoupper($task['priority']);
+                return $task;
+            }
+        ))
+    )
+    ->seal();
+```
+
+### Filtered Collections
+
+```php
+$mapping = $mapper->createMap(UserEntity::class, UserResponse::class)
+    ->forMember('activeProjects', fn($m) => 
+        $m->mapFrom('projects')->using(function($projects) use ($mapper) {
+            $activeProjects = array_filter($projects, 
+                fn($project) => $project['status'] === 'active'
+            );
+            return $mapper->mapArray($activeProjects, ProjectResponse::class);
+        })
+    )
+    ->seal();
+```
+
+## Convention-Based Mapping
+
+AutoMapper can automatically discover property mappings based on naming conventions:
+
+### Enabling Conventions
+
+```php
+// Enable convention-based mapping (enabled by default)
+$mapper = new AutoMapper(useConventions: true);
+
+// Or enable later
+$mapper->useConventions(true);
+
+// Set confidence threshold (default: 0.8)
+$mapper->setConventionConfidenceThreshold(0.7);
+```
+
+### Supported Conventions
+
+```php
+// These will be automatically mapped:
+class SourceClass {
+    public string $firstName;      // Maps to first_name, FirstName, first-name
+    public string $email_address;  // Maps to emailAddress, EmailAddress
+    public string $userID;         // Maps to userId, user_id
+}
+
+class DestinationClass {
+    public string $first_name;
+    public string $emailAddress;
+    public string $user_id;
+}
+
+// Convention mapping happens automatically
+$result = $mapper->map($source, DestinationClass::class);
+```
+
+### Custom Conventions
+
+```php
+use Ninja\Granite\Mapping\Contracts\NamingConvention;
+
+class CustomConvention implements NamingConvention
+{
+    public function getName(): string
+    {
+        return 'custom';
+    }
+    
+    public function matches(string $name): bool
+    {
+        return str_starts_with($name, 'custom_');
+    }
+    
+    public function normalize(string $name): string
+    {
+        return str_replace('custom_', '', $name);
+    }
+    
+    public function denormalize(string $normalized): string
+    {
+        return 'custom_' . $normalized;
+    }
+    
+    public function calculateMatchConfidence(string $sourceName, string $destinationName): float
+    {
+        // Implementation for confidence calculation
+        return 0.8;
+    }
+}
+
+// Register custom convention
+$mapper->registerConvention(new CustomConvention());
+```
 
 ## Mapping Profiles
 
-For complex mapping scenarios, you can create mapping profiles:
+Group related mappings in profiles for better organization:
 
 ```php
-<?php
-
 use Ninja\Granite\Mapping\MappingProfile;
 
 class UserMappingProfile extends MappingProfile
 {
     protected function configure(): void
     {
+        // User Entity to Response
         $this->createMap(UserEntity::class, UserResponse::class)
-            ->forMember('name', fn($mapping) => 
-                $mapping->mapFrom('firstName')
-            )
-            ->forMember('surname', fn($mapping) => 
-                $mapping->mapFrom('lastName')
-            )
-            ->forMember('joinDate', fn($mapping) => 
-                $mapping->mapFrom('createdAt')
-                        ->using(new DateTimeTransformer('Y-m-d'))
-            )
-            ->forMember('role', fn($mapping) => 
-                $mapping->defaultValue('Guest')
-            )
-            ->forMember('enabled', fn($mapping) => 
-                $mapping->onlyIf(fn($source) => $source['isActive'] === true)
-            )
-            ->forMember('posts', fn($mapping) => 
-                $mapping->asCollection(PostDTO::class)
-            );
+            ->forMember('id', fn($m) => $m->mapFrom('userId'))
+            ->forMember('name', fn($m) => $m->mapFrom('fullName'))
+            ->seal();
+            
+        // User Entity to Admin Response (more fields)
+        $this->createMap(UserEntity::class, AdminUserResponse::class)
+            ->forMember('id', fn($m) => $m->mapFrom('userId'))
+            ->forMember('name', fn($m) => $m->mapFrom('fullName'))
+            ->forMember('permissions', fn($m) => $m->mapFrom('rolePermissions'))
+            ->seal();
+            
+        // Bidirectional mapping
+        $this->createMapBidirectional(UserEntity::class, UserDto::class)
+            ->forMembers('userId', 'id')
+            ->forMembers('fullName', 'name')
+            ->seal();
     }
 }
 
-// Register the profile with the mapper
-$mapper = new AutoMapper([new UserMappingProfile()]);
-```
-
-## Custom Transformers
-
-You can create custom transformers by implementing the `Transformer` interface:
-
-```php
-<?php
-
-use Ninja\Granite\Mapping\Contracts\Transformer;
-
-class MoneyTransformer implements Transformer
-{
-    public function __construct(
-        private string $currencySymbol = '$'
-    ) {}
-    
-    public function transform(mixed $value, array $source = []): string
-    {
-        if ($value === null) {
-            return $this->currencySymbol . '0.00';
-        }
-        
-        return $this->currencySymbol . number_format((float)$value, 2);
-    }
-}
-
-// Use in attribute
-#[MapWith(new MoneyTransformer('€'))]
-public string $formattedPrice;
-
-// Or in profile
-->forMember('formattedPrice', fn($mapping) => 
-    $mapping->mapFrom('price')
-            ->using(new MoneyTransformer('€'))
-)
-```
-
-## Nested Property Mapping
-
-You can map from nested properties using dot notation:
-
-```php
-<?php
-
-// Source object
-$order = new Order([
-    'id' => 1,
-    'customer' => [
-        'id' => 100,
-        'name' => 'John Doe',
-        'contactInfo' => [
-            'email' => 'john@example.com',
-            'phone' => '555-1234'
-        ]
-    ]
+// Use profile
+$mapper = new AutoMapper([
+    new UserMappingProfile(),
+    new ProjectMappingProfile(),
+    new CompanyMappingProfile()
 ]);
-
-// In attribute
-#[MapFrom('customer.contactInfo.email')]
-public string $customerEmail;
-
-// Or in profile
-->forMember('customerEmail', fn($mapping) => 
-    $mapping->mapFrom('customer.contactInfo.email')
-)
 ```
 
-## Collection Mapping
-
-Map arrays or collections of objects:
+### Profile Inheritance
 
 ```php
-<?php
+class BaseEntityProfile extends MappingProfile
+{
+    protected function configure(): void
+    {
+        // Common mappings for all entities
+        $this->createMap('*', '*')
+            ->forMember('id', fn($m) => $m->mapFrom('entityId'))
+            ->forMember('createdAt', fn($m) => $m->mapFrom('created_timestamp'))
+            ->seal();
+    }
+}
 
-// Using attribute
-#[MapCollection(destinationType: PostDTO::class, preserveKeys: true, recursive: false)]
-public array $posts;
-
-// Or in profile
-->forMember('posts', fn($mapping) => 
-    $mapping->asCollection(
-        itemType: PostDTO::class,
-        preserveKeys: true,
-        recursive: false
-    )
-)
-
-// Map arrays of objects
-$postDtos = $mapper->mapArray($postEntities, PostDTO::class);
+class UserProfile extends BaseEntityProfile
+{
+    protected function configure(): void
+    {
+        parent::configure(); // Apply base mappings
+        
+        // User-specific mappings
+        $this->createMap(UserEntity::class, UserResponse::class)
+            ->forMember('name', fn($m) => $m->mapFrom('fullName'))
+            ->seal();
+    }
+}
 ```
-
-The `MapCollection` attribute supports:
-- `destinationType`: Target class for collection items
-- `preserveKeys`: Whether to preserve array keys (default: false)
-- `recursive`: Whether to handle nested collections (default: false)
-- `itemTransformer`: Optional transformer for collection items
 
 ## Bidirectional Mapping
 
-Configure two-way mapping between classes:
+Create mappings that work in both directions:
 
 ```php
-<?php
+$bidirectionalMapping = $mapper->createMapBidirectional(UserEntity::class, UserDto::class)
+    ->forMembers('userId', 'id')           // userId <-> id
+    ->forMembers('fullName', 'name')       // fullName <-> name
+    ->forMembers('emailAddress', 'email')  // emailAddress <-> email
+    ->seal();
 
-use Ninja\Granite\Mapping\Attributes\MapBidirectional;
-
-class UserMappingProfile extends MappingProfile
-{
-    #[MapBidirectional]
-    protected function configureUserMapping(): void
-    {
-        // Create bidirectional mapping
-        $this->createMap(UserEntity::class, UserDTO::class)
-            ->reverseMap();
-            
-        // Or with explicit property pairs
-        $this->createBidirectionalMap(OrderEntity::class, OrderDTO::class)
-            ->forMembers('id', 'orderId')
-            ->forMembers('customerName', 'client')
-            ->forMemberPairs([
-                'totalAmount' => 'price',
-                'createdAt' => 'orderDate'
-            ]);
-    }
-}
-```
-
-With bidirectional mapping, you can easily convert objects in both directions:
-
-```php
-$userDto = $mapper->map($userEntity, UserDTO::class);
+// Now both directions work
+$userDto = $mapper->map($userEntity, UserDto::class);
 $userEntity = $mapper->map($userDto, UserEntity::class);
 ```
 
-## Conditional Mapping
-
-Map properties conditionally:
+### Asymmetric Bidirectional Mapping
 
 ```php
-<?php
-
-// Using attribute
-#[MapWhen('isActive')]
-public bool $enabled;
-
-// Or in profile
-->forMember('enabled', fn($mapping) => 
-    $mapping->onlyIf(fn($source) => $source['isActive'] === true)
-)
-
-// With default value when condition fails
-->forMember('status', fn($mapping) => 
-    $mapping->onlyIf(fn($source) => $source['isVerified'])
-            ->defaultValue('Pending')
-)
-```
-
-The `MapWhen` attribute accepts:
-- A property name in the source object
-- A callable that receives the source object and returns a boolean
-
-## Built-in Transformers
-
-Granite includes several built-in transformers:
-
-- **DateTimeTransformer**: Converts between DateTime objects and formatted strings
-- **CollectionTransformer**: Maps arrays of objects to typed collections
-- **EnumTransformer**: Converts between enum values and their representations
-
-```php
-<?php
-
-// DateTime transformation
-#[MapWith(new DateTimeTransformer('Y-m-d'))]
-public string $formattedDate;
-
-// Enum transformation
-#[MapWith(new EnumTransformer(StatusEnum::class))]
-public StatusEnum $status;
-```
-
-## Mapping to Existing Objects
-
-Map to an existing object instance:
-
-```php
-<?php
-
-$existingDto = new UserDTO();
-$mapper->mapTo($userEntity, $existingDto);
-```
-
-## Advanced Features
-
-### Type Mapping Configuration
-
-Configure complex type mappings:
-
-```php
-<?php
-
-$mapper->createMap(UserEntity::class, UserDTO::class)
-    ->forMember('fullName', fn($mapping) => 
-        $mapping->using(fn($_, $src) => $src['firstName'] . ' ' . $src['lastName'])
+$bidirectionalMapping = $mapper->createMapBidirectional(UserEntity::class, UserDto::class)
+    ->forMembers('userId', 'id')
+    ->forMembers('fullName', 'name')
+    // Forward-only: entity to DTO
+    ->forForwardMember('summary', fn($m) => 
+        $m->using(function($value, $data) {
+            return $data['fullName'] . ' (' . $data['emailAddress'] . ')';
+        })
     )
-    ->seal(); // Validate and finalize the mapping
+    // Reverse-only: DTO to entity
+    ->forReverseMember('internalId', fn($m) => 
+        $m->defaultValue(Uuid::generate())
+    )
+    ->seal();
 ```
 
-### Custom Value Resolvers
+## Advanced Scenarios
 
-Resolve values with custom logic:
+### Nested Property Mapping
 
 ```php
-<?php
+// Source has nested structure
+$sourceData = [
+    'user' => [
+        'profile' => [
+            'personal' => [
+                'firstName' => 'John',
+                'lastName' => 'Doe'
+            ],
+            'contact' => [
+                'email' => 'john@example.com'
+            ]
+        ]
+    ]
+];
 
-->forMember('status', fn($mapping) => 
-    $mapping->using(function($value, $source) {
-        if ($source['isVerified']) {
-            return 'Verified';
-        } elseif ($source['isActive']) {
-            return 'Active';
-        } else {
-            return 'Inactive';
+$mapping = $mapper->createMap('array', UserResponse::class)
+    ->forMember('firstName', fn($m) => $m->mapFrom('user.profile.personal.firstName'))
+    ->forMember('lastName', fn($m) => $m->mapFrom('user.profile.personal.lastName'))
+    ->forMember('email', fn($m) => $m->mapFrom('user.profile.contact.email'))
+    ->seal();
+
+$userResponse = $mapper->map($sourceData, UserResponse::class);
+```
+
+### Dynamic Property Mapping
+
+```php
+class DynamicMappingProfile extends MappingProfile
+{
+    private array $config;
+    
+    public function __construct(array $config)
+    {
+        $this->config = $config;
+        parent::__construct();
+    }
+    
+    protected function configure(): void
+    {
+        foreach ($this->config['mappings'] as $mapping) {
+            $typeMapping = $this->createMap($mapping['source'], $mapping['destination']);
+            
+            foreach ($mapping['properties'] as $destProp => $sourceProp) {
+                $typeMapping->forMember($destProp, fn($m) => $m->mapFrom($sourceProp));
+            }
+            
+            $typeMapping->seal();
         }
-    })
-)
+    }
+}
+
+// Load configuration from file/database
+$config = [
+    'mappings' => [
+        [
+            'source' => UserEntity::class,
+            'destination' => UserResponse::class,
+            'properties' => [
+                'id' => 'userId',
+                'name' => 'fullName',
+                'email' => 'emailAddress'
+            ]
+        ]
+    ]
+];
+
+$mapper = new AutoMapper([new DynamicMappingProfile($config)]);
 ```
 
-## Performance Considerations
-
-### Caching
-
-AutoMapper caches mapping configurations for better performance:
+### Conditional Object Creation
 
 ```php
-<?php
+$mapping = $mapper->createMap(PaymentData::class, PaymentResponse::class)
+    ->forMember('processingDetails', fn($m) => 
+        $m->using(function($value, $sourceData) use ($mapper) {
+            switch ($sourceData['paymentType']) {
+                case 'credit_card':
+                    return $mapper->map($sourceData['details'], CreditCardDetails::class);
+                case 'paypal':
+                    return $mapper->map($sourceData['details'], PaypalDetails::class);
+                case 'bank_transfer':
+                    return $mapper->map($sourceData['details'], BankTransferDetails::class);
+                default:
+                    return null;
+            }
+        })
+    )
+    ->seal();
+```
 
-// Configure with cache
-$mapper = new AutoMapper([
-    new UserMappingProfile(),
-    new OrderMappingProfile(),
-], [
-    'cache.enabled' => true,
-    'cache.backend' => 'file', // 'file', 'redis', 'apcu'
-    'cache.path' => '/path/to/cache',
-]);
+### Validation During Mapping
+
+```php
+use Ninja\Granite\GraniteVO; // VOs have validation
+
+$mapping = $mapper->createMap(UserData::class, ValidatedUser::class)
+    ->forMember('email', fn($m) => 
+        $m->using(function($email) {
+            // Transform and validate
+            $email = strtolower(trim($email));
+            
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new InvalidArgumentException('Invalid email format');
+            }
+            
+            return $email;
+        })
+    )
+    ->seal();
+
+// Create as VO for automatic validation
+final readonly class ValidatedUser extends GraniteVO
+{
+    public function __construct(
+        #[Required]
+        #[Email]
+        public string $email,
+        
+        #[Required]
+        #[Min(2)]
+        public string $name
+    ) {}
+}
+```
+
+## Performance Optimization
+
+### Caching Strategies
+
+```php
+use Ninja\Granite\Enums\CacheType;
+
+// Use shared cache across requests
+$mapper = new AutoMapper(
+    cacheType: CacheType::Shared
+);
+
+// Use persistent file-based cache
+$mapper = new AutoMapper(
+    cacheType: CacheType::Persistent
+);
+
+// Disable cache warming for faster startup
+$mapper = new AutoMapper(
+    warmupCache: false
+);
 ```
 
 ### Preloading Mappings
 
-Preload mapping configurations for better performance:
-
 ```php
-<?php
-
 use Ninja\Granite\Mapping\MappingPreloader;
 
-// Preload specific mappings
-MappingPreloader::preload($mapper, [
-    [UserEntity::class, UserDTO::class],
-    [OrderEntity::class, OrderDTO::class],
-]);
+// Preload common mappings
+$typePairs = [
+    [UserEntity::class, UserResponse::class],
+    [ProductEntity::class, ProductResponse::class],
+    [OrderEntity::class, OrderResponse::class]
+];
+
+$preloaded = MappingPreloader::preload($mapper, $typePairs);
+echo "Preloaded {$preloaded} mappings";
 
 // Preload from namespace
-MappingPreloader::preloadFromNamespace($mapper, 'App\\Domain', ['Entity', 'DTO']);
-
-// Or use the mapper's preload method
-$mapper->preloadMappings([
-    [UserEntity::class, UserDTO::class],
-    [OrderEntity::class, OrderDTO::class],
-]);
+$preloaded = MappingPreloader::preloadFromNamespace(
+    $mapper, 
+    'App\\Entities',
+    ['Entity', 'Response']
+);
 ```
 
-### Warmup Cache
-
-Warm up the mapping cache during deployment:
+### Batch Mapping
 
 ```php
-<?php
+// More efficient than mapping individually
+$users = $mapper->mapArray($userEntities, UserResponse::class);
 
-$mapper = new AutoMapper([
-    new UserMappingProfile(),
-    new OrderMappingProfile(),
-], [
-    'cache.enabled' => true,
-    'cache.warmup' => true,
-]);
+// For very large collections, consider chunking
+$allUsers = [];
+$chunks = array_chunk($userEntities, 1000);
+
+foreach ($chunks as $chunk) {
+    $mappedChunk = $mapper->mapArray($chunk, UserResponse::class);
+    $allUsers = array_merge($allUsers, $mappedChunk);
+}
+```
+
+### Memory Management
+
+```php
+// Clear cache periodically for long-running processes
+$mapper->clearCache();
+
+// Clear convention cache
+$mapper->clearConventionCache();
+
+// Create new mapper instance for isolated operations
+$temporaryMapper = new AutoMapper(
+    profiles: [],
+    cacheType: CacheType::Memory,
+    warmupCache: false
+);
 ```
 
 ## Error Handling
 
-AutoMapper provides clear error messages for common issues:
-
-- Missing source or destination properties
-- Type conversion errors
-- Invalid mapping configurations
-
 ```php
-<?php
+use Ninja\Granite\Mapping\Exceptions\MappingException;
 
 try {
-    $result = $mapper->map($source, Destination::class);
+    $result = $mapper->map($source, DestinationType::class);
 } catch (MappingException $e) {
-    // Handle mapping errors
-    echo $e->getMessage();
+    echo "Mapping failed: " . $e->getMessage();
+    echo "Source type: " . $e->getSourceType();
+    echo "Destination type: " . $e->getDestinationType();
+    echo "Property: " . $e->getPropertyName();
+    
+    // Log additional context
+    $context = $e->getContext();
+    error_log("Mapping error context: " . json_encode($context));
 }
+```
+
+## Best Practices
+
+### 1. Use Profiles for Organization
+
+```php
+// Good: Organized by domain
+class UserMappingProfile extends MappingProfile { /* ... */ }
+class ProductMappingProfile extends MappingProfile { /* ... */ }
+class OrderMappingProfile extends MappingProfile { /* ... */ }
+
+// Avoid: Everything in one place
+$mapper->createMap(UserEntity::class, UserResponse::class)/* ... */;
+$mapper->createMap(ProductEntity::class, ProductResponse::class)/* ... */;
+// ... hundreds of mappings
+```
+
+### 2. Seal Your Mappings
+
+```php
+// Good: Always seal mappings
+$mapping = $mapper->createMap(Source::class, Destination::class)
+    ->forMember('prop', fn($m) => $m->mapFrom('other'))
+    ->seal(); // Important!
+
+// Bad: Forgetting to seal
+$mapping = $mapper->createMap(Source::class, Destination::class)
+    ->forMember('prop', fn($m) => $m->mapFrom('other'));
+// Mapping may not work correctly
+```
+
+### 3. Use Appropriate Cache Strategy
+
+```php
+// For web applications
+$mapper = new AutoMapper(cacheType: CacheType::Shared);
+
+// For CLI tools/scripts
+$mapper = new AutoMapper(cacheType: CacheType::Memory);
+
+// For high-performance scenarios
+$mapper = new AutoMapper(
+    cacheType: CacheType::Persistent,
+    warmupCache: true
+);
+```
+
+### 4. Handle Edge Cases
+
+```php
+$mapping = $mapper->createMap(UserEntity::class, UserResponse::class)
+    ->forMember('fullName', fn($m) => 
+        $m->using(function($value, $sourceData) {
+            $first = $sourceData['firstName'] ?? '';
+            $last = $sourceData['lastName'] ?? '';
+            
+            // Handle edge cases
+            if (empty($first) && empty($last)) {
+                return 'Unknown User';
+            }
+            
+            return trim($first . ' ' . $last);
+        })
+    )
+    ->seal();
+```
+
+AutoMapper provides a flexible and powerful way to handle object transformations while maintaining type safety and performance. Use it to keep your mapping logic organized, testable, and maintainable.

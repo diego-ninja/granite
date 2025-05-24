@@ -1,21 +1,22 @@
 # Serialization
 
-Granite provides powerful serialization capabilities that allow you to control how your DTOs and Value Objects are converted to and from arrays and JSON. You can customize property names, hide sensitive data, and handle complex data types seamlessly.
+Granite provides powerful serialization capabilities that allow you to control how your objects are converted to and from arrays and JSON. This is essential for APIs, data persistence, and data exchange between different systems.
 
 ## Table of Contents
 
 - [Basic Serialization](#basic-serialization)
-- [Custom Property Names](#custom-property-names)
+- [Property Name Mapping](#property-name-mapping)
 - [Hiding Properties](#hiding-properties)
-- [Type Conversion](#type-conversion)
-- [Working with Enums](#working-with-enums)
-- [Date and Time Handling](#date-and-time-handling)
+- [Method-based Configuration](#method-based-configuration)
+- [Custom Serialization](#custom-serialization)
+- [DateTime Handling](#datetime-handling)
+- [Enum Serialization](#enum-serialization)
 - [Nested Objects](#nested-objects)
-- [Advanced Serialization](#advanced-serialization)
+- [Advanced Scenarios](#advanced-scenarios)
 
 ## Basic Serialization
 
-All Granite objects can be easily converted to arrays and JSON:
+All Granite objects (DTOs and VOs) can be easily converted to arrays and JSON:
 
 ```php
 <?php
@@ -28,7 +29,7 @@ final readonly class User extends GraniteDTO
         public int $id,
         public string $name,
         public string $email,
-        public ?int $age = null
+        public DateTime $createdAt
     ) {}
 }
 
@@ -36,23 +37,21 @@ $user = User::from([
     'id' => 1,
     'name' => 'John Doe',
     'email' => 'john@example.com',
-    'age' => 30
+    'createdAt' => '2023-01-15T10:30:00Z'
 ]);
 
 // Convert to array
 $array = $user->array();
-// Result: ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com', 'age' => 30]
+// Result: ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com', 'createdAt' => '2023-01-15T10:30:00+00:00']
 
 // Convert to JSON
 $json = $user->json();
-// Result: {"id":1,"name":"John Doe","email":"john@example.com","age":30}
+// Result: {"id":1,"name":"John Doe","email":"john@example.com","createdAt":"2023-01-15T10:30:00+00:00"}
 ```
 
-## Custom Property Names
+## Property Name Mapping
 
-### Using Attributes
-
-Control how properties are named in the serialized output using the `#[SerializedName]` attribute:
+Use the `#[SerializedName]` attribute to customize property names in the serialized output:
 
 ```php
 <?php
@@ -65,103 +64,68 @@ final readonly class ApiUser extends GraniteDTO
     public function __construct(
         public int $id,
         
-        #[SerializedName('first_name')]
-        public string $firstName,
-        
-        #[SerializedName('last_name')]
-        public string $lastName,
+        #[SerializedName('full_name')]
+        public string $name,
         
         #[SerializedName('email_address')]
         public string $email,
         
-        #[SerializedName('phone_number')]
-        public ?string $phoneNumber = null
+        #[SerializedName('profile_image')]
+        public ?string $avatarUrl = null,
+        
+        #[SerializedName('created_at')]
+        public DateTime $createdAt
     ) {}
 }
 
 $user = ApiUser::from([
     'id' => 1,
-    'firstName' => 'John',
-    'lastName' => 'Doe',
+    'full_name' => 'John Doe',
+    'email_address' => 'john@example.com',
+    'created_at' => '2023-01-15T10:30:00Z'
+]);
+
+$array = $user->array();
+// Result: {
+//   'id' => 1,
+//   'full_name' => 'John Doe',
+//   'email_address' => 'john@example.com',
+//   'profile_image' => null,
+//   'created_at' => '2023-01-15T10:30:00+00:00'
+// }
+```
+
+### Deserialization with Custom Names
+
+Granite automatically handles both the PHP property name and the serialized name during deserialization:
+
+```php
+// Both of these work:
+$user1 = ApiUser::from([
+    'id' => 1,
+    'name' => 'John Doe',  // PHP property name
     'email' => 'john@example.com'
 ]);
 
-$serialized = $user->array();
-// Result: [
-//     'id' => 1,
-//     'first_name' => 'John',
-//     'last_name' => 'Doe',
-//     'email_address' => 'john@example.com'
-// ]
-```
-
-### Using Methods
-
-Alternatively, define custom names using the `serializedNames()` method:
-
-```php
-<?php
-
-final readonly class User extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public string $firstName,
-        public string $lastName,
-        public string $emailAddress
-    ) {}
-    
-    protected static function serializedNames(): array
-    {
-        return [
-            'firstName' => 'first_name',
-            'lastName' => 'last_name',
-            'emailAddress' => 'email'
-        ];
-    }
-}
-```
-
-### Bidirectional Mapping
-
-Custom names work both for serialization and deserialization:
-
-```php
-<?php
-
-// Input data with custom names
-$inputData = [
+$user2 = ApiUser::from([
     'id' => 1,
-    'first_name' => 'John',
-    'last_name' => 'Doe',
+    'full_name' => 'John Doe',  // Serialized name
     'email_address' => 'john@example.com'
-];
-
-// Create object (deserialization)
-$user = ApiUser::from($inputData);
-
-// Access properties using PHP names
-echo $user->firstName; // 'John'
-echo $user->lastName;  // 'Doe'
-
-// Serialize back to custom names
-$output = $user->array();
-// Result uses custom names: first_name, last_name, email_address
+]);
 ```
 
 ## Hiding Properties
 
-### Using Attributes
-
-Hide sensitive properties from serialization using the `#[Hidden]` attribute:
+Use the `#[Hidden]` attribute to exclude sensitive properties from serialization:
 
 ```php
 <?php
 
 use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\Serialization\Attributes\Hidden;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
 
-final readonly class UserWithCredentials extends GraniteDTO
+final readonly class UserAccount extends GraniteDTO
 {
     public function __construct(
         public int $id,
@@ -172,304 +136,216 @@ final readonly class UserWithCredentials extends GraniteDTO
         public string $password,
         
         #[Hidden]
-        public string $apiToken,
+        public ?string $apiKey = null,
         
+        #[SerializedName('auth_token')]
         #[Hidden]
-        public array $internalFlags = []
+        public ?string $authToken = null,
+        
+        public DateTime $lastLogin
     ) {}
 }
 
-$user = UserWithCredentials::from([
+$account = UserAccount::from([
     'id' => 1,
     'username' => 'johndoe',
     'email' => 'john@example.com',
     'password' => 'secret123',
-    'apiToken' => 'abc123xyz'
+    'apiKey' => 'key_12345',
+    'lastLogin' => '2023-01-15T10:30:00Z'
 ]);
 
-$publicData = $user->array();
-// Result: ['id' => 1, 'username' => 'johndoe', 'email' => 'john@example.com']
-// password, apiToken, and internalFlags are excluded
+$safeData = $account->array();
+// Result: {
+//   'id' => 1,
+//   'username' => 'johndoe',
+//   'email' => 'john@example.com',
+//   'lastLogin' => '2023-01-15T10:30:00+00:00'
+// }
+// password, apiKey, and authToken are NOT included
 ```
 
-### Using Methods
+## Method-based Configuration
 
-Hide properties using the `hiddenProperties()` method:
+For complex scenarios or when you prefer method-based configuration, override the static methods:
 
 ```php
 <?php
 
-final readonly class UserEntity extends GraniteDTO
+use Ninja\Granite\GraniteDTO;
+
+final readonly class LegacyUser extends GraniteDTO
 {
     public function __construct(
         public int $id,
-        public string $username,
+        public string $firstName,
+        public string $lastName,
         public string $email,
         public string $password,
-        public string $apiToken
+        public ?string $socialSecurityNumber = null,
+        public ?string $internalNotes = null
     ) {}
-    
+
+    /**
+     * Define custom property names for serialization
+     */
+    protected static function serializedNames(): array
+    {
+        return [
+            'firstName' => 'first_name',
+            'lastName' => 'last_name',
+            'socialSecurityNumber' => 'ssn'
+        ];
+    }
+
+    /**
+     * Define properties to hide during serialization
+     */
     protected static function hiddenProperties(): array
     {
-        return ['password', 'apiToken'];
+        return [
+            'password',
+            'socialSecurityNumber',
+            'internalNotes'
+        ];
+    }
+}
+
+$user = LegacyUser::from([
+    'id' => 1,
+    'first_name' => 'John',
+    'last_name' => 'Doe',
+    'email' => 'john@example.com',
+    'password' => 'secret',
+    'ssn' => '123-45-6789',
+    'internalNotes' => 'VIP customer'
+]);
+
+$publicData = $user->array();
+// Result: {
+//   'id' => 1,
+//   'first_name' => 'John',
+//   'last_name' => 'Doe',
+//   'email' => 'john@example.com'
+// }
+```
+
+### Combining Attributes and Methods
+
+Attributes take precedence over method-based configuration:
+
+```php
+final readonly class HybridUser extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        
+        #[SerializedName('user_name')]  // This overrides method config
+        public string $username,
+        
+        public string $email,
+        
+        #[Hidden]  // This overrides method config
+        public string $password
+    ) {}
+
+    protected static function serializedNames(): array
+    {
+        return [
+            'username' => 'login_name',  // Ignored due to attribute
+            'email' => 'email_address'   // This will be used
+        ];
+    }
+
+    protected static function hiddenProperties(): array
+    {
+        return [
+            'email'  // Ignored because email doesn't have #[Hidden] attribute
+        ];
     }
 }
 ```
 
-### Context-based Hiding
+## Custom Serialization
 
-Create different versions for different contexts:
+### DateTime Handling
+
+DateTime objects are automatically serialized to ISO 8601 format:
 
 ```php
-<?php
-
-// Public API response
-final readonly class PublicUser extends GraniteDTO
+final readonly class Event extends GraniteDTO
 {
     public function __construct(
-        public int $id,
         public string $name,
-        public string $email
+        public DateTime $startDate,
+        public ?DateTime $endDate = null,
+        public DateTimeImmutable $createdAt
     ) {}
 }
 
-// Internal system response
-final readonly class InternalUser extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public string $name,
-        public string $email,
-        public string $internalId,
-        public array $permissions,
-        
-        #[Hidden] // Still hide from serialization
-        public string $passwordHash
-    ) {}
-}
+$event = Event::from([
+    'name' => 'Conference 2024',
+    'startDate' => '2024-03-15T09:00:00Z',
+    'endDate' => '2024-03-15T17:00:00Z',
+    'createdAt' => '2023-12-01T10:30:00Z'
+]);
+
+$array = $event->array();
+// Result: {
+//   'name' => 'Conference 2024',
+//   'startDate' => '2024-03-15T09:00:00+00:00',
+//   'endDate' => '2024-03-15T17:00:00+00:00',
+//   'createdAt' => '2023-12-01T10:30:00+00:00'
+// }
 ```
 
-## Type Conversion
+### Enum Serialization
 
-Granite automatically handles type conversion during serialization and deserialization:
-
-### Basic Types
+Enums are automatically handled based on their type:
 
 ```php
 <?php
 
-final readonly class TypeExample extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public float $price,
-        public bool $isActive,
-        public array $tags,
-        public ?string $description = null
-    ) {}
-}
-
-// Input with mixed types
-$data = [
-    'id' => '123',        // String converted to int
-    'price' => '99.99',   // String converted to float
-    'isActive' => 1,      // Int converted to bool
-    'tags' => 'tag1,tag2', // Depends on your conversion logic
-    'description' => null
-];
-
-$object = TypeExample::from($data);
-// Types are automatically converted to match property declarations
-```
-
-### Custom Type Conversion
-
-Handle complex type conversion scenarios:
-
-```php
-<?php
-
-final readonly class Product extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public string $name,
-        public Money $price,  // Custom value object
-        public Category $category  // Enum or value object
-    ) {}
-}
-
-// Granite will attempt to convert:
-// - Arrays to custom objects using their ::from() method
-// - Strings to enums using their cases
-// - Complex data structures to matching types
-```
-
-## Working with Enums
-
-Granite has built-in support for PHP 8.1+ enums:
-
-### String Enums
-
-```php
-<?php
-
-enum UserStatus: string
-{
+// Backed enum (with values)
+enum Status: string {
     case ACTIVE = 'active';
     case INACTIVE = 'inactive';
     case PENDING = 'pending';
-    case SUSPENDED = 'suspended';
 }
 
-final readonly class User extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public string $name,
-        public UserStatus $status
-    ) {}
-}
-
-// Deserialization: string to enum
-$user = User::from([
-    'id' => 1,
-    'name' => 'John',
-    'status' => 'active'  // Converted to UserStatus::ACTIVE
-]);
-
-// Serialization: enum to string
-$data = $user->array();
-// Result: ['id' => 1, 'name' => 'John', 'status' => 'active']
-```
-
-### Integer Enums
-
-```php
-<?php
-
-enum Priority: int
-{
-    case LOW = 1;
-    case MEDIUM = 2;
-    case HIGH = 3;
-    case URGENT = 4;
+// Unit enum (without values)
+enum Priority {
+    case LOW;
+    case MEDIUM;
+    case HIGH;
 }
 
 final readonly class Task extends GraniteDTO
 {
     public function __construct(
         public string $title,
+        public Status $status,
         public Priority $priority
     ) {}
 }
 
 $task = Task::from([
-    'title' => 'Important task',
-    'priority' => 3  // Converted to Priority::HIGH
-]);
-```
-
-### Unit Enums
-
-```php
-<?php
-
-enum Color
-{
-    case RED;
-    case GREEN;
-    case BLUE;
-}
-
-final readonly class Product extends GraniteDTO
-{
-    public function __construct(
-        public string $name,
-        public Color $color
-    ) {}
-}
-
-$product = Product::from([
-    'name' => 'T-Shirt',
-    'color' => 'RED'  // Converted to Color::RED
+    'title' => 'Complete project',
+    'status' => 'active',    // String value for backed enum
+    'priority' => 'HIGH'     // Case name for unit enum
 ]);
 
-$data = $product->array();
-// Result: ['name' => 'T-Shirt', 'color' => 'RED']
-```
-
-## Date and Time Handling
-
-Granite provides seamless DateTime conversion:
-
-### Basic DateTime
-
-```php
-<?php
-
-use DateTimeInterface;
-use DateTimeImmutable;
-
-final readonly class Event extends GraniteDTO
-{
-    public function __construct(
-        public string $name,
-        public DateTimeInterface $startDate,
-        public ?DateTimeInterface $endDate = null
-    ) {}
-}
-
-// Input with string dates
-$event = Event::from([
-    'name' => 'Conference',
-    'startDate' => '2024-06-15 09:00:00',
-    'endDate' => '2024-06-15 17:00:00'
-]);
-
-// Serialization formats dates as ISO 8601
-$data = $event->array();
-// Result: [
-//     'name' => 'Conference',
-//     'startDate' => '2024-06-15T09:00:00+00:00',
-//     'endDate' => '2024-06-15T17:00:00+00:00'
-// ]
-```
-
-### Custom Date Formats
-
-Control date formatting during serialization:
-
-```php
-<?php
-
-final readonly class BlogPost extends GraniteDTO
-{
-    public function __construct(
-        public string $title,
-        public string $content,
-        public DateTimeInterface $publishedAt,
-        public DateTimeInterface $updatedAt
-    ) {}
-    
-    public function array(): array
-    {
-        $data = parent::array();
-        
-        // Custom date formatting
-        $data['publishedAt'] = $this->publishedAt->format('Y-m-d');
-        $data['updatedAt'] = $this->updatedAt->format('c');
-        
-        return $data;
-    }
-}
+$array = $task->array();
+// Result: {
+//   'title' => 'Complete project',
+//   'status' => 'active',    // Backed enum uses value
+//   'priority' => 'HIGH'     // Unit enum uses name
+// }
 ```
 
 ## Nested Objects
 
-Handle complex nested object structures:
-
-### Simple Nesting
+Granite automatically handles nested objects:
 
 ```php
 <?php
@@ -479,191 +355,393 @@ final readonly class Address extends GraniteDTO
     public function __construct(
         public string $street,
         public string $city,
-        public string $country,
+        public string $state,
+        
+        #[SerializedName('zip_code')]
         public string $zipCode
     ) {}
 }
 
-final readonly class User extends GraniteDTO
+final readonly class Company extends GraniteDTO
 {
     public function __construct(
-        public int $id,
         public string $name,
-        public Address $address
+        public Address $address,
+        
+        #[SerializedName('contact_email')]
+        public string $email,
+        
+        #[Hidden]
+        public ?string $taxId = null
     ) {}
 }
 
-// Nested input data
-$userData = [
-    'id' => 1,
-    'name' => 'John Doe',
+$company = Company::from([
+    'name' => 'Acme Corp',
     'address' => [
         'street' => '123 Main St',
-        'city' => 'New York',
-        'country' => 'USA',
-        'zipCode' => '10001'
-    ]
-];
+        'city' => 'Anytown',
+        'state' => 'CA',
+        'zip_code' => '12345'
+    ],
+    'contact_email' => 'info@acme.com',
+    'taxId' => 'TAX123456'
+]);
 
-$user = User::from($userData);
-
-// Nested serialization
-$output = $user->array();
-// Result preserves nested structure
+$array = $company->array();
+// Result: {
+//   'name' => 'Acme Corp',
+//   'address' => {
+//     'street' => '123 Main St',
+//     'city' => 'Anytown',
+//     'state' => 'CA',
+//     'zip_code' => '12345'
+//   },
+//   'contact_email' => 'info@acme.com'
+//   // taxId is hidden
+// }
 ```
 
 ### Arrays of Objects
 
 ```php
-<?php
-
-final readonly class Order extends GraniteDTO
+final readonly class Team extends GraniteDTO
 {
     public function __construct(
-        public int $id,
-        public array $items,  // Array of OrderItem objects
-        public Address $shippingAddress
-    ) {}
-}
-
-final readonly class OrderItem extends GraniteDTO
-{
-    public function __construct(
-        public int $productId,
         public string $name,
-        public int $quantity,
-        public float $price
+        
+        /** @var User[] */
+        public array $members,
+        
+        public Address $office
     ) {}
 }
 
-$orderData = [
-    'id' => 1,
-    'items' => [
-        ['productId' => 1, 'name' => 'Item 1', 'quantity' => 2, 'price' => 10.00],
-        ['productId' => 2, 'name' => 'Item 2', 'quantity' => 1, 'price' => 25.00]
+$team = Team::from([
+    'name' => 'Development Team',
+    'members' => [
+        ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
+        ['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com']
     ],
-    'shippingAddress' => [
-        'street' => '456 Oak Ave',
-        'city' => 'Los Angeles',
-        'country' => 'USA',
-        'zipCode' => '90210'
+    'office' => [
+        'street' => '456 Tech Blvd',
+        'city' => 'San Francisco',
+        'state' => 'CA',
+        'zip_code' => '94105'
     ]
-];
+]);
 
-// Note: Manual conversion needed for arrays of objects
-// Consider using AutoMapper for complex scenarios
+// members array will contain User objects
+// office will be an Address object
+$array = $team->array();
 ```
 
-## Advanced Serialization
+## Advanced Scenarios
 
-### Custom Serialization Logic
+### API Response DTOs
 
-Override serialization behavior for specific needs:
+Create DTOs specifically designed for API responses:
 
 ```php
 <?php
 
-final readonly class UserProfile extends GraniteDTO
+use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
+use Ninja\Granite\Serialization\Attributes\Hidden;
+
+final readonly class UserProfileResponse extends GraniteDTO
 {
     public function __construct(
         public int $id,
+        
+        #[SerializedName('display_name')]
         public string $name,
-        public array $preferences,
-        public DateTimeInterface $lastLogin
-    ) {}
-    
-    public function array(): array
-    {
-        $data = parent::array();
         
-        // Custom serialization logic
-        $data['preferences'] = json_encode($this->preferences);
-        $data['lastLoginFormatted'] = $this->lastLogin->format('M j, Y g:i A');
-        $data['isRecentlyActive'] = $this->lastLogin > new DateTimeImmutable('-1 hour');
-        
-        return $data;
-    }
-}
-```
-
-### Conditional Serialization
-
-Include properties based on conditions:
-
-```php
-<?php
-
-final readonly class ApiResponse extends GraniteDTO
-{
-    public function __construct(
-        public bool $success,
-        public ?array $data = null,
-        public ?string $error = null,
-        public ?array $debug = null
-    ) {}
-    
-    public function array(): array
-    {
-        $result = ['success' => $this->success];
-        
-        if ($this->success && $this->data !== null) {
-            $result['data'] = $this->data;
-        }
-        
-        if (!$this->success && $this->error !== null) {
-            $result['error'] = $this->error;
-        }
-        
-        // Only include debug in development
-        if ($this->debug !== null && app()->environment('local')) {
-            $result['debug'] = $this->debug;
-        }
-        
-        return $result;
-    }
-}
-```
-
-### Versioned Serialization
-
-Handle different API versions:
-
-```php
-<?php
-
-final readonly class UserV2 extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public string $name,
         public string $email,
-        public array $metadata = []
+        
+        #[SerializedName('avatar_url')]
+        public ?string $avatarUrl,
+        
+        #[SerializedName('member_since')]
+        public DateTime $createdAt,
+        
+        #[SerializedName('last_seen')]
+        public ?DateTime $lastLoginAt,
+        
+        #[SerializedName('profile_complete')]
+        public bool $isProfileComplete,
+        
+        // Internal fields - hidden from API
+        #[Hidden]
+        public ?string $internalId = null,
+        
+        #[Hidden]
+        public ?array $permissions = null
     ) {}
-    
-    public function toV1(): array
+
+    /**
+     * Create from user entity
+     */
+    public static function fromUser(User $user): self
     {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'email' => $this->email
-            // Exclude metadata for v1 compatibility
-        ];
+        return new self(
+            id: $user->getId(),
+            name: $user->getFullName(),
+            email: $user->getEmail(),
+            avatarUrl: $user->getAvatarUrl(),
+            createdAt: $user->getCreatedAt(),
+            lastLoginAt: $user->getLastLoginAt(),
+            isProfileComplete: $user->isProfileComplete(),
+            internalId: $user->getInternalId(),
+            permissions: $user->getPermissions()
+        );
     }
-    
-    public function toV2(): array
+}
+
+// Usage
+$user = $userRepository->find(123);
+$response = UserProfileResponse::fromUser($user);
+
+// Clean API response without sensitive data
+$apiData = $response->array();
+// {
+//   "id": 123,
+//   "display_name": "John Doe",
+//   "email": "john@example.com",
+//   "avatar_url": "https://example.com/avatars/123.jpg",
+//   "member_since": "2023-01-15T10:30:00+00:00",
+//   "last_seen": "2024-01-10T15:45:00+00:00",
+//   "profile_complete": true
+// }
+```
+
+### Database Entity Serialization
+
+Handle database entities with computed properties:
+
+```php
+final readonly class ProductSummary extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $name,
+        public string $description,
+        public float $price,
+        
+        #[SerializedName('image_url')]
+        public ?string $imageUrl,
+        
+        #[SerializedName('in_stock')]
+        public bool $inStock,
+        
+        #[SerializedName('rating_average')]
+        public ?float $averageRating,
+        
+        #[SerializedName('review_count')]
+        public int $reviewCount,
+        
+        #[SerializedName('created_at')]
+        public DateTime $createdAt,
+        
+        // Internal database fields
+        #[Hidden]
+        public ?int $categoryId = null,
+        
+        #[Hidden]
+        public ?string $sku = null
+    ) {}
+
+    public static function fromEntity(Product $product): self
     {
-        return $this->array();
+        return new self(
+            id: $product->getId(),
+            name: $product->getName(),
+            description: $product->getDescription(),
+            price: $product->getPrice(),
+            imageUrl: $product->getMainImageUrl(),
+            inStock: $product->getStockQuantity() > 0,
+            averageRating: $product->calculateAverageRating(),
+            reviewCount: $product->getReviewCount(),
+            createdAt: $product->getCreatedAt(),
+            categoryId: $product->getCategoryId(),
+            sku: $product->getSku()
+        );
     }
+}
+```
+
+### Configuration Objects
+
+Create configuration objects that can be serialized to files:
+
+```php
+final readonly class AppConfig extends GraniteDTO
+{
+    public function __construct(
+        #[SerializedName('app_name')]
+        public string $applicationName,
+        
+        #[SerializedName('debug_mode')]
+        public bool $debugEnabled,
+        
+        #[SerializedName('database')]
+        public DatabaseConfig $databaseConfig,
+        
+        #[SerializedName('cache')]
+        public CacheConfig $cacheConfig,
+        
+        #[SerializedName('api_keys')]
+        public array $apiKeys,
+        
+        // Sensitive data - not serialized to config files
+        #[Hidden]
+        public ?string $encryptionKey = null
+    ) {}
+
+    public function saveToFile(string $path): void
+    {
+        $config = $this->array();
+        file_put_contents($path, json_encode($config, JSON_PRETTY_PRINT));
+    }
+
+    public static function loadFromFile(string $path): self
+    {
+        $config = json_decode(file_get_contents($path), true);
+        return self::from($config);
+    }
+}
+```
+
+## Error Handling
+
+### Serialization Exceptions
+
+Granite throws `SerializationException` when it encounters unsupported types:
+
+```php
+use Ninja\Granite\Exceptions\SerializationException;
+
+final readonly class InvalidExample extends GraniteDTO
+{
+    public function __construct(
+        public string $name,
+        public resource $fileHandle  // This will cause SerializationException
+    ) {}
+}
+
+try {
+    $example = new InvalidExample('test', fopen('php://memory', 'r'));
+    $array = $example->array();  // Throws SerializationException
+} catch (SerializationException $e) {
+    echo "Cannot serialize: " . $e->getMessage();
+    echo "Property: " . $e->getPropertyName();
+    echo "Object type: " . $e->getObjectType();
 }
 ```
 
 ## Best Practices
 
-1. **Use attributes for simple cases** - They're more declarative and easier to read
-2. **Use methods for complex logic** - When you need dynamic behavior or complex transformations
-3. **Be consistent with naming conventions** - Choose snake_case or camelCase and stick with it
-4. **Hide sensitive data by default** - Use `#[Hidden]` for passwords, tokens, and internal data
-5. **Handle null values gracefully** - Ensure your serialization logic handles optional properties
-6. **Document custom serialization** - Make it clear when you're using custom logic
-7. **Test serialization thoroughly** - Ensure both directions (to/from) work correctly
-8. **Consider performance** - Cache expensive serialization operations when possible
+### 1. Use Meaningful Serialized Names
+
+```php
+// Good: Clear API-friendly names
+#[SerializedName('created_at')]
+public DateTime $createdAt;
+
+#[SerializedName('is_active')]
+public bool $active;
+
+// Avoid: Unclear abbreviations
+#[SerializedName('ca')]
+public DateTime $createdAt;
+```
+
+### 2. Always Hide Sensitive Data
+
+```php
+// Good: Explicit about what's hidden
+#[Hidden]
+public string $password;
+
+#[Hidden]
+public ?string $apiSecret;
+
+#[Hidden]
+public ?array $internalMetadata;
+
+// Bad: Exposing sensitive data
+public string $password;  // Will be serialized!
+```
+
+### 3. Use DTOs for Different Contexts
+
+```php
+// Internal entity
+final readonly class User extends GraniteVO
+{
+    public function __construct(
+        public int $id,
+        public string $name,
+        public string $email,
+        public string $passwordHash,
+        public array $permissions,
+        public DateTime $createdAt
+    ) {}
+}
+
+// Public API response
+final readonly class PublicUser extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $name,
+        #[SerializedName('member_since')]
+        public DateTime $createdAt
+    ) {}
+
+    public static function fromUser(User $user): self
+    {
+        return new self(
+            id: $user->id,
+            name: $user->name,
+            createdAt: $user->createdAt
+        );
+    }
+}
+
+// Admin response
+final readonly class AdminUser extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $name,
+        public string $email,
+        public array $permissions,
+        #[SerializedName('created_at')]
+        public DateTime $createdAt,
+        // Still hide password hash
+        #[Hidden]
+        public ?string $passwordHash = null
+    ) {}
+}
+```
+
+### 4. Document Serialization Behavior
+
+```php
+/**
+ * User profile data for API responses.
+ * 
+ * Serialization behavior:
+ * - firstName/lastName are combined into display_name
+ * - email is included for authenticated users only
+ * - Internal IDs and permissions are hidden
+ * - Dates are in ISO 8601 format
+ */
+final readonly class UserProfile extends GraniteDTO
+{
+    // ... implementation
+}
+```
+
+This serialization system gives you complete control over how your objects are represented in different contexts while maintaining type safety and clear data contracts.

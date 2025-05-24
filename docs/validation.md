@@ -1,22 +1,21 @@
 # Validation
 
-Granite provides a comprehensive validation system that works seamlessly with DTOs and Value Objects. You can define validation rules using both PHP 8 attributes and method-based configurations.
+Granite provides a comprehensive validation system that can be used with Value Objects (VOs) to ensure data integrity. The system supports both attribute-based validation (recommended) and method-based validation for complex scenarios.
 
 ## Table of Contents
 
 - [Basic Validation](#basic-validation)
-- [Validation Attributes](#validation-attributes)
-- [Method-based Rules](#method-based-rules)
 - [Available Validation Rules](#available-validation-rules)
-- [Custom Validation Messages](#custom-validation-messages)
-- [Conditional Validation](#conditional-validation)
-- [Array Validation](#array-validation)
+- [Custom Error Messages](#custom-error-messages)
+- [Method-based Validation](#method-based-validation)
 - [Custom Validation Rules](#custom-validation-rules)
-- [Validation Error Handling](#validation-error-handling)
+- [Conditional Validation](#conditional-validation)
+- [Collection Validation](#collection-validation)
+- [Error Handling](#error-handling)
 
 ## Basic Validation
 
-Validation is automatically applied when creating Value Objects:
+To add validation to your objects, extend `GraniteVO` instead of `GraniteDTO` and use validation attributes:
 
 ```php
 <?php
@@ -24,75 +23,11 @@ Validation is automatically applied when creating Value Objects:
 use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
+use Ninja\Granite\Validation\Attributes\Min;
+use Ninja\Granite\Validation\Attributes\Max;
+use Ninja\Granite\Validation\Attributes\StringType;
 
 final readonly class User extends GraniteVO
-{
-    public function __construct(
-        #[Required]
-        public string $name,
-        
-        #[Required]
-        #[Email]
-        public string $email
-    ) {}
-}
-
-// This will pass validation
-$validUser = User::from([
-    'name' => 'John Doe',
-    'email' => 'john@example.com'
-]);
-
-// This will throw InvalidArgumentException
-try {
-    $invalidUser = User::from([
-        'name' => '',  // Required field is empty
-        'email' => 'not-an-email'  // Invalid email format
-    ]);
-} catch (InvalidArgumentException $e) {
-    echo $e->getMessage(); // Validation error details
-}
-```
-
-## Validation Attributes
-
-Use PHP 8 attributes to define validation rules directly on properties:
-
-### Type Validation
-
-```php
-<?php
-
-use Ninja\Granite\Validation\Attributes\*;
-
-final readonly class Product extends GraniteVO
-{
-    public function __construct(
-        #[Required]
-        #[StringType]
-        public string $name,
-        
-        #[NumberType]
-        public float $price,
-        
-        #[IntegerType]
-        public int $quantity,
-        
-        #[BooleanType]
-        public bool $isActive,
-        
-        #[ArrayType]
-        public array $tags
-    ) {}
-}
-```
-
-### Length and Size Validation
-
-```php
-<?php
-
-final readonly class UserProfile extends GraniteVO
 {
     public function __construct(
         #[Required]
@@ -101,405 +36,595 @@ final readonly class UserProfile extends GraniteVO
         #[Max(50)]
         public string $name,
         
-        #[StringType]
-        #[Max(500)]
-        public ?string $bio = null,
-        
-        #[ArrayType]
-        #[Min(1)]
-        #[Max(10)]
-        public array $interests = []
-    ) {}
-}
-```
-
-### Format Validation
-
-```php
-<?php
-
-final readonly class ContactInfo extends GraniteVO
-{
-    public function __construct(
         #[Required]
         #[Email]
         public string $email,
         
-        #[Url]
-        public ?string $website = null,
+        #[Min(18)]
+        #[Max(120)]
+        public ?int $age = null,
         
-        #[IpAddress]
-        public ?string $serverIp = null,
-        
-        #[Regex('/^\+?[1-9]\d{1,14}$/')]
-        public ?string $phone = null
-    ) {}
-}
-```
-
-## Method-based Rules
-
-Define validation rules using the `rules()` method:
-
-```php
-<?php
-
-final readonly class Product extends GraniteVO
-{
-    public function __construct(
-        public string $name,
-        public string $sku,
-        public float $price,
-        public int $quantity,
-        public string $category
-    ) {}
-    
-    protected static function rules(): array
-    {
-        return [
-            'name' => 'required|string|max:100',
-            'sku' => 'required|string|regex:/^[A-Z0-9]{10}$/',
-            'price' => 'required|number|min:0.01',
-            'quantity' => 'required|integer|min:0',
-            'category' => 'required|in:electronics,clothing,books,home'
-        ];
-    }
-}
-```
-
-### Mixed Approach
-
-You can combine attributes and method-based rules:
-
-```php
-<?php
-
-final readonly class BlogPost extends GraniteVO
-{
-    public function __construct(
-        #[Required]  // Attribute validation
         #[StringType]
-        public string $title,
-        
-        public string $content,
-        public array $tags,
-        public string $status
+        #[Min(8)]
+        public ?string $password = null
     ) {}
-    
-    protected static function rules(): array
-    {
-        return [
-            // Method-based rules (override attributes if both are defined)
-            'content' => 'required|string|min:10',
-            'tags' => 'array|max:5',
-            'status' => 'required|in:draft,published,archived'
-        ];
-    }
+}
+
+// This will validate automatically
+$user = User::from([
+    'name' => 'John Doe',
+    'email' => 'john@example.com',
+    'age' => 30,
+    'password' => 'secret123'
+]);
+
+// This will throw ValidationException
+try {
+    $invalidUser = User::from([
+        'name' => 'X',  // Too short
+        'email' => 'invalid-email',  // Invalid format
+        'age' => 15  // Too young
+    ]);
+} catch (InvalidArgumentException $e) {
+    // Handle validation errors
+    echo $e->getMessage();
 }
 ```
 
 ## Available Validation Rules
 
-### Basic Type Rules
+### Type Validation
 
-- **`Required`** - Value must not be null
-- **`StringType`** - Value must be a string
-- **`IntegerType`** - Value must be an integer
-- **`NumberType`** - Value must be a number (int or float)
-- **`BooleanType`** - Value must be a boolean
-- **`ArrayType`** - Value must be an array
-
-### Size and Length Rules
-
-- **`Min(value)`** - Minimum value (numbers) or length (strings/arrays)
-- **`Max(value)`** - Maximum value (numbers) or length (strings/arrays)
-
-### Format Rules
-
-- **`Email`** - Valid email address format
-- **`Url`** - Valid URL format
-- **`IpAddress`** - Valid IP address (IPv4 or IPv6)
-- **`Regex(pattern)`** - Must match regular expression pattern
-
-### Value Rules
-
-- **`In(values)`** - Value must be one of the specified options
-- **`EnumType(enumClass)`** - Value must be a valid enum case
-
-### Special Rules
-
-- **`Each(rules)`** - Apply validation to each item in an array
-- **`When(condition, rule)`** - Conditional validation
-- **`Callback(callable)`** - Custom validation function
-
-## Custom Validation Messages
-
-Customize error messages for better user experience:
+#### `#[Required]`
+Ensures the field is not null.
 
 ```php
-<?php
-
-final readonly class User extends GraniteVO
-{
-    public function __construct(
-        #[Required(message: "Please provide your name")]
-        #[Min(2, message: "Name must be at least 2 characters long")]
-        public string $name,
-        
-        #[Required(message: "Email address is required")]
-        #[Email(message: "Please provide a valid email address")]
-        public string $email,
-        
-        #[Min(18, message: "You must be at least 18 years old")]
-        #[Max(120, message: "Please enter a valid age")]
-        public ?int $age = null
-    ) {}
-}
+#[Required]
+public string $name;
 ```
 
-## Conditional Validation
-
-Apply validation rules based on conditions:
+#### `#[StringType]`
+Validates that the value is a string.
 
 ```php
-<?php
-
-use Ninja\Granite\Validation\Attributes\When;
-use Ninja\Granite\Validation\Rules\Min;
-
-final readonly class Subscription extends GraniteVO
-{
-    public function __construct(
-        #[Required]
-        #[In(['free', 'premium', 'enterprise'])]
-        public string $type,
-        
-        #[When(
-            condition: fn($value, $data) => $data['type'] !== 'free',
-            rule: new Min(1),
-            message: "Paid subscriptions must have a price"
-        )]
-        public ?float $price = null,
-        
-        #[When(
-            condition: fn($value, $data) => $data['type'] === 'enterprise',
-            rule: new Min(10),
-            message: "Enterprise subscriptions require at least 10 users"
-        )]
-        public ?int $minUsers = null
-    ) {}
-}
+#[StringType]
+public ?string $description;
 ```
 
-## Array Validation
-
-Validate arrays and their contents:
-
-### Basic Array Validation
+#### `#[IntegerType]`
+Validates that the value is an integer.
 
 ```php
-<?php
+#[IntegerType]
+public ?int $count;
+```
 
+#### `#[NumberType]`
+Validates that the value is a number (int or float).
+
+```php
+#[NumberType]
+public ?float $price;
+```
+
+#### `#[BooleanType]`
+Validates that the value is a boolean.
+
+```php
+#[BooleanType]
+public ?bool $active;
+```
+
+#### `#[ArrayType]`
+Validates that the value is an array.
+
+```php
+#[ArrayType]
+public ?array $tags;
+```
+
+### Length and Range Validation
+
+#### `#[Min]`
+Sets minimum value for numbers or minimum length for strings/arrays.
+
+```php
+#[Min(1)]
+public int $quantity;
+
+#[Min(3)]
+public string $username;
+
+#[Min(1)]
+public array $items;
+```
+
+#### `#[Max]`
+Sets maximum value for numbers or maximum length for strings/arrays.
+
+```php
+#[Max(100)]
+public int $percentage;
+
+#[Max(255)]
+public string $title;
+
+#[Max(10)]
+public array $categories;
+```
+
+### Format Validation
+
+#### `#[Email]`
+Validates email address format.
+
+```php
+#[Email]
+public string $email;
+```
+
+#### `#[Url]`
+Validates URL format.
+
+```php
+#[Url]
+public string $website;
+```
+
+#### `#[IpAddress]`
+Validates IP address format.
+
+```php
+#[IpAddress]
+public string $serverIp;
+```
+
+#### `#[Regex]`
+Validates against a regular expression pattern.
+
+```php
+#[Regex('/^[A-Z]{2,3}-\d{4}$/')]
+public string $productCode;
+```
+
+### Choice Validation
+
+#### `#[In]`
+Validates that the value is in a list of allowed values.
+
+```php
+#[In(['active', 'inactive', 'pending'])]
+public string $status;
+
+#[In([1, 2, 3, 4, 5])]
+public int $rating;
+```
+
+#### `#[EnumType]`
+Validates enum values.
+
+```php
+enum Status: string {
+    case ACTIVE = 'active';
+    case INACTIVE = 'inactive';
+}
+
+#[EnumType(Status::class)]
+public Status $status;
+```
+
+### Collection Validation
+
+#### `#[Each]`
+Validates each item in an array.
+
+```php
 use Ninja\Granite\Validation\Attributes\Each;
-use Ninja\Granite\Validation\Rules\StringType;
 use Ninja\Granite\Validation\Rules\Email;
 
-final readonly class Newsletter extends GraniteVO
+#[Each(new Email())]
+public array $emails;
+
+// Or with multiple rules
+#[Each([new StringType(), new Min(3)])]
+public array $names;
+```
+
+### Conditional Validation
+
+#### `#[When]`
+Applies validation only when a condition is met.
+
+```php
+#[When(
+    condition: fn($value, $data) => $data['type'] === 'premium',
+    rule: new Min(100)
+)]
+public ?float $premiumAmount;
+```
+
+### Custom Validation
+
+#### `#[Callback]`
+Uses a custom callback for validation.
+
+```php
+#[Callback(
+    callback: function($value) {
+        return $value !== null && $value % 2 === 0;
+    },
+    message: 'Value must be an even number'
+)]
+public ?int $evenNumber;
+```
+
+## Custom Error Messages
+
+All validation attributes accept a custom error message:
+
+```php
+#[Required('The user name is mandatory')]
+#[Min(2, 'Name must have at least 2 characters')]
+#[Max(50, 'Name cannot exceed 50 characters')]
+public string $name;
+
+#[Email('Please provide a valid email address')]
+public string $email;
+```
+
+## Method-based Validation
+
+For complex validation scenarios, you can use method-based rules:
+
+```php
+final readonly class ComplexUser extends GraniteVO
 {
     public function __construct(
-        #[Required]
-        public string $subject,
-        
-        #[Required]
-        #[ArrayType]
-        #[Min(1, message: "At least one recipient is required")]
-        #[Each([new Email()])]
-        public array $recipients,
-        
-        #[ArrayType]
-        #[Each([new StringType()])]
-        public array $tags = []
+        public string $username,
+        public string $email,
+        public string $password,
+        public string $confirmPassword
     ) {}
+
+    protected static function rules(): array
+    {
+        return [
+            'username' => 'required|string|min:3|max:20',
+            'email' => 'required|email',
+            'password' => 'required|string|min:8',
+            'confirmPassword' => [
+                'required',
+                'string',
+                new Rules\Callback(function($value, $allData) {
+                    return $value === $allData['password'];
+                }, 'Passwords must match')
+            ]
+        ];
+    }
 }
 ```
 
-### Complex Array Validation
+### String Format Rules
+
+You can use pipe-separated string rules:
 
 ```php
-<?php
-
-final readonly class Order extends GraniteVO
+protected static function rules(): array
 {
-    public function __construct(
-        #[Required]
-        public string $orderNumber,
-        
-        #[Required]
-        #[ArrayType]
-        #[Min(1)]
-        #[Each([
-            new \Ninja\Granite\Validation\Rules\Callback(
-                fn($item) => is_array($item) && 
-                           isset($item['product_id']) && 
-                           isset($item['quantity']) &&
-                           $item['quantity'] > 0
-            )
-        ])]
-        public array $items
-    ) {}
+    return [
+        'name' => 'required|string|min:2|max:50',
+        'age' => 'integer|min:18|max:120',
+        'email' => 'required|email',
+        'website' => 'url',
+        'tags' => 'array',
+        'status' => 'in:active,inactive,pending'
+    ];
 }
 ```
 
 ## Custom Validation Rules
 
-Create custom validation rules for specific business logic:
+Create custom validation rules by implementing `ValidationRule`:
 
 ```php
 <?php
 
 use Ninja\Granite\Validation\Rules\AbstractRule;
 
-class UniqueUsernameRule extends AbstractRule
+class UniqueUsername extends AbstractRule
 {
-    public function __construct(
-        private UserRepository $userRepository
-    ) {}
+    public function __construct(private UserRepository $userRepo) {}
 
     public function validate(mixed $value, ?array $allData = null): bool
     {
         if ($value === null) {
             return true;
         }
-        
-        return !$this->userRepository->existsByUsername($value);
+
+        return !$this->userRepo->existsByUsername($value);
     }
 
     protected function defaultMessage(string $property): string
     {
-        return sprintf("The username '%s' is already taken", $property);
+        return sprintf('The %s is already taken', $property);
     }
 }
 
-// Use in Value Object
-final readonly class UserRegistration extends GraniteVO
+// Usage in VO
+#[Required]
+#[StringType]
+public string $username;
+
+protected static function rules(): array
 {
-    public function __construct(
-        #[Required]
-        #[Callback([UniqueUsernameRule::class, 'validate'])]
-        public string $username,
-        
-        #[Required]
-        #[Email]
-        public string $email
-    ) {}
+    return [
+        'username' => [
+            'required',
+            'string',
+            new UniqueUsername(new UserRepository())
+        ]
+    ];
 }
 ```
 
-### Callback Validation
+## Conditional Validation
 
-For simple custom validation, use callbacks:
+### Using Callbacks
 
 ```php
-<?php
+#[When(
+    condition: fn($value, $data) => isset($data['country']) && $data['country'] === 'US',
+    rule: new Regex('/^\d{5}(-\d{4})?$/')  // US ZIP code format
+)]
+public ?string $postalCode;
+```
 
-final readonly class Product extends GraniteVO
+### Using Method Conditions
+
+```php
+#[When(
+    condition: [$this, 'requiresValidation'],
+    rule: new Required()
+)]
+public ?string $conditionalField;
+
+private function requiresValidation($value, $data): bool
+{
+    return $data['type'] === 'required_type';
+}
+```
+
+## Collection Validation
+
+### Validating Array Items
+
+```php
+// Validate that all emails in array are valid
+#[Each(new Email())]
+public array $emails;
+
+// Multiple rules for each item
+#[Each([
+    new Required(),
+    new StringType(),
+    new Min(3)
+])]
+public array $names;
+
+// Nested object validation
+#[Each(new Rules\Callback(function($item) {
+    return UserAddress::from($item); // This will validate each address
+}))]
+public array $addresses;
+```
+
+### Complex Collection Validation
+
+```php
+final readonly class OrderItem extends GraniteVO
 {
     public function __construct(
         #[Required]
+        #[StringType]
         public string $name,
         
         #[Required]
-        #[Callback(
-            callback: fn($value) => $value > 0,
-            message: "Price must be greater than zero"
-        )]
+        #[NumberType]
+        #[Min(0.01)]
         public float $price,
         
-        #[Callback(
-            callback: fn($value) => in_array($value, ['new', 'used', 'refurbished']),
-            message: "Condition must be new, used, or refurbished"
-        )]
-        public string $condition = 'new'
+        #[Required]
+        #[IntegerType]
+        #[Min(1)]
+        public int $quantity
+    ) {}
+}
+
+final readonly class Order extends GraniteVO
+{
+    public function __construct(
+        #[Required]
+        #[StringType]
+        public string $customerName,
+        
+        #[Required]
+        #[ArrayType]
+        #[Each(new Rules\Callback(function($item) {
+            return OrderItem::from($item); // Validates each order item
+        }))]
+        public array $items
     ) {}
 }
 ```
 
-## Validation Error Handling
+## Error Handling
 
-Handle validation errors gracefully:
+### ValidationException
+
+When validation fails, a `ValidationException` is thrown with detailed error information:
 
 ```php
-<?php
-
 try {
-    $user = User::from($inputData);
-} catch (InvalidArgumentException $e) {
-    // Parse the validation errors
-    $message = $e->getMessage();
+    $user = User::from($invalidData);
+} catch (ValidationException $e) {
+    // Get all errors
+    $errors = $e->getErrors();
     
-    // The message contains JSON with field-specific errors
-    if (str_contains($message, 'Validation failed')) {
-        $errorsPart = substr($message, strpos($message, '{'));
-        $errors = json_decode($errorsPart, true);
-        
-        foreach ($errors as $field => $fieldErrors) {
-            echo "Field '$field' has errors:\n";
-            foreach ($fieldErrors as $error) {
-                echo "  - $error\n";
-            }
-        }
+    // Get errors for a specific field
+    $nameErrors = $e->getFieldErrors('name');
+    
+    // Check if a field has errors
+    if ($e->hasFieldErrors('email')) {
+        echo "Email has validation errors";
     }
+    
+    // Get formatted error message
+    echo $e->getFormattedMessage();
+    
+    // Get all error messages as array
+    $messages = $e->getAllMessages();
 }
+```
+
+### Error Structure
+
+Validation errors are structured by field:
+
+```php
+$errors = [
+    'name' => [
+        'name must be at least 2 characters',
+        'name must be at most 50 characters'
+    ],
+    'email' => [
+        'email must be a valid email address'
+    ],
+    'age' => [
+        'age must be at least 18'
+    ]
+];
 ```
 
 ### Custom Error Handling
 
-Create a validation service for better error handling:
-
 ```php
-<?php
-
-class ValidationService
+final readonly class UserService
 {
-    public static function validateAndFormat(array $data, string $voClass): array
+    public function createUser(array $data): User
     {
         try {
-            $vo = $voClass::from($data);
-            return ['success' => true, 'data' => $vo];
-        } catch (InvalidArgumentException $e) {
-            $errors = self::parseValidationErrors($e->getMessage());
-            return ['success' => false, 'errors' => $errors];
+            return User::from($data);
+        } catch (ValidationException $e) {
+            // Log validation errors
+            $this->logger->warning('User validation failed', [
+                'errors' => $e->getErrors(),
+                'data' => $data
+            ]);
+            
+            // Transform to API response format
+            throw new ApiValidationException(
+                message: 'Validation failed',
+                errors: $this->transformErrors($e->getErrors())
+            );
         }
     }
     
-    private static function parseValidationErrors(string $message): array
+    private function transformErrors(array $errors): array
     {
-        if (!str_contains($message, 'Validation failed')) {
-            return ['general' => [$message]];
+        $result = [];
+        foreach ($errors as $field => $fieldErrors) {
+            $result[] = [
+                'field' => $field,
+                'messages' => $fieldErrors
+            ];
         }
-        
-        $errorsPart = substr($message, strpos($message, '{'));
-        return json_decode($errorsPart, true) ?: ['general' => [$message]];
+        return $result;
     }
-}
-
-// Usage
-$result = ValidationService::validateAndFormat($inputData, User::class);
-
-if ($result['success']) {
-    $user = $result['data'];
-    // Process valid user
-} else {
-    $errors = $result['errors'];
-    // Handle validation errors
 }
 ```
 
 ## Best Practices
 
-1. **Use attributes for simple validation** - They're more readable and declarative
-2. **Use method-based rules for complex scenarios** - When you need dynamic or context-dependent validation
-3. **Provide meaningful error messages** - Help users understand what went wrong
-4. **Validate at the boundary** - Use Value Objects to ensure data integrity from the start
-5. **Group related validations** - Create specific Value Objects for different contexts
-6. **Test validation thoroughly** - Ensure both valid and invalid scenarios are covered
+### 1. Use Appropriate Validation Rules
+
+```php
+// Good: Specific and meaningful validation
+#[Required('Customer name is required')]
+#[StringType('Name must be text')]
+#[Min(2, 'Name must be at least 2 characters')]
+#[Max(100, 'Name cannot exceed 100 characters')]
+public string $customerName;
+
+// Avoid: Too generic or no validation
+public string $customerName;
+```
+
+### 2. Combine Rules Appropriately
+
+```php
+// Good: Logical combination
+#[Required]
+#[Email]
+public string $email;
+
+#[IntegerType]
+#[Min(0)]
+#[Max(5)]
+public ?int $rating;
+
+// Avoid: Contradictory rules
+#[Required]
+// ... but then allowing null in constructor
+public ?string $requiredField = null;
+```
+
+### 3. Use Custom Messages for User-Facing Validation
+
+```php
+final readonly class UserRegistration extends GraniteVO
+{
+    public function __construct(
+        #[Required('Please enter your full name')]
+        #[Min(2, 'Name must be at least 2 characters long')]
+        public string $name,
+        
+        #[Required('Email address is required')]
+        #[Email('Please enter a valid email address')]
+        public string $email,
+        
+        #[Required('Password is required')]
+        #[Min(8, 'Password must be at least 8 characters long')]
+        #[Regex('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/', 'Password must contain at least one lowercase letter, one uppercase letter, and one number')]
+        public string $password
+    ) {}
+}
+```
+
+### 4. Group Related Validations
+
+```php
+final readonly class Address extends GraniteVO
+{
+    public function __construct(
+        #[Required]
+        #[StringType]
+        public string $street,
+        
+        #[Required]
+        #[StringType]
+        public string $city,
+        
+        #[Required]
+        #[StringType]
+        #[Min(2)]
+        #[Max(2)]
+        public string $state,
+        
+        #[Required]
+        #[Regex('/^\d{5}(-\d{4})?$/')]
+        public string $zipCode
+    ) {}
+}
+```
+
+This validation system ensures that your Value Objects maintain data integrity while providing clear, actionable error messages to help users correct their input.
