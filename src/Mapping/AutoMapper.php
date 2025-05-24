@@ -370,6 +370,11 @@ class AutoMapper implements Mapper, MappingStorage
     private function objectToArray(object $source): array
     {
         try {
+            // Special handling for stdClass objects
+            if ($source instanceof \stdClass) {
+                return (array) $source;
+            }
+            
             $result = [];
             $properties = ReflectionCache::getPublicProperties(get_class($source));
 
@@ -654,8 +659,65 @@ class AutoMapper implements Mapper, MappingStorage
     {
         try {
             $reflection = ReflectionCache::getClass($className);
-            $instance = $reflection->newInstanceWithoutConstructor();
-
+            
+            // Create instance using constructor to respect default values
+            $constructor = $reflection->getConstructor();
+            
+            if ($constructor) {
+                // Get constructor parameters
+                $parameters = $constructor->getParameters();
+                $args = [];
+                
+                // Prepare constructor arguments with values from mapped data
+                foreach ($parameters as $param) {
+                    $paramName = $param->getName();
+                    if (array_key_exists($paramName, $data)) {
+                        $args[] = $data[$paramName];
+                        // Remove from data so we don't set it twice
+                        unset($data[$paramName]);
+                    } elseif ($param->isDefaultValueAvailable()) {
+                        $args[] = $param->getDefaultValue();
+                    } elseif ($param->allowsNull()) {
+                        $args[] = null;
+                    } else {
+                        // If parameter is required and has no value, use a type-appropriate default
+                        $type = $param->getType();
+                        if ($type && !$type->allowsNull()) {
+                            $typeName = $type->getName();
+                            switch ($typeName) {
+                                case 'int':
+                                    $args[] = 0;
+                                    break;
+                                case 'float':
+                                    $args[] = 0.0;
+                                    break;
+                                case 'bool':
+                                    $args[] = false;
+                                    break;
+                                case 'string':
+                                    $args[] = '';
+                                    break;
+                                case 'array':
+                                    $args[] = [];
+                                    break;
+                                default:
+                                    // For other types, we'll have to use null and hope for the best
+                                    $args[] = null;
+                            }
+                        } else {
+                            $args[] = null;
+                        }
+                    }
+                }
+                
+                // Create instance with constructor
+                $instance = $reflection->newInstanceArgs($args);
+            } else {
+                // Fallback to creating without constructor if no constructor exists
+                $instance = $reflection->newInstanceWithoutConstructor();
+            }
+            
+            // Set any remaining properties that weren't handled by the constructor
             return $this->populateObject($instance, $data);
         } catch (ReflectionException $e) {
             throw new MappingException('array', $className, "Failed to create instance: " . $e->getMessage());

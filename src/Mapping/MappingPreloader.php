@@ -90,12 +90,19 @@ class MappingPreloader
      */
     private static function scanNamespace(string $namespace): array
     {
-        // Simple implementation - in a real application this would use
-        // composer's ClassLoader or a similar mechanism
         $classes = [];
 
-        // For this example, we'll just return an empty array
-        // In a real implementation, you would use reflection or composer to find classes
+        $autoLoader = require dirname(__DIR__, 2) . '/vendor/autoload.php';
+        $autoLoader->setPsr4($namespace . '\\', []);
+
+        $prefix = $namespace . '\\';
+        $prefixLen = strlen($prefix);
+
+        foreach ($autoLoader->getClassMap() as $className => $filePath) {
+            if (strncmp($className, $prefix, $prefixLen) === 0) {
+                $classes[] = $className;
+            }
+        }
 
         return $classes;
     }
