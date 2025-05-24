@@ -4,6 +4,7 @@ namespace Ninja\Granite\Mapping;
 
 use Exception;
 use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Mapping\Attributes\Ignore;
 use Ninja\Granite\Mapping\Attributes\MapBidirectional;
@@ -16,6 +17,7 @@ use Ninja\Granite\Mapping\Cache\CacheFactory;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
 use Ninja\Granite\Mapping\Contracts\MappingStorage;
+use Ninja\Granite\Mapping\Contracts\NamingConvention;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\Traits\MappingStorageTrait;
@@ -23,6 +25,7 @@ use Ninja\Granite\Support\ReflectionCache;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionProperty;
+use stdClass;
 
 class AutoMapper implements Mapper, MappingStorage
 {
@@ -46,19 +49,37 @@ class AutoMapper implements Mapper, MappingStorage
     private bool $warmupCache;
 
     /**
+     * Convention mapper for automatic property mapping.
+     */
+    protected ?ConventionMapper $conventionMapper = null;
+
+    /**
+     * Whether to use convention-based mapping.
+     */
+    private bool $useConventions;
+
+    /**
      * Constructor.
      *
      * @param array $profiles Optional mapping profiles to register
-     * @param string $cacheType Cache type ('memory', 'shared', 'persistent')
+     * @param CacheType $cacheType Cache type ('memory', 'shared', 'persistent')
      * @param bool $warmupCache Whether to warm up the cache with profiles
+     * @param bool $useConventions Whether to use convention-based mapping
      */
     public function __construct(
         array $profiles = [],
-        string $cacheType = 'shared',
-        bool $warmupCache = true
+        CacheType $cacheType = CacheType::Shared,
+        bool $warmupCache = true,
+        bool $useConventions = true
     ) {
         $this->cache = CacheFactory::create($cacheType);
         $this->warmupCache = $warmupCache;
+        $this->useConventions = $useConventions;
+
+        // Initialize convention mapper if enabled
+        if ($useConventions) {
+            $this->conventionMapper = new ConventionMapper();
+        }
 
         foreach ($profiles as $profile) {
             $this->addProfile($profile);
@@ -117,7 +138,6 @@ class AutoMapper implements Mapper, MappingStorage
         foreach ($mappings as $key => $propertyMappings) {
             list($sourceType, $destinationType) = explode('->', $key);
 
-            // Only cache if not already cached
             if (!$this->cache->has($sourceType, $destinationType)) {
                 $config = $this->buildMappingConfiguration($sourceType, $destinationType);
                 $this->cache->put($sourceType, $destinationType, $config);
@@ -197,7 +217,7 @@ class AutoMapper implements Mapper, MappingStorage
     }
 
     /**
-     * Map from source object/array to destination type.
+     * Map from source object/array to a destination type.
      *
      * @template T
      * @param mixed $source Source data
@@ -311,6 +331,7 @@ class AutoMapper implements Mapper, MappingStorage
         $key = $sourceType . '->' . $destinationType;
         return $this->mappings[$key][$property] ?? null;
     }
+
     /**
      * Get all mappings for a type pair from all sources.
      *
@@ -341,7 +362,7 @@ class AutoMapper implements Mapper, MappingStorage
      *
      * @param mixed $source Source data
      * @return array Normalized data as array
-     * @throws MappingException If source type is not supported
+     * @throws MappingException If a source type is not supported
      */
     private function normalizeSource(mixed $source): array
     {
@@ -371,10 +392,10 @@ class AutoMapper implements Mapper, MappingStorage
     {
         try {
             // Special handling for stdClass objects
-            if ($source instanceof \stdClass) {
+            if ($source instanceof stdClass) {
                 return (array) $source;
             }
-            
+
             $result = [];
             $properties = ReflectionCache::getPublicProperties(get_class($source));
 
@@ -399,15 +420,18 @@ class AutoMapper implements Mapper, MappingStorage
      */
     private function getMappingConfiguration(mixed $source, string $destinationType): array
     {
+        // Determine source type
         $sourceType = is_object($source) ? get_class($source) : 'array';
 
-        // Check cache first
+        // Check if configuration is cached
         if ($this->cache->has($sourceType, $destinationType)) {
             return $this->cache->get($sourceType, $destinationType);
         }
 
-        // Build and cache if not found
+        // Build configuration
         $config = $this->buildMappingConfiguration($sourceType, $destinationType);
+
+        // Cache the configuration
         $this->cache->put($sourceType, $destinationType, $config);
 
         return $config;
@@ -422,54 +446,56 @@ class AutoMapper implements Mapper, MappingStorage
      */
     private function buildMappingConfiguration(string $sourceType, string $destinationType): array
     {
-        $config = [];
+        $result = [];
+        $reflection = ReflectionCache::getClass($destinationType);
+        $properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
 
-        try {
-            $destinationProperties = ReflectionCache::getPublicProperties($destinationType);
+        // Get existing mappings from profiles
+        $mappings = $this->getMappingsForTypes($sourceType, $destinationType);
 
-            foreach ($destinationProperties as $property) {
-                $propertyName = $property->getName();
+        // Process each property
+        foreach ($properties as $property) {
+            $propertyName = $property->getName();
+
+            // Check if there's an explicit mapping in profiles
+            if (isset($mappings[$propertyName])) {
+                $mapping = $mappings[$propertyName];
+                $sourceProp = $mapping->getSourceProperty();
+                $transformer = $mapping->getTransformer();
+                $condition = $mapping->getCondition();
+                $defaultValue = $mapping->getDefaultValue();
+
+                $result[$propertyName] = [
+                    'source' => $sourceProp ?? $propertyName,
+                    'transformer' => $transformer,
+                    'condition' => $condition,
+                    'default' => $defaultValue,
+                    'hasDefault' => $defaultValue !== null,
+                ];
+            } else {
+                // Get mapping info from attributes
                 $mappingInfo = $this->getPropertyMappingInfo($property);
 
                 if ($mappingInfo['ignore']) {
-                    continue;
+                    continue; // Skip ignored properties
                 }
 
-                // Get profile mapping first
-                $profileMapping = $this->getMapping($sourceType, $destinationType, $propertyName);
-
-                // Determine source property
-                $source = $mappingInfo['source'] ?? $propertyName;
-
-                // If profile mapping has a source defined, use that instead
-                if ($profileMapping !== null && $profileMapping->getSourceProperty() !== null) {
-                    $source = $profileMapping->getSourceProperty();
-                }
-
-                // Set up the transformer
-                $transformer = $mappingInfo['transformer'] ?? null;
-
-                // If this is a collection, create a collection transformer
-                if ($mappingInfo['isCollection'] && $mappingInfo['collectionConfig'] !== null) {
-                    $collectionConfig = $mappingInfo['collectionConfig'];
-                    $transformer = $collectionConfig->createTransformer($this);
-                }
-
-                $config[$propertyName] = [
-                    'source' => $source,
-                    'transformer' => $transformer,
-                    'profile_mapping' => $profileMapping,
-                    'condition' => $mappingInfo['condition'] ?? null,
-                    'defaultValue' => $mappingInfo['defaultValue'] ?? null,
-                    'hasDefaultValue' => $mappingInfo['hasDefaultValue'] ?? false
+                $result[$propertyName] = [
+                    'source' => $mappingInfo['source'] ?? $propertyName,
+                    'transformer' => $mappingInfo['transformer'],
+                    'condition' => $mappingInfo['condition'],
+                    'default' => $mappingInfo['default'],
+                    'hasDefault' => $mappingInfo['hasDefault'],
                 ];
             }
-
-            return $config;
-        } catch (Exception $e) {
-            // Return empty config if something fails
-            return [];
         }
+
+        // Apply convention-based mapping if enabled and no explicit mapping defined
+        if ($this->useConventions && $this->conventionMapper !== null) {
+            $this->conventionMapper->applyConventions($sourceType, $destinationType);
+        }
+
+        return $result;
     }
 
     /**
@@ -480,48 +506,73 @@ class AutoMapper implements Mapper, MappingStorage
      */
     private function getPropertyMappingInfo(ReflectionProperty $property): array
     {
-        $info = [
-            'ignore' => false,
+        $result = [
             'source' => null,
             'transformer' => null,
             'condition' => null,
-            'defaultValue' => null,
-            'hasDefaultValue' => false,
-            'isCollection' => false,
-            'collectionConfig' => null,
-            'bidirectional' => null
+            'default' => null,
+            'hasDefault' => false,
+            'ignore' => false,
         ];
 
+        // Get attributes
         $attributes = $property->getAttributes();
 
+        // Check for ignore attribute first (highest priority)
         foreach ($attributes as $attribute) {
-            try {
-                $instance = $attribute->newInstance();
-
-                if ($instance instanceof Ignore) {
-                    $info['ignore'] = true;
-                } elseif ($instance instanceof MapFrom) {
-                    $info['source'] = $instance->source;
-                } elseif ($instance instanceof MapWith) {
-                    $info['transformer'] = $instance->transformer;
-                } elseif ($instance instanceof MapWhen) {
-                    $info['condition'] = $instance->condition;
-                } elseif ($instance instanceof MapDefault) {
-                    $info['defaultValue'] = $instance->value;
-                    $info['hasDefaultValue'] = true;
-                } elseif ($instance instanceof MapCollection) {
-                    $info['isCollection'] = true;
-                    $info['collectionConfig'] = $instance;
-                } elseif ($instance instanceof MapBidirectional) {
-                    $info['bidirectional'] = $instance->otherProperty;
-                }
-            } catch (Exception $e) {
-                // Skip attributes that can't be instantiated
-                continue;
+            if ($attribute->getName() === Ignore::class) {
+                $result['ignore'] = true;
+                return $result;
             }
         }
 
-        return $info;
+        // Process other attributes
+        foreach ($attributes as $attribute) {
+            $attrName = $attribute->getName();
+            $attrInstance = $attribute->newInstance();
+
+            switch ($attrName) {
+                case MapFrom::class:
+                    $result['source'] = $attrInstance->source;
+                    break;
+
+                case MapWith::class:
+                    $result['transformer'] = $attrInstance->transformer;
+                    break;
+
+                case MapWhen::class:
+                    $result['condition'] = $attrInstance->condition;
+                    break;
+
+                case MapDefault::class:
+                    $result['default'] = $attrInstance->value;
+                    $result['hasDefault'] = true;
+                    break;
+
+                case MapBidirectional::class:
+                    // Handle bidirectional mapping
+                    break;
+
+                case MapCollection::class:
+                    // For collections we need special handling
+                    // Transformer should convert each item in the collection
+                    $itemType = $attrInstance->itemType;
+                    $result['transformer'] = function ($value) use ($itemType) {
+                        if (!is_array($value)) {
+                            return [];
+                        }
+                        return $this->mapArray($value, $itemType);
+                    };
+                    break;
+            }
+        }
+
+        // If no source property specified, use property name
+        if ($result['source'] === null) {
+            $result['source'] = $property->getName();
+        }
+
+        return $result;
     }
 
     /**
@@ -536,43 +587,43 @@ class AutoMapper implements Mapper, MappingStorage
         $result = [];
 
         foreach ($mappingConfig as $destinationProperty => $config) {
-            $sourceKey = $config['source'];
+            $sourceProperty = $config['source'];
             $transformer = $config['transformer'];
-            $profileMapping = $config['profile_mapping'];
-            $condition = $config['condition'] ?? null;
-            $defaultValue = $config['defaultValue'] ?? null;
-            $hasDefaultValue = $config['hasDefaultValue'] ?? false;
+            $condition = $config['condition'];
+            $defaultValue = $config['default'];
+            $hasDefaultValue = $config['hasDefault'];
 
-            // Check condition if set
-            if ($condition !== null) {
-                if (is_callable($condition)) {
-                    if (!$condition($sourceData)) {
-                        if ($hasDefaultValue) {
-                            $result[$destinationProperty] = $defaultValue;
-                        }
-                        continue;
-                    }
-                } elseif (is_string($condition) && method_exists($destinationProperty, $condition)) {
-                    if (!$destinationProperty::$condition($sourceData)) {
-                        if ($hasDefaultValue) {
-                            $result[$destinationProperty] = $defaultValue;
-                        }
-                        continue;
-                    }
-                }
+            // Skip if condition is defined and evaluates to false
+            if ($condition !== null && !$condition($sourceData)) {
+                continue;
             }
 
-            // Get source value
-            $sourceValue = $this->getSourceValue($sourceData, $sourceKey);
+            // Get value from source
+            $sourceValue = $this->getSourceValue($sourceData, $sourceProperty);
 
-            // Apply transformations
-            if ($profileMapping !== null) {
-                // If there's a profile mapping, use that to transform
-                $transformedValue = $profileMapping->transform($sourceValue, $sourceData);
-                $result[$destinationProperty] = $transformedValue;
-            } elseif ($transformer !== null) {
-                // If there's a direct transformer
-                $transformedValue = $this->applyTransformer($sourceValue, $transformer, $sourceData);
+            // Apply transformation if defined
+            if ($transformer !== null) {
+                // Handle array-style callable: [ClassName::class, 'methodName']
+                if (is_array($transformer) && count($transformer) === 2 && is_string($transformer[1])) {
+                    if (is_string($transformer[0]) && class_exists($transformer[0])) {
+                        // Static method call: [ClassName::class, 'staticMethod']
+                        $transformedValue = $transformer[0]::{$transformer[1]}($sourceValue, $sourceData);
+                    } elseif (is_object($transformer[0])) {
+                        // Instance method call: [$object, 'method']
+                        $transformedValue = $transformer[0]->{$transformer[1]}($sourceValue, $sourceData);
+                    }
+                } else {
+                    // Regular callable
+                    if (is_callable($transformer)) {
+                        $transformedValue = $transformer($sourceValue, $sourceData);
+                    } elseif (is_object($transformer) && method_exists($transformer, 'transform')) {
+                        // Transformer interface implementation
+                        $transformedValue = $transformer->transform($sourceValue, $sourceData);
+                    } else {
+                        // No valid transformer, return original value
+                        $transformedValue = $sourceValue;
+                    }
+                }
                 $result[$destinationProperty] = $transformedValue;
             } else {
                 // No transformation
@@ -580,7 +631,7 @@ class AutoMapper implements Mapper, MappingStorage
             }
 
             // Apply default value if value is null and default is set
-            if ($result[$destinationProperty] === null && $hasDefaultValue) {
+            if (($result[$destinationProperty] === null) && $hasDefaultValue) {
                 $result[$destinationProperty] = $defaultValue;
             }
         }
@@ -627,27 +678,6 @@ class AutoMapper implements Mapper, MappingStorage
     }
 
     /**
-     * Apply transformer to value.
-     *
-     * @param mixed $value Value to transform
-     * @param mixed $transformer Transformer to apply
-     * @param array $sourceData Source data for context
-     * @return mixed Transformed value
-     */
-    private function applyTransformer(mixed $value, mixed $transformer, array $sourceData = []): mixed
-    {
-        if (is_callable($transformer)) {
-            return $transformer($value, $sourceData);
-        }
-
-        if ($transformer instanceof Transformer) {
-            return $transformer->transform($value, $sourceData);
-        }
-
-        return $value;
-    }
-
-    /**
      * Create an object from array data.
      *
      * @param array $data Object data
@@ -658,16 +688,21 @@ class AutoMapper implements Mapper, MappingStorage
     private function createObjectFromArray(array $data, string $className): object
     {
         try {
+            // Special handling for stdClass objects
+            if ($className === 'stdClass') {
+                return (object) $data;
+            }
+
             $reflection = ReflectionCache::getClass($className);
-            
+
             // Create instance using constructor to respect default values
             $constructor = $reflection->getConstructor();
-            
+
             if ($constructor) {
                 // Get constructor parameters
                 $parameters = $constructor->getParameters();
                 $args = [];
-                
+
                 // Prepare constructor arguments with values from mapped data
                 foreach ($parameters as $param) {
                     $paramName = $param->getName();
@@ -682,7 +717,7 @@ class AutoMapper implements Mapper, MappingStorage
                     } else {
                         // If parameter is required and has no value, use a type-appropriate default
                         $type = $param->getType();
-                        if ($type && !$type->allowsNull()) {
+                        if ($type) {
                             $typeName = $type->getName();
                             switch ($typeName) {
                                 case 'int':
@@ -701,24 +736,47 @@ class AutoMapper implements Mapper, MappingStorage
                                     $args[] = [];
                                     break;
                                 default:
-                                    // For other types, we'll have to use null and hope for the best
-                                    $args[] = null;
+                                    // For object types, try to create a default instance if possible
+                                    if (class_exists($typeName)) {
+                                        try {
+                                            $args[] = new $typeName();
+                                        } catch (\Throwable $e) {
+                                            // If we can't create a default instance, use null
+                                            $args[] = null;
+                                        }
+                                    } else {
+                                        $args[] = null;
+                                    }
                             }
                         } else {
                             $args[] = null;
                         }
                     }
                 }
-                
+
                 // Create instance with constructor
                 $instance = $reflection->newInstanceArgs($args);
             } else {
                 // Fallback to creating without constructor if no constructor exists
                 $instance = $reflection->newInstanceWithoutConstructor();
             }
-            
+
             // Set any remaining properties that weren't handled by the constructor
-            return $this->populateObject($instance, $data);
+            foreach ($data as $propName => $propValue) {
+                try {
+                    if ($reflection->hasProperty($propName)) {
+                        $property = $reflection->getProperty($propName);
+                        if ($property->isPublic()) {
+                            $property->setValue($instance, $propValue);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore errors when setting properties
+                    // This can happen with readonly properties
+                }
+            }
+
+            return $instance;
         } catch (ReflectionException $e) {
             throw new MappingException('array', $className, "Failed to create instance: " . $e->getMessage());
         }
@@ -735,12 +793,19 @@ class AutoMapper implements Mapper, MappingStorage
     private function populateObject(object $object, array $data): object
     {
         try {
-            $properties = ReflectionCache::getPublicProperties(get_class($object));
+            $reflection = ReflectionCache::getClass(get_class($object));
 
-            foreach ($properties as $property) {
-                $propertyName = $property->getName();
-                if (array_key_exists($propertyName, $data)) {
-                    $property->setValue($object, $data[$propertyName]);
+            foreach ($data as $propName => $propValue) {
+                try {
+                    if ($reflection->hasProperty($propName)) {
+                        $property = $reflection->getProperty($propName);
+                        if ($property->isPublic()) {
+                            $property->setValue($object, $propValue);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore errors when setting properties
+                    // This can happen with readonly properties
                 }
             }
 
@@ -838,6 +903,92 @@ class AutoMapper implements Mapper, MappingStorage
             $this->warmupCache();
         }
 
+        return $this;
+    }
+
+    /**
+     * Set whether to use convention-based mapping.
+     *
+     * @param bool $useConventions Whether to use convention-based mapping
+     * @return $this For method chaining
+     */
+    public function useConventions(bool $useConventions = true): self
+    {
+        $this->useConventions = $useConventions;
+
+        // Initialize or clear convention mapper based on setting
+        if ($useConventions && $this->conventionMapper === null) {
+            $this->conventionMapper = new ConventionMapper();
+        } elseif (!$useConventions) {
+            $this->conventionMapper = null;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get the convention mapper instance.
+     *
+     * @return ConventionMapper|null Convention mapper or null if conventions disabled
+     */
+    public function getConventionMapper(): ?ConventionMapper
+    {
+        return $this->conventionMapper;
+    }
+
+    /**
+     * Set the confidence threshold for convention-based mapping.
+     *
+     * @param float $threshold Confidence threshold (0.0-1.0)
+     * @return $this For method chaining
+     */
+    public function setConventionConfidenceThreshold(float $threshold): self
+    {
+        $this->conventionMapper?->setConfidenceThreshold($threshold);
+
+        return $this;
+    }
+
+    /**
+     * Apply convention-based mapping between two types.
+     *
+     * @param string $sourceType Source type name
+     * @param string $destinationType Destination type name
+     * @return $this For method chaining
+     */
+    public function applyConventions(string $sourceType, string $destinationType): self
+    {
+        if ($this->useConventions && $this->conventionMapper !== null) {
+            $typeMapping = $this->createMap($sourceType, $destinationType);
+            $this->conventionMapper->applyConventions($sourceType, $destinationType, $typeMapping);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Register a custom naming convention.
+     *
+     * @param NamingConvention $convention Convention to register
+     * @return $this For method chaining
+     */
+    public function registerConvention(NamingConvention $convention): self
+    {
+        $this->conventionMapper?->registerConvention($convention);
+
+        return $this;
+    }
+
+    /**
+     * Clear the convention mapper cache to force rediscovery of mappings.
+     * 
+     * @return self
+     */
+    public function clearConventionCache(): self
+    {
+        if ($this->conventionMapper !== null) {
+            $this->conventionMapper->clearMappingsCache();
+        }
         return $this;
     }
 }

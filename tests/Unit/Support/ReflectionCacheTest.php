@@ -115,18 +115,18 @@ use Tests\Helpers\TestCase;
      */
     private function resetReflectionCache(): void
     {
-        $reflection = new ReflectionClass(ReflectionCache::class);
+        $reflection = new \ReflectionClass(ReflectionCache::class);
 
         if ($reflection->hasProperty('classCache')) {
             $classCache = $reflection->getProperty('classCache');
             $classCache->setAccessible(true);
-            $classCache->setValue([]);
+            $classCache->setValue(null, []);
         }
 
         if ($reflection->hasProperty('propertiesCache')) {
             $propertiesCache = $reflection->getProperty('propertiesCache');
             $propertiesCache->setAccessible(true);
-            $propertiesCache->setValue([]);
+            $propertiesCache->setValue(null, []);
         }
     }
 }

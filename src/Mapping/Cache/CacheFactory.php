@@ -2,6 +2,7 @@
 
 namespace Ninja\Granite\Mapping\Cache;
 
+use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
 
 /**
@@ -17,14 +18,14 @@ class CacheFactory
     /**
      * Create a mapping cache based on environment.
      *
-     * @param string $type Cache type ('memory', 'shared', 'persistent')
+     * @param CacheType $type Cache type ('memory', 'shared', 'persistent')
      * @return MappingCache Mapping cache
      */
-    public static function create(string $type = 'memory'): MappingCache
+    public static function create(CacheType $type = CacheType::Memory): MappingCache
     {
         return match ($type) {
-            'shared' => SharedMappingCache::getInstance(),
-            'persistent' => new PersistentMappingCache(self::getCachePath()),
+            CacheType::Shared => SharedMappingCache::getInstance(),
+            CacheType::Persistent => new PersistentMappingCache(self::getCachePath()),
             default => new InMemoryMappingCache()
         };
     }

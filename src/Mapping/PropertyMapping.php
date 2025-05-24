@@ -132,6 +132,14 @@ class PropertyMapping
         return $this->condition !== null;
     }
 
+    /**
+     * Get the condition callable.
+     */
+    public function getCondition(): mixed
+    {
+        return $this->condition;
+    }
+
     public function getDefaultValue(): mixed
     {
         return $this->defaultValue;
