@@ -20,6 +20,7 @@ use Ninja\Granite\Mapping\Contracts\MappingStorage;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Ninja\Granite\Mapping\Services\ObjectFactory;
 use Ninja\Granite\Mapping\Traits\MappingStorageTrait;
 use Ninja\Granite\Support\ReflectionCache;
 use ReflectionClass;
@@ -30,6 +31,9 @@ use stdClass;
 class AutoMapper implements Mapper, MappingStorage
 {
     use MappingStorageTrait;
+
+    private static ?self $globalInstance = null;
+    private static bool $isConfigured = false;
 
     /**
      * Registered mapping profiles.
@@ -61,10 +65,11 @@ class AutoMapper implements Mapper, MappingStorage
     /**
      * Constructor.
      *
-     * @param array $profiles Optional mapping profiles to register
+     * @param MappingProfile[] $profiles Optional mapping profiles to register
      * @param CacheType $cacheType Cache type ('memory', 'shared', 'persistent')
      * @param bool $warmupCache Whether to warm up the cache with profiles
      * @param bool $useConventions Whether to use convention-based mapping
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public function __construct(
         array $profiles = [],
@@ -95,6 +100,7 @@ class AutoMapper implements Mapper, MappingStorage
      *
      * @param MappingProfile $profile Mapping profile to add
      * @return $this For method chaining
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public function addProfile(MappingProfile $profile): self
     {
@@ -111,6 +117,7 @@ class AutoMapper implements Mapper, MappingStorage
      * Warm up cache with all profiles.
      *
      * @return void
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     private function warmupCache(): void
     {
@@ -124,6 +131,7 @@ class AutoMapper implements Mapper, MappingStorage
      *
      * @param MappingProfile $profile Mapping profile
      * @return void
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     private function warmupProfileCache(MappingProfile $profile): void
     {
@@ -417,6 +425,7 @@ class AutoMapper implements Mapper, MappingStorage
      * @param mixed $source Source data
      * @param string $destinationType Destination type name
      * @return array Mapping configuration
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     private function getMappingConfiguration(mixed $source, string $destinationType): array
     {
@@ -443,6 +452,7 @@ class AutoMapper implements Mapper, MappingStorage
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
      * @return array Mapping configuration
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     private function buildMappingConfiguration(string $sourceType, string $destinationType): array
     {
@@ -867,6 +877,7 @@ class AutoMapper implements Mapper, MappingStorage
      *
      * @param bool $enabled Whether to enable cache warming
      * @return $this For method chaining
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public function setCacheWarming(bool $enabled): self
     {
@@ -894,6 +905,7 @@ class AutoMapper implements Mapper, MappingStorage
      *
      * @param MappingCache $cache New cache
      * @return $this For method chaining
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public function setCache(MappingCache $cache): self
     {
@@ -986,9 +998,62 @@ class AutoMapper implements Mapper, MappingStorage
      */
     public function clearConventionCache(): self
     {
-        if ($this->conventionMapper !== null) {
-            $this->conventionMapper->clearMappingsCache();
-        }
+        $this->conventionMapper?->clearMappingsCache();
         return $this;
+    }
+
+    /**
+     * Get or create the global singleton instance
+     */
+    public static function getInstance(): self
+    {
+        if (self::$globalInstance === null) {
+            self::$globalInstance = new self(
+                profiles: [],
+                cacheType: CacheType::Shared,
+                warmupCache: false,
+                useConventions: true
+            );
+
+            self::$globalInstance->setConventionConfidenceThreshold(0.75);
+        }
+
+        return self::$globalInstance;
+    }
+
+    /**
+     * Configure the global instance
+     */
+    public static function configure(callable $configurator): void
+    {
+        $instance = self::getInstance();
+        $configurator($instance);
+        self::$isConfigured = true;
+    }
+
+    /**
+     * Check if global instance has been manually configured
+     */
+    public static function isConfigured(): bool
+    {
+        return self::$isConfigured;
+    }
+
+    /**
+     * Reset global instance (useful for testing)
+     */
+    public static function reset(): void
+    {
+        self::$globalInstance = null;
+        self::$isConfigured = false;
+    }
+
+    /**
+     * Set a custom global instance
+     */
+    public static function setGlobalInstance(self $instance): void
+    {
+        self::$globalInstance = $instance;
+        self::$isConfigured = true;
     }
 }

@@ -20,7 +20,10 @@
     "autoload": {
         "psr-4": {
             "Ninja\\Granite\\": "src/"
-        }
+        },
+        "files": [
+            "functions.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
