@@ -217,20 +217,7 @@ use Tests\Fixtures\DTOs\SerializableDTO;
         if ($reflection->hasProperty('metadataCache')) {
             $cacheProperty = $reflection->getProperty('metadataCache');
             $cacheProperty->setAccessible(true);
-            $cacheProperty->setValue([]);
+            $cacheProperty->setValue(null, []);
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

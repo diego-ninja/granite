@@ -2,27 +2,35 @@
 
 namespace Ninja\Granite\Mapping;
 
-abstract class MappingProfile
+use Ninja\Granite\Mapping\Contracts\MappingStorage;
+use Ninja\Granite\Mapping\Traits\MappingStorageTrait;
+
+/**
+ * Base class for mapping profile configurations.
+ */
+abstract class MappingProfile implements MappingStorage
 {
-    /**
-     * Property mappings by source and destination types.
-     *
-     * @var array<string, array<string, PropertyMapping>>
-     */
-    protected array $mappings = [];
+    use MappingStorageTrait;
 
     /**
-     * Configure mappings in this method.
+     * Constructor.
      */
-    abstract protected function configure(): void;
-
     public function __construct()
     {
         $this->configure();
     }
 
     /**
-     * Create a mapping from source type to destination type.
+     * Configure mappings in this method.
+     */
+    abstract protected function configure(): void;
+
+    /**
+     * Create a mapping from source type to a destination type.
+     *
+     * @param string $sourceType Source type name
+     * @param string $destinationType Destination type name
+     * @return TypeMapping Type mapping configuration
      */
     protected function createMap(string $sourceType, string $destinationType): TypeMapping
     {
@@ -30,20 +38,14 @@ abstract class MappingProfile
     }
 
     /**
-     * Add property mapping.
+     * Create a bidirectional mapping between two types.
+     *
+     * @param string $typeA First type name
+     * @param string $typeB Second type name
+     * @return BidirectionalTypeMapping Bidirectional mapping configuration
      */
-    public function addPropertyMapping(string $sourceType, string $destinationType, string $property, PropertyMapping $mapping): void
+    protected function createMapBidirectional(string $typeA, string $typeB): BidirectionalTypeMapping
     {
-        $key = $sourceType . '->' . $destinationType;
-        $this->mappings[$key][$property] = $mapping;
-    }
-
-    /**
-     * Get property mapping.
-     */
-    public function getMapping(string $sourceType, string $destinationType, string $property): ?PropertyMapping
-    {
-        $key = $sourceType . '->' . $destinationType;
-        return $this->mappings[$key][$property] ?? null;
+        return new BidirectionalTypeMapping($this, $typeA, $typeB);
     }
 }

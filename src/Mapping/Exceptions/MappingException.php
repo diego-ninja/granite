@@ -1,11 +1,12 @@
 <?php
 
-namespace Ninja\Granite\Exceptions;
+namespace Ninja\Granite\Mapping\Exceptions;
 
 use Exception;
+use Ninja\Granite\Exceptions\GraniteException;
 
 /**
- * Exception thrown when AutoMapper operations fail.
+ * Exception thrown when ObjectMapper operations fail.
  */
 class MappingException extends GraniteException
 {

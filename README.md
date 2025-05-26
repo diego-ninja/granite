@@ -1,4 +1,5 @@
 # 🪨 Granite
+
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
 [![Total Downloads](https://img.shields.io/packagist/dt/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
 ![PHP Version](https://img.shields.io/packagist/php-v/diego-ninja/granite.svg?style=flat&color=blue)
@@ -6,76 +7,49 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
 [![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
 
-A lightweight zero-dependency PHP library for building immutable, serializable objects with validation capabilities.
+A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 
-## Overview
+This documentation has been generated almost in its entirety using 🦠 Claude 4 Sonnet based on source code analysis. Some sections may be incomplete, outdated or may contain documentation for planned or not-released features. For the most accurate information, please refer to the source code or open an issue on the package repository.
 
-Granite is a powerful library for creating strongly-typed, immutable Data Transfer Objects (DTOs) and Value Objects (VOs) in PHP. It provides a clean, attribute-based API for defining validation rules, serialization behavior, and type conversions.
+## ✨ Features
 
-## Features
+### 🔒 **Immutable Objects**
+- Read-only DTOs and Value Objects
+- Thread-safe by design
+- Functional programming friendly
 
-- **Immutable objects**: Create read-only DTOs and Value Objects
-- **Built-in validation**: Comprehensive validation system with many predefined rules
-- **Attribute-based validation**: Use PHP 8 attributes to define validation rules directly on properties
-- **Serialization control**: Customize property names during serialization/deserialization
-- **Type conversion**: Automatic conversion of primitive types, DateTimes, and Enums
-- **JSON support**: Easy conversion between objects and JSON
-- **AutoMapper**: Powerful mapping between different object structures
-- **Performance optimized**: Uses reflection caching for improved performance
+### ✅ **Comprehensive Validation**
+- 25+ built-in validation rules
+- Attribute-based validation (PHP 8+)
+- Custom validation rules and callbacks
+- Conditional and nested validation
 
-## Requirements
+### 🔄 **Powerful ObjectMapper**
+- Automatic property mapping between objects
+- Convention-based mapping with multiple naming conventions
+- Custom transformations and collection mapping
+- Bidirectional mapping support
 
-- PHP 8.3 or higher
+### 📦 **Smart Serialization**
+- JSON/Array serialization with custom property names
+- Hide sensitive properties automatically
+- DateTime and Enum handling
+- Nested object serialization
 
-## Installation
+### ⚡ **Performance Optimized**
+- Reflection caching for improved performance
+- Memory-efficient object creation
+- Lazy loading support
 
-Install via Composer:
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
 composer require diego-ninja/granite
 ```
 
-## Quick Start
-
-### Creating a Data Transfer Object
-
-```php
-<?php
-
-use Ninja\Granite\GraniteDTO;
-use Ninja\Granite\Serialization\Attributes\SerializedName;
-use Ninja\Granite\Serialization\Attributes\Hidden;
-
-final readonly class UserDTO extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public string $name,
-        
-        #[SerializedName('email_address')]
-        public string $email,
-        
-        #[Hidden]
-        public string $password
-    ) {}
-}
-
-// Create from array
-$user = UserDTO::from([
-    'id' => 1,
-    'name' => 'John Doe',
-    'email' => 'john@example.com',
-    'password' => 'secret123'
-]);
-
-// Convert to array (password hidden, email as email_address)
-$array = $user->array();
-
-// Convert to JSON
-$json = $user->json();
-```
-
-### Creating a Value Object with Validation
+### Basic Usage
 
 ```php
 <?php
@@ -84,11 +58,15 @@ use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
 use Ninja\Granite\Validation\Attributes\Min;
-use Ninja\Granite\Validation\Attributes\Max;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
+use Ninja\Granite\Serialization\Attributes\Hidden;
 
+// Create a Value Object with validation
 final readonly class User extends GraniteVO
 {
     public function __construct(
+        public ?int $id,
+        
         #[Required]
         #[Min(2)]
         public string $name,
@@ -97,209 +75,469 @@ final readonly class User extends GraniteVO
         #[Email]
         public string $email,
         
-        #[Min(18)]
-        #[Max(120)]
-        public ?int $age = null
+        #[Hidden] // Won't appear in JSON
+        public ?string $password = null,
+        
+        #[SerializedName('created_at')]
+        public DateTime $createdAt = new DateTime()
     ) {}
 }
 
-// This will pass validation
+// Create and validate
 $user = User::from([
     'name' => 'John Doe',
     'email' => 'john@example.com',
-    'age' => 30
+    'password' => 'secret123'
 ]);
 
-// This will throw InvalidArgumentException
-try {
-    $invalidUser = User::from([
-        'name' => 'X',  // Too short
-        'email' => 'invalid-email',
-        'age' => 15  // Too young
-    ]);
-} catch (InvalidArgumentException $e) {
-    // Handle validation errors
-}
+// Immutable updates
+$updatedUser = $user->with(['name' => 'Jane Doe']);
+
+// Serialization
+$json = $user->json();
+// {"id":null,"name":"John Doe","email":"john@example.com","created_at":"2024-01-15T10:30:00+00:00"}
+
+$array = $user->array();
+// password is hidden, created_at uses custom name
 ```
 
-### Using AutoMapper
+## 📖 Documentation
+
+### Core Concepts
+
+- **[Validation](docs/validation.md)** - Comprehensive validation system with 25+ built-in rules
+- **[Serialization](docs/serialization.md)** - Control how objects are converted to/from arrays and JSON
+- **[ObjectMapper](docs/objectmapper.md)** - Powerful object-to-object mapping with conventions
+- **[Advanced Usage](docs/advanced_usage.md)** - Patterns for complex applications
+- **[API Reference](docs/api_reference.md)** - Complete API documentation
+
+
+### Guides
+
+- **[Migration Guide](docs/migration_guide.md)** - Migrate from arrays, stdClass, Doctrine, Laravel
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+
+## 🎯 Use Cases
+
+### API Development
 
 ```php
-<?php
-
-use Ninja\Granite\Mapping\AutoMapper;
-use Ninja\Granite\Mapping\Attributes\MapFrom;
-
-// Source DTO
-final readonly class UserEntity extends GraniteDTO
+// Request validation
+final readonly class CreateUserRequest extends GraniteVO
 {
     public function __construct(
-        public int $id,
-        public string $firstName,
-        public string $lastName,
-        public string $email
+        #[Required]
+        #[StringType]
+        #[Min(2)]
+        public string $name,
+        
+        #[Required]
+        #[Email]
+        public string $email,
+        
+        #[Required]
+        #[Min(8)]
+        #[Regex('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/', 'Password must contain uppercase, lowercase, and number')]
+        public string $password
     ) {}
 }
 
-// Destination DTO with mapping
+// API Response
 final readonly class UserResponse extends GraniteDTO
 {
     public function __construct(
         public int $id,
+        public string $name,
+        public string $email,
         
-        #[MapFrom('firstName')]
+        #[SerializedName('member_since')]
+        public DateTime $createdAt
+    ) {}
+    
+    public static function fromEntity(User $user): self
+    {
+        return new self(
+            id: $user->id,
+            name: $user->name,
+            email: $user->email,
+            createdAt: $user->createdAt
+        );
+    }
+}
+```
+
+### Domain Modeling
+
+```php
+// Value Objects
+final readonly class Money extends GraniteVO
+{
+    public function __construct(
+        #[Required]
+        #[NumberType]
+        #[Min(0)]
+        public float $amount,
+        
+        #[Required]
+        #[StringType]
+        #[Min(3)]
+        #[Max(3)]
+        public string $currency
+    ) {}
+    
+    public function add(Money $other): Money
+    {
+        if ($this->currency !== $other->currency) {
+            throw new InvalidArgumentException('Cannot add different currencies');
+        }
+        
+        return new Money($this->amount + $other->amount, $this->currency);
+    }
+}
+
+// Aggregates
+final readonly class Order extends GraniteVO
+{
+    public function __construct(
+        public ?int $id,
+        
+        #[Required]
+        public int $customerId,
+        
+        #[Required]
+        #[ArrayType]
+        #[Each(new Rules\Callback(fn($item) => OrderItem::from($item)))]
+        public array $items,
+        
+        #[Required]
+        public OrderStatus $status = OrderStatus::PENDING
+    ) {}
+    
+    public function getTotal(): Money
+    {
+        $total = new Money(0.0, 'USD');
+        foreach ($this->items as $item) {
+            $total = $total->add($item->getTotal());
+        }
+        return $total;
+    }
+}
+```
+
+### Object Mapping with ObjectMapper
+
+```php
+use Ninja\Granite\Mapping\ObjectMapper;
+use Ninja\Granite\Mapping\ObjectMapperConfig;
+use Ninja\Granite\Mapping\Attributes\MapFrom;
+
+// Source entity
+final readonly class UserEntity extends GraniteDTO
+{
+    public function __construct(
+        public int $userId,
+        public string $fullName,
+        public string $emailAddress,
+        public DateTime $createdAt
+    ) {}
+}
+
+// Destination DTO with mapping attributes
+final readonly class UserSummary extends GraniteDTO
+{
+    public function __construct(
+        #[MapFrom('userId')]
+        public int $id,
+        
+        #[MapFrom('fullName')]
         public string $name,
         
-        #[MapFrom('lastName')]
-        public string $surname,
-        
+        #[MapFrom('emailAddress')]
         public string $email
     ) {}
 }
 
-$mapper = new AutoMapper();
-$userResponse = $mapper->map($userEntity, UserResponse::class);
+// Create ObjectMapper with clean configuration
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::forProduction()
+        ->withConventions(true, 0.8)
+        ->withSharedCache()
+);
+
+// Automatic mapping
+$summary = $mapper->map($userEntity, UserSummary::class);
 ```
 
-### Immutable Updates
+## 🔥 Advanced Features
+
+### Convention-Based Mapping
 
 ```php
-<?php
+// Automatically maps between different naming conventions
+class SourceClass {
+    public string $firstName;     // camelCase
+    public string $email_address; // snake_case
+    public string $UserID;        // PascalCase
+}
 
-// Create a new instance with modified properties
-$updatedUser = $user->with([
-    'email' => 'newemail@example.com',
-    'age' => 31
-]);
+class DestinationClass {
+    public string $first_name;    // snake_case
+    public string $emailAddress;  // camelCase  
+    public string $user_id;       // snake_case
+}
 
-// Compare objects
-$user->equals($updatedUser); // false
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::create()
+        ->withConventions(true, 0.8)
+);
+
+$result = $mapper->map($source, DestinationClass::class);
+// Properties automatically mapped based on naming conventions!
 ```
 
-## Documentation
-
-For detailed documentation and advanced usage examples, see:
-
-- **[Validation](docs/validation.md)** - Comprehensive validation system with attributes and custom rules
-- **[Serialization](docs/serialization.md)** - Control how objects are converted to/from arrays and JSON
-- **[AutoMapper](docs/automapper.md)** - Map data between different object structures automatically
-
-## Key Concepts
-
-### DTOs vs Value Objects
-
-- **DTOs (GraniteDTO)**: Simple data containers for transferring data between layers
-- **Value Objects (GraniteVO)**: DTOs with built-in validation for ensuring data integrity
-
-### Validation Approaches
-
-You can define validation rules in two ways:
+### Advanced ObjectMapper Configuration
 
 ```php
-// Using attributes (recommended for simple rules)
-#[Required]
-#[Email]
-public string $email;
+use Ninja\Granite\Mapping\ObjectMapperConfig;
+use Ninja\Granite\Mapping\MappingProfile;
 
-// Using methods (for complex rules)
-protected static function rules(): array
+// Fluent configuration with builder pattern
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::forProduction()
+        ->withSharedCache()
+        ->withConventions(true, 0.8)
+        ->withProfile(new UserMappingProfile())
+        ->withProfile(new ProductMappingProfile())
+        ->withWarmup()
+);
+
+// Predefined configurations
+$devMapper = new ObjectMapper(ObjectMapperConfig::forDevelopment());
+$prodMapper = new ObjectMapper(ObjectMapperConfig::forProduction());
+$testMapper = new ObjectMapper(ObjectMapperConfig::forTesting());
+```
+
+### Custom Mapping Profiles
+
+```php
+use Ninja\Granite\Mapping\MappingProfile;
+
+class UserMappingProfile extends MappingProfile
 {
-    return [
-        'email' => 'required|email',
-        'age' => 'integer|min:18|max:120'
-    ];
+    protected function configure(): void
+    {
+        // Complex transformations
+        $this->createMap(UserEntity::class, UserResponse::class)
+            ->forMember('fullName', fn($m) => 
+                $m->using(function($value, $sourceData) {
+                    return $sourceData['firstName'] . ' ' . $sourceData['lastName'];
+                })
+            )
+            ->forMember('age', fn($m) => 
+                $m->mapFrom('birthDate')
+                  ->using(fn($birthDate) => (new DateTime())->diff($birthDate)->y)
+            )
+            ->forMember('isActive', fn($m) => 
+                $m->mapFrom('status')
+                  ->using(fn($status) => $status === 'active')
+            )
+            ->seal();
+
+        // Bidirectional mapping
+        $this->createMapBidirectional(UserEntity::class, UserDto::class)
+            ->forMembers('userId', 'id')
+            ->forMembers('fullName', 'name')
+            ->forMembers('emailAddress', 'email')
+            ->seal();
+    }
 }
 ```
 
-### Serialization Control
-
-Customize how your objects are serialized:
+### Complex Validation
 
 ```php
-// Using attributes
-#[SerializedName('api_key')]
-#[Hidden]
-public string $apiKey;
-
-// Using methods
-protected static function serializedNames(): array
-{
-    return ['apiKey' => 'api_key'];
-}
-
-protected static function hiddenProperties(): array
-{
-    return ['apiKey', 'password'];
-}
-```
-
-## Examples
-
-### Building an API Response
-
-```php
-<?php
-
-final readonly class ApiResponse extends GraniteDTO
-{
-    public function __construct(
-        public bool $success,
-        public ?array $data = null,
-        public ?string $message = null,
-        
-        #[Hidden]
-        public ?array $debug = null
-    ) {}
-}
-
-$response = ApiResponse::from([
-    'success' => true,
-    'data' => ['users' => [...]],
-    'debug' => ['query_time' => '50ms']
-]);
-
-// Only success, data, and message are included in output
-echo $response->json();
-```
-
-### Product Catalog Example
-
-```php
-<?php
-
-enum ProductStatus: string
-{
-    case ACTIVE = 'active';
-    case INACTIVE = 'inactive';
-    case OUT_OF_STOCK = 'out_of_stock';
-}
-
-final readonly class Product extends GraniteVO
+final readonly class CreditCard extends GraniteVO
 {
     public function __construct(
         #[Required]
-        #[Min(1)]
-        public string $name,
+        #[Regex('/^\d{4}\s?\d{4}\s?\d{4}\s?\d{4}$/', 'Invalid card number format')]
+        public string $number,
         
         #[Required]
-        #[Min(0.01)]
-        public float $price,
+        #[Regex('/^(0[1-9]|1[0-2])\/([0-9]{2})$/', 'Invalid expiry format (MM/YY)')]
+        public string $expiry,
         
         #[Required]
-        public ProductStatus $status,
+        #[Regex('/^\d{3,4}$/', 'Invalid CVV')]
+        public string $cvv,
         
-        #[ArrayType]
-        public array $tags = []
+        #[When(
+            condition: fn($value, $data) => $data['type'] === 'business',
+            rule: new Required()
+        )]
+        public ?string $companyName = null
     ) {}
+    
+    protected static function rules(): array
+    {
+        return [
+            'number' => [
+                new Callback(function($number) {
+                    // Luhn algorithm validation
+                    return $this->isValidLuhn(str_replace(' ', '', $number));
+                }, 'Invalid credit card number')
+            ]
+        ];
+    }
 }
 ```
+
+### Global ObjectMapper Configuration
+
+```php
+// Configure once at application startup
+ObjectMapper::configure(function(ObjectMapperConfig $config) {
+    $config->withSharedCache()
+           ->withConventions(true, 0.8)
+           ->withProfiles([
+               new UserMappingProfile(),
+               new ProductMappingProfile(),
+               new OrderMappingProfile()
+           ])
+           ->withWarmup();
+});
+
+// Use anywhere in your application
+$mapper = ObjectMapper::getInstance();
+$userDto = $mapper->map($userEntity, UserDto::class);
+```
+
+## 🛠 Validation Rules
+
+### Built-in Rules
+
+| Rule | Description | Example |
+|------|-------------|---------|
+| `#[Required]` | Field must not be null | `#[Required('Name is required')]` |
+| `#[Email]` | Valid email format | `#[Email('Invalid email')]` |
+| `#[Min(5)]` | Minimum length/value | `#[Min(5, 'Too short')]` |
+| `#[Max(100)]` | Maximum length/value | `#[Max(100, 'Too long')]` |
+| `#[Regex('/pattern/')]` | Regular expression | `#[Regex('/^\d+$/', 'Numbers only')]` |
+| `#[In(['a', 'b'])]` | Value in list | `#[In(['active', 'inactive'])]` |
+| `#[Url]` | Valid URL format | `#[Url('Invalid URL')]` |
+| `#[IpAddress]` | Valid IP address | `#[IpAddress('Invalid IP')]` |
+| `#[StringType]` | Must be string | `#[StringType]` |
+| `#[IntegerType]` | Must be integer | `#[IntegerType]` |
+| `#[NumberType]` | Must be number | `#[NumberType]` |
+| `#[BooleanType]` | Must be boolean | `#[BooleanType]` |
+| `#[ArrayType]` | Must be array | `#[ArrayType]` |
+| `#[EnumType]` | Valid enum value | `#[EnumType(Status::class)]` |
+| `#[Each(...)]` | Validate array items | `#[Each(new Email())]` |
+| `#[When(...)]` | Conditional validation | `#[When($condition, $rule)]` |
+
+## 📈 Performance
+
+Granite is optimized for performance with:
+
+- **Reflection caching** - Class metadata cached automatically
+- **Mapping cache** - ObjectMapper configurations cached
+- **Memory efficiency** - Immutable objects reduce memory overhead
+- **Lazy loading** - Load related data only when needed
+- **Specialized components** - Refactored architecture with focused responsibilities
+
+```php
+// Use shared cache for web applications
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::forProduction()
+        ->withSharedCache()
+        ->withWarmup()  // Preload configurations
+);
+
+// Preload mappings for better performance
+use Ninja\Granite\Mapping\MappingPreloader;
+
+MappingPreloader::preload($mapper, [
+    [UserEntity::class, UserResponse::class],
+    [ProductEntity::class, ProductResponse::class]
+]);
+```
+
+## 🧪 Testing
+
+Granite objects are perfect for testing due to their immutability and validation:
+
+```php
+class UserTest extends PHPUnit\Framework\TestCase
+{
+    public function testUserCreation(): void
+    {
+        $user = User::from([
+            'name' => 'John Doe',
+            'email' => 'john@example.com'
+        ]);
+        
+        $this->assertEquals('John Doe', $user->name);
+        $this->assertEquals('john@example.com', $user->email);
+    }
+    
+    public function testObjectMapping(): void
+    {
+        $mapper = new ObjectMapper(ObjectMapperConfig::forTesting());
+        
+        $entity = new UserEntity(1, 'John Doe', 'john@example.com', new DateTime());
+        $dto = $mapper->map($entity, UserDto::class);
+        
+        $this->assertInstanceOf(UserDto::class, $dto);
+        $this->assertEquals(1, $dto->id);
+    }
+    
+    public function testImmutability(): void
+    {
+        $user = User::from(['name' => 'John', 'email' => 'john@example.com']);
+        $updated = $user->with(['name' => 'Jane']);
+        
+        // Original unchanged
+        $this->assertEquals('John', $user->name);
+        // New instance created
+        $this->assertEquals('Jane', $updated->name);
+    }
+}
+```
+
+## 🔧 Requirements
+
+- **PHP 8.3+** - Takes advantage of modern PHP features
+- **No dependencies** - Zero external dependencies for maximum compatibility
+
+## 📦 Installation & Setup
+
+```bash
+# Install via Composer
+composer require diego-ninja/granite
+
+# Optional: Configure cache directory for persistent mapping cache
+mkdir cache/granite
+chmod 755 cache/granite
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This package is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 ## 🙏 Credits
 
 This project is developed and maintained by 🥷 [Diego Rin](https://diego.ninja) in his free time.
 
-If you find this project useful, please consider giving it a ⭐ on GitHub!
+If you find this project useful, please consider:
+- ⭐ Starring the repository
+- 🐛 Reporting bugs and issues
+- 💡 Suggesting new features
+- 🔧 Contributing code improvements
 
-## License
+---
 
-This package is open-sourced software licensed under the MIT license.
+**Made with ❤️ for the PHP community**

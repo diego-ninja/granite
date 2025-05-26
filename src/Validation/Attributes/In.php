@@ -27,7 +27,7 @@ class In
         $this->message = $message;
     }
 
-    public function toRule(): Rules\In
+    public function asRule(): Rules\In
     {
         $rule = new Rules\In($this->values);
 

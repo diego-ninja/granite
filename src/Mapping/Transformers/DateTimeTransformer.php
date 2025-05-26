@@ -3,9 +3,9 @@
 namespace Ninja\Granite\Mapping\Transformers;
 
 use DateMalformedStringException;
-use DateTimeInterface;
 use DateTimeImmutable;
-use Ninja\Granite\Contracts\Transformer;
+use DateTimeInterface;
+use Ninja\Granite\Mapping\Contracts\Transformer;
 
 final readonly class DateTimeTransformer implements Transformer
 {
@@ -13,9 +13,6 @@ final readonly class DateTimeTransformer implements Transformer
         private string $format = DateTimeInterface::ATOM
     ) {}
 
-    /**
-     * @throws DateMalformedStringException
-     */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
         if ($value === null) {
@@ -23,11 +20,15 @@ final readonly class DateTimeTransformer implements Transformer
         }
 
         if ($value instanceof DateTimeInterface) {
-            return $value->format($this->format);
+            return $value;
         }
 
         if (is_string($value)) {
-            return new DateTimeImmutable($value);
+            try {
+                return new DateTimeImmutable($value);
+            } catch (\Exception $e) {
+                return null;
+            }
         }
 
         return $value;

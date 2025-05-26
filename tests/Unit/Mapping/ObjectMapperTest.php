@@ -1,18 +1,18 @@
 <?php
-// tests/Unit/Mapping/AutoMapperTest.php
+// tests/Unit/Mapping/ObjectMapperTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Mapping;
 
-use Tests\Fixtures\Automapper\DTO\ComplexDTO;
-use Tests\Fixtures\Automapper\TestMappingProfile;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
+use Ninja\Granite\Mapping\Contracts\Mapper;
+use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MappingProfile;
-use Ninja\Granite\Contracts\Mapper;
-use Ninja\Granite\Exceptions\MappingException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\Automapper\DTO\ComplexDTO;
 use Tests\Fixtures\Automapper\DTO\DestinationDTO;
 use Tests\Fixtures\Automapper\DTO\IgnoreDTO;
 use Tests\Fixtures\Automapper\DTO\MappedDTO;
@@ -20,18 +20,19 @@ use Tests\Fixtures\Automapper\DTO\NestedMappingDTO;
 use Tests\Fixtures\Automapper\DTO\ProfileMappedDTO;
 use Tests\Fixtures\Automapper\DTO\TransformerDTO;
 use Tests\Fixtures\Automapper\SourceObject;
-use Tests\Helpers\TestCase;
-use Tests\Fixtures\DTOs\UserDTO;
+use Tests\Fixtures\Automapper\TestMappingProfile;
 use Tests\Fixtures\DTOs\SimpleDTO;
+use Tests\Fixtures\DTOs\UserDTO;
+use Tests\Helpers\TestCase;
 
-#[CoversClass(AutoMapper::class)]
-class AutoMapperTest extends TestCase
+#[CoversClass(ObjectMapper::class)]
+class ObjectMapperTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
 
     protected function setUp(): void
     {
-        $this->mapper = new AutoMapper();
+        $this->mapper = new ObjectMapper();
         parent::setUp();
     }
 
@@ -42,17 +43,17 @@ class AutoMapperTest extends TestCase
 
     public function test_creates_mapper_without_profiles(): void
     {
-        $mapper = new AutoMapper();
+        $mapper = new ObjectMapper();
 
-        $this->assertInstanceOf(AutoMapper::class, $mapper);
+        $this->assertInstanceOf(ObjectMapper::class, $mapper);
     }
 
     public function test_creates_mapper_with_profiles(): void
     {
         $profile = $this->createMock(MappingProfile::class);
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
-        $this->assertInstanceOf(AutoMapper::class, $mapper);
+        $this->assertInstanceOf(ObjectMapper::class, $mapper);
     }
 
     public function test_adds_mapping_profile(): void
@@ -267,7 +268,7 @@ class AutoMapperTest extends TestCase
     public function test_maps_with_mapping_profile(): void
     {
         $profile = new TestMappingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = [
             'first_name' => 'John',

@@ -145,6 +145,10 @@ abstract readonly class GraniteDTO implements GraniteObject
 
         // Check for DateTime
         if ($typeName === DateTimeInterface::class || is_subclass_of($typeName, DateTimeInterface::class)) {
+            if ($value instanceof DateTimeInterface) {
+                return $value;
+            }
+
             return $value ? new DateTimeImmutable($value) : null;
         }
 

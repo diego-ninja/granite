@@ -29,7 +29,7 @@ class Min extends AbstractRule
         }
 
         if (is_string($value)) {
-            return strlen($value) >= $this->min;
+            return mb_strlen($value) >= $this->min;
         } elseif (is_int($value) || is_float($value)) {
             return $value >= $this->min;
         } elseif (is_array($value)) {

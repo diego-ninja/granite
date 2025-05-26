@@ -27,7 +27,7 @@ class Max extends AbstractRule
         }
 
         if (is_string($value)) {
-            return strlen($value) <= $this->max;
+            return mb_strlen($value) <= $this->max;
         } elseif (is_int($value) || is_float($value)) {
             return $value <= $this->max;
         } elseif (is_array($value)) {
