@@ -7,7 +7,8 @@ use DateTimeInterface;
 use InvalidArgumentException;
 use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\GraniteDTO;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
@@ -23,10 +24,10 @@ use Tests\Fixtures\Enums\Priority;
 use Tests\Helpers\TestCase;
 use Tests\Unit\Mapping\Fixtures\Basic;
 
-#[CoversClass(AutoMapper::class)]
+#[CoversClass(ObjectMapper::class)]
 class BasicMappingTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
 
     protected function setUp(): void
     {
@@ -39,7 +40,7 @@ class BasicMappingTest extends TestCase
             new Basic\ClassTransformerProfile()
         ];
         
-        $this->mapper = new AutoMapper($profiles);
+        $this->mapper = new ObjectMapper(MapperConfig::create()->withProfiles($profiles));
         parent::setUp();
     }
 
@@ -53,9 +54,9 @@ class BasicMappingTest extends TestCase
     public function it_can_be_created_with_profiles(): void
     {
         $profile = $this->createMock(MappingProfile::class);
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
-        $this->assertInstanceOf(AutoMapper::class, $mapper);
+        $this->assertInstanceOf(ObjectMapper::class, $mapper);
     }
 
     #[Test]
@@ -248,7 +249,7 @@ class BasicMappingTest extends TestCase
     public function it_applies_mapping_profile(): void
     {
         $profile = new Basic\UserMappingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = [
             'firstName' => 'John',
@@ -268,7 +269,7 @@ class BasicMappingTest extends TestCase
     public function it_combines_profile_and_attribute_mapping(): void
     {
         $profile = new Basic\UserMappingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = [
             'firstName' => 'John',
@@ -441,7 +442,7 @@ class BasicMappingTest extends TestCase
     public function it_applies_chained_transformers(): void
     {
         $profile = new Basic\ChainedTransformerProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = ['text' => 'hello world'];
         $result = $mapper->map($source, Basic\ChainedTransformerDTO::class);
@@ -453,7 +454,7 @@ class BasicMappingTest extends TestCase
     public function it_handles_complex_mapping_configurations(): void
     {
         $profile = new Basic\ComplexMappingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = [
             'user' => [
@@ -481,7 +482,7 @@ class BasicMappingTest extends TestCase
     public function it_handles_circular_references(): void
     {
         $profile = new Basic\CircularReferenceProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = [
             'id' => 1,

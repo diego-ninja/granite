@@ -800,7 +800,7 @@ try {
 ### Test Mapping Step by Step
 
 ```php
-// Debug AutoMapper step by step
+// Debug ObjectMapper step by step
 $mapper = new AutoMapper();
 
 echo "Source data:\n";

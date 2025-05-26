@@ -497,7 +497,7 @@ $dto = $mapper->map($entity, UserDto::class);
 
 ```php
 use Ninja\Granite\Mapping\MappingProfile;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\ObjectMapper;
 
 class UserMappingProfile extends MappingProfile
 {
@@ -515,7 +515,7 @@ class UserMappingProfile extends MappingProfile
 }
 
 // Usage
-$mapper = new AutoMapper([
+$mapper = new ObjectMapper([
     new UserMappingProfile()
 ]);
 

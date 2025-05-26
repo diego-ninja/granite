@@ -8,7 +8,7 @@ use Ninja\Granite\Mapping\Contracts\Transformer;
 final class CollectionTransformer implements Transformer
 {
     /**
-     * @param Mapper|null $mapper AutoMapper instance
+     * @param Mapper|null $mapper ObjectMapper instance
      * @param string $destinationType Target item type for collection elements
      * @param bool $preserveKeys Whether to preserve array keys
      * @param bool $recursive Whether to recursively transform nested collections

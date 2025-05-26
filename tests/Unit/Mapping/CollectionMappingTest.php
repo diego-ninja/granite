@@ -2,7 +2,8 @@
 
 namespace Tests\Unit\Mapping;
 
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Helpers\TestCase;
@@ -21,15 +22,15 @@ use Tests\Unit\Mapping\Fixtures\Collection\TeamMemberNestedDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\TeamNestedDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\TodoListDTO;
 
-#[CoversClass(AutoMapper::class)]
+#[CoversClass(ObjectMapper::class)]
 class CollectionMappingTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
 
     protected function setUp(): void
     {
         $profile = new CollectionMappingProfile();
-        $this->mapper = new AutoMapper([$profile]);
+        $this->mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
         parent::setUp();
     }
 

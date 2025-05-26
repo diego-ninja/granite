@@ -12,12 +12,12 @@ class MappingPreloader
     /**
      * Preload mapping configurations for a list of type pairs.
      *
-     * @param AutoMapper $mapper Mapper to preload for
+     * @param ObjectMapper $mapper Mapper to preload for
      * @param array $typePairs Array of [sourceType, destinationType] pairs
      * @return int Number of preloaded mappings
      * @throws MappingException
      */
-    public static function preload(AutoMapper $mapper, array $typePairs): int
+    public static function preload(ObjectMapper $mapper, array $typePairs): int
     {
         $count = 0;
 
@@ -46,13 +46,13 @@ class MappingPreloader
     /**
      * Preload common DTO-Entity pairs from a given namespace.
      *
-     * @param AutoMapper $mapper Mapper to preload for
+     * @param ObjectMapper $mapper Mapper to preload for
      * @param string $namespace Namespace to scan
      * @param array $suffixes Array of suffixes to match (e.g. ['DTO', 'Entity'])
      * @return int Number of preloaded mappings
      * @throws MappingException
      */
-    public static function preloadFromNamespace(AutoMapper $mapper, string $namespace, array $suffixes = ['DTO', 'Entity']): int
+    public static function preloadFromNamespace(ObjectMapper $mapper, string $namespace, array $suffixes = ['DTO', 'Entity']): int
     {
         $count = 0;
         $classes = self::scanNamespace($namespace);

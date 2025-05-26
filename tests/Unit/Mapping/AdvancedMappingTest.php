@@ -5,25 +5,25 @@ namespace Tests\Unit\Mapping;
 use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\GraniteVO;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 use Ninja\Granite\Mapping\Attributes\MapWith;
-use Ninja\Granite\Mapping\Transformers\DateTimeTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Helpers\TestCase;
 
-#[CoversClass(AutoMapper::class)]
+#[CoversClass(ObjectMapper::class)]
 class AdvancedMappingTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
 
     protected function setUp(): void
     {
-        $this->mapper = new AutoMapper();
+        $this->mapper = ObjectMapper::getInstance();
         parent::setUp();
     }
 
@@ -61,7 +61,7 @@ class AdvancedMappingTest extends TestCase
     public function it_handles_array_of_nested_objects(): void
     {
         $profile = new NestedArrayProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = [
             'id' => 1,
@@ -88,7 +88,7 @@ class AdvancedMappingTest extends TestCase
     public function it_applies_conditional_mapping_based_on_source_data(): void
     {
         $profile = new ConditionalMappingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         // Test with admin user
         $adminSource = [
@@ -117,7 +117,7 @@ class AdvancedMappingTest extends TestCase
     public function it_handles_polymorphic_mapping(): void
     {
         $profile = new PolymorphicMappingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $shapes = [
             ['type' => 'circle', 'radius' => 5],
@@ -187,7 +187,7 @@ class AdvancedMappingTest extends TestCase
     public function it_handles_circular_references_with_lazy_loading(): void
     {
         $profile = new CircularReferenceHandlingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $source = [
             'id' => 1,
@@ -353,8 +353,8 @@ class AdvancedMappingTest extends TestCase
                     });
             }
         };
-        
-        $mapper = new AutoMapper([$profile]);
+
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         // Forward mapping: UserEntity -> UserDTO
         $entity = [
@@ -387,7 +387,7 @@ class AdvancedMappingTest extends TestCase
             'currency' => 'USD'
         ];
 
-        $mapper = new AutoMapper([new class extends MappingProfile {
+        $profile = new class extends MappingProfile {
             protected function configure(): void
             {
                 $this->createMap('array', CustomAttributeDTO::class)
@@ -396,8 +396,9 @@ class AdvancedMappingTest extends TestCase
                             ->using(new CurrencyTransformer('$'));
                     });
             }
-        }]);
+        };
 
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
         $result = $mapper->map($source, CustomAttributeDTO::class);
 
         $this->assertEquals('$100.00', $result->formattedValue);

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Mapping\Conventions;
 
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\ConventionMapper;
 use Ninja\Granite\Mapping\TypeMapping;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -10,11 +10,11 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\Helpers\Storage\TestMappingStorage;
 use Tests\Helpers\TestCase;
 
-#[CoversClass(AutoMapper::class)]
+#[CoversClass(ObjectMapper::class)]
 #[CoversClass(ConventionMapper::class)]
 class ConventionIntegrationTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
     private ConventionMapper $conventionMapper;
     private TestMappingStorage $storage;
 
@@ -24,9 +24,9 @@ class ConventionIntegrationTest extends TestCase
         $this->conventionMapper = new ConventionMapper();
         $this->storage = new TestMappingStorage();
         
-        // Crear una instancia de AutoMapper (si necesitamos usarla más adelante)
+        // Crear una instancia de ObjectMapper (si necesitamos usarla más adelante)
         // Por ahora nos enfocamos en testear el ConventionMapper directamente
-        $this->mapper = new AutoMapper();
+        $this->mapper = new ObjectMapper();
     }
 
     #[Test]

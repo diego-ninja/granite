@@ -3,7 +3,8 @@
 namespace Tests\Unit\Mapping;
 
 use Ninja\Granite\GraniteDTO;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
@@ -15,11 +16,11 @@ use stdClass;
 
 class PerformanceMappingTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
 
     protected function setUp(): void
     {
-        $this->mapper = new AutoMapper();
+        $this->mapper = ObjectMapper::getInstance();
         parent::setUp();
     }
 
@@ -139,7 +140,7 @@ class PerformanceMappingTest extends TestCase
     public function it_maintains_performance_with_complex_transformations(): void
     {
         $profile = new PerformanceTestingProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
 
         $complexData = [];
         for ($i = 0; $i < 1000; $i++) {
@@ -245,7 +246,7 @@ class PerformanceMappingTest extends TestCase
     public function it_handles_boundary_values_correctly($value, string $expectedResult): void
     {
         $profile = new BoundaryValueProfile();
-        $mapper = new AutoMapper([$profile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
         
         $source = ['value' => $value];
         $result = $mapper->map($source, BoundaryValueDTO::class);
@@ -275,7 +276,7 @@ class PerformanceMappingTest extends TestCase
         $profile2 = new ConflictingProfile2();
 
         // Last profile should win in conflicts
-        $mapper = new AutoMapper([$profile1, $profile2]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfiles([$profile1, $profile2]));
 
         $source = ['value' => 'test'];
         $result = $mapper->map($source, ConflictingConfigDTO::class);
@@ -287,7 +288,7 @@ class PerformanceMappingTest extends TestCase
     public function it_handles_profiles_with_no_mappings(): void
     {
         $emptyProfile = new EmptyMappingProfile();
-        $mapper = new AutoMapper([$emptyProfile]);
+        $mapper = new ObjectMapper(MapperConfig::create()->withProfile($emptyProfile));
 
         $source = ['id' => 1, 'name' => 'test'];
         $result = $mapper->map($source, SimpleTestDTO::class);

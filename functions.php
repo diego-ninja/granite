@@ -1,12 +1,12 @@
 <?php
 
 use Ninja\Granite\Exceptions\GraniteException;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 
 if (!function_exists('map')) {
     /**
-     * Map an object or array to a destination type using global AutoMapper instance.
+     * Map an object or array to a destination type using global ObjectMapper instance.
      *
      * @template T
      * @param mixed $source Source data (object, array, or JSON string)
@@ -26,13 +26,13 @@ if (!function_exists('map')) {
      */
     function map(mixed $source, string $destinationType): object
     {
-        return AutoMapper::getInstance()->map($source, $destinationType);
+        return ObjectMapper::getInstance()->map($source, $destinationType);
     }
 }
 
 if (!function_exists('map_array')) {
     /**
-     * Map an array of objects to a destination type using global AutoMapper instance.
+     * Map an array of objects to a destination type using global ObjectMapper instance.
      *
      * @template T
      * @param array $source Array of source objects
@@ -42,7 +42,7 @@ if (!function_exists('map_array')) {
      */
     function map_array(array $source, string $destinationType): array
     {
-        return AutoMapper::getInstance()->mapArray($source, $destinationType);
+        return ObjectMapper::getInstance()->mapArray($source, $destinationType);
     }
 }
 
@@ -57,13 +57,13 @@ if (!function_exists('map_to')) {
      */
     function map_to(mixed $source, object $destination): object
     {
-        return AutoMapper::getInstance()->mapTo($source, $destination);
+        return ObjectMapper::getInstance()->mapTo($source, $destination);
     }
 }
 
 if (!function_exists('configure_mapper')) {
     /**
-     * Configure the global AutoMapper instance.
+     * Configure the global ObjectMapper instance.
      *
      * @param callable $configurator Configuration callback
      *
@@ -75,6 +75,6 @@ if (!function_exists('configure_mapper')) {
      */
     function configure_mapper(callable $configurator): void
     {
-        AutoMapper::configure($configurator);
+        ObjectMapper::configure($configurator);
     }
 }

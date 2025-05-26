@@ -2,14 +2,15 @@
 
 namespace Tests\Unit\Mapping\Fixtures\Collection;
 
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\Transformers\CollectionTransformer;
 
 class CollectionMappingProfile extends MappingProfile
 {
-    private ?AutoMapper $mapper = null;
+    private ?ObjectMapper $mapper = null;
 
     /**
      * @throws MappingException
@@ -96,10 +97,10 @@ class CollectionMappingProfile extends MappingProfile
             );
     }
 
-    public function getMapper(): AutoMapper
+    public function getMapper(): ObjectMapper
     {
         if ($this->mapper === null) {
-            $this->mapper = new AutoMapper([$this]);
+            $this->mapper = new ObjectMapper(MapperConfig::create()->withProfile($this));
         }
         return $this->mapper;
     }

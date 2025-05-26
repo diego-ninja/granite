@@ -3,7 +3,8 @@
 namespace Tests\Unit\Mapping\Fixtures\Bidirectional;
 
 use Ninja\Granite\Exceptions\GraniteException;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MappingProfile;
 
@@ -89,7 +90,7 @@ class BidirectionalMappingProfile extends MappingProfile
             ->forMember('items', function($mapping) {
                 $mapping->using(function($value, $source) {
                     $items = $source['items'] ?? [];
-                    $mapper = new AutoMapper([$this]);
+                    $mapper = new ObjectMapper(MapperConfig::create()->withProfile($this));
                     return $mapper->mapArray($items, OrderItemDTO::class);
                 });
             })
@@ -119,7 +120,7 @@ class BidirectionalMappingProfile extends MappingProfile
             ->forMember('items', function($mapping) {
                 $mapping->using(function($value, $source) {
                     $items = $source['items'] ?? [];
-                    $mapper = new AutoMapper([$this]);
+                    $mapper = new ObjectMapper(MapperConfig::create()->withProfile($this));
                     return $mapper->mapArray($items, OrderItemEntity::class);
                 });
             })

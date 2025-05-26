@@ -2,8 +2,10 @@
 
 namespace Tests\Unit\Mapping;
 
+use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Exceptions\GraniteException;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MappingProfile;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -17,15 +19,18 @@ use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderItemEntity;
 use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderItemDTO;
 use Tests\Unit\Mapping\Fixtures\Bidirectional\BidirectionalMappingProfile;
 
-#[CoversClass(AutoMapper::class)]
+#[CoversClass(ObjectMapper::class)]
 class BidirectionalMappingTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
 
     protected function setUp(): void
     {
         $profile = new BidirectionalMappingProfile();
-        $this->mapper = new AutoMapper([$profile]);
+        $this->mapper = new ObjectMapper(
+            MapperConfig::create()
+                ->withProfile($profile)
+        );
         parent::setUp();
     }
 

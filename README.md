@@ -22,7 +22,7 @@ A powerful, zero-dependency PHP library for building **immutable**, **serializab
 - Custom validation rules and callbacks
 - Conditional and nested validation
 
-### 🔄 **Powerful AutoMapper**
+### 🔄 **Powerful ObjectMapper**
 - Automatic property mapping between objects
 - Convention-based mapping with multiple naming conventions
 - Custom transformations and collection mapping
@@ -105,8 +105,10 @@ $array = $user->array();
 
 - **[Validation](docs/validation.md)** - Comprehensive validation system with 25+ built-in rules
 - **[Serialization](docs/serialization.md)** - Control how objects are converted to/from arrays and JSON
-- **[AutoMapper](docs/automapper.md)** - Powerful object-to-object mapping with conventions
+- **[ObjectMapper](docs/objectmapper.md)** - Powerful object-to-object mapping with conventions
 - **[Advanced Usage](docs/advanced_usage.md)** - Patterns for complex applications
+- **[API Reference](docs/api_reference.md)** - Complete API documentation
+
 
 ### Guides
 
@@ -220,10 +222,11 @@ final readonly class Order extends GraniteVO
 }
 ```
 
-### Object Mapping
+### Object Mapping with ObjectMapper
 
 ```php
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\ObjectMapper;
+use Ninja\Granite\Mapping\ObjectMapperConfig;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 
 // Source entity
@@ -237,7 +240,7 @@ final readonly class UserEntity extends GraniteDTO
     ) {}
 }
 
-// Destination DTO with mapping
+// Destination DTO with mapping attributes
 final readonly class UserSummary extends GraniteDTO
 {
     public function __construct(
@@ -252,8 +255,14 @@ final readonly class UserSummary extends GraniteDTO
     ) {}
 }
 
+// Create ObjectMapper with clean configuration
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::forProduction()
+        ->withConventions(true, 0.8)
+        ->withSharedCache()
+);
+
 // Automatic mapping
-$mapper = new AutoMapper();
 $summary = $mapper->map($userEntity, UserSummary::class);
 ```
 
@@ -275,9 +284,71 @@ class DestinationClass {
     public string $user_id;       // snake_case
 }
 
-$mapper = new AutoMapper(useConventions: true);
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::create()
+        ->withConventions(true, 0.8)
+);
+
 $result = $mapper->map($source, DestinationClass::class);
 // Properties automatically mapped based on naming conventions!
+```
+
+### Advanced ObjectMapper Configuration
+
+```php
+use Ninja\Granite\Mapping\ObjectMapperConfig;
+use Ninja\Granite\Mapping\MappingProfile;
+
+// Fluent configuration with builder pattern
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::forProduction()
+        ->withSharedCache()
+        ->withConventions(true, 0.8)
+        ->withProfile(new UserMappingProfile())
+        ->withProfile(new ProductMappingProfile())
+        ->withWarmup()
+);
+
+// Predefined configurations
+$devMapper = new ObjectMapper(ObjectMapperConfig::forDevelopment());
+$prodMapper = new ObjectMapper(ObjectMapperConfig::forProduction());
+$testMapper = new ObjectMapper(ObjectMapperConfig::forTesting());
+```
+
+### Custom Mapping Profiles
+
+```php
+use Ninja\Granite\Mapping\MappingProfile;
+
+class UserMappingProfile extends MappingProfile
+{
+    protected function configure(): void
+    {
+        // Complex transformations
+        $this->createMap(UserEntity::class, UserResponse::class)
+            ->forMember('fullName', fn($m) => 
+                $m->using(function($value, $sourceData) {
+                    return $sourceData['firstName'] . ' ' . $sourceData['lastName'];
+                })
+            )
+            ->forMember('age', fn($m) => 
+                $m->mapFrom('birthDate')
+                  ->using(fn($birthDate) => (new DateTime())->diff($birthDate)->y)
+            )
+            ->forMember('isActive', fn($m) => 
+                $m->mapFrom('status')
+                  ->using(fn($status) => $status === 'active')
+            )
+            ->seal();
+
+        // Bidirectional mapping
+        $this->createMapBidirectional(UserEntity::class, UserDto::class)
+            ->forMembers('userId', 'id')
+            ->forMembers('fullName', 'name')
+            ->forMembers('emailAddress', 'email')
+            ->seal();
+    }
+}
 ```
 
 ### Complex Validation
@@ -319,44 +390,24 @@ final readonly class CreditCard extends GraniteVO
 }
 ```
 
-### Event Sourcing
+### Global ObjectMapper Configuration
 
 ```php
-abstract readonly class DomainEvent extends GraniteDTO
-{
-    public function __construct(
-        #[Required]
-        public string $eventId,
-        
-        #[Required]
-        public string $aggregateId,
-        
-        #[Required]
-        #[SerializedName('event_type')]
-        public string $eventType,
-        
-        #[Required]
-        #[SerializedName('occurred_at')]
-        public DateTime $occurredAt
-    ) {}
-}
+// Configure once at application startup
+ObjectMapper::configure(function(ObjectMapperConfig $config) {
+    $config->withSharedCache()
+           ->withConventions(true, 0.8)
+           ->withProfiles([
+               new UserMappingProfile(),
+               new ProductMappingProfile(),
+               new OrderMappingProfile()
+           ])
+           ->withWarmup();
+});
 
-final readonly class UserCreatedEvent extends DomainEvent
-{
-    public function __construct(
-        string $eventId,
-        string $aggregateId,
-        DateTime $occurredAt,
-        
-        #[Required]
-        public string $name,
-        
-        #[Required]
-        public string $email
-    ) {
-        parent::__construct($eventId, $aggregateId, 'user_created', $occurredAt);
-    }
-}
+// Use anywhere in your application
+$mapper = ObjectMapper::getInstance();
+$userDto = $mapper->map($userEntity, UserDto::class);
 ```
 
 ## 🛠 Validation Rules
@@ -382,151 +433,27 @@ final readonly class UserCreatedEvent extends DomainEvent
 | `#[Each(...)]` | Validate array items | `#[Each(new Email())]` |
 | `#[When(...)]` | Conditional validation | `#[When($condition, $rule)]` |
 
-### Custom Rules
-
-```php
-class UniqueEmail extends AbstractRule
-{
-    public function __construct(private UserRepository $repo) {}
-    
-    public function validate(mixed $value, ?array $allData = null): bool
-    {
-        return $value === null || !$this->repo->existsByEmail($value);
-    }
-    
-    protected function defaultMessage(string $property): string
-    {
-        return "{$property} must be unique";
-    }
-}
-
-// Usage
-#[Required]
-#[Email]
-public string $email;
-
-protected static function rules(): array
-{
-    return [
-        'email' => [new UniqueEmail(new UserRepository())]
-    ];
-}
-```
-
-## 🎨 Serialization Control
-
-```php
-final readonly class ApiUser extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        
-        #[SerializedName('display_name')]
-        public string $name,
-        
-        #[SerializedName('email_address')]
-        public string $email,
-        
-        #[SerializedName('avatar_url')]
-        public ?string $avatarUrl,
-        
-        #[SerializedName('member_since')]
-        public DateTime $createdAt,
-        
-        // Hidden from serialization
-        #[Hidden]
-        public ?string $passwordHash = null,
-        
-        #[Hidden]
-        public ?array $permissions = null
-    ) {}
-}
-
-$user = ApiUser::from($userData);
-$json = $user->json();
-// {
-//   "id": 1,
-//   "display_name": "John Doe", 
-//   "email_address": "john@example.com",
-//   "avatar_url": "https://example.com/avatar.jpg",
-//   "member_since": "2024-01-15T10:30:00+00:00"
-// }
-// passwordHash and permissions are not included
-```
-
-## 🔄 AutoMapper Examples
-
-### Basic Mapping
-
-```php
-$mapper = new AutoMapper();
-
-// Simple mapping
-$userDto = $mapper->map($userEntity, UserDto::class);
-
-// Collection mapping  
-$userDtos = $mapper->mapArray($userEntities, UserDto::class);
-```
-
-### Custom Transformations
-
-```php
-use Ninja\Granite\Mapping\MappingProfile;
-
-class UserMappingProfile extends MappingProfile
-{
-    protected function configure(): void
-    {
-        $this->createMap(UserEntity::class, UserResponse::class)
-            ->forMember('fullName', fn($m) => 
-                $m->using(function($value, $sourceData) {
-                    return $sourceData['firstName'] . ' ' . $sourceData['lastName'];
-                })
-            )
-            ->forMember('age', fn($m) => 
-                $m->mapFrom('birthDate')
-                  ->using(fn($birthDate) => (new DateTime())->diff($birthDate)->y)
-            )
-            ->seal();
-    }
-}
-
-$mapper = new AutoMapper([new UserMappingProfile()]);
-```
-
-### Collection Transformations
-
-```php
-use Ninja\Granite\Mapping\Attributes\MapCollection;
-
-final readonly class TeamResponse extends GraniteDTO
-{
-    public function __construct(
-        public string $name,
-        
-        #[MapCollection(UserResponse::class)]
-        public array $members,
-        
-        #[MapCollection(ProjectResponse::class, preserveKeys: true)]
-        public array $projects
-    ) {}
-}
-```
-
 ## 📈 Performance
 
 Granite is optimized for performance with:
 
 - **Reflection caching** - Class metadata cached automatically
-- **Mapping cache** - AutoMapper configurations cached
+- **Mapping cache** - ObjectMapper configurations cached
 - **Memory efficiency** - Immutable objects reduce memory overhead
 - **Lazy loading** - Load related data only when needed
+- **Specialized components** - Refactored architecture with focused responsibilities
 
 ```php
 // Use shared cache for web applications
-$mapper = new AutoMapper(cacheType: CacheType::Shared);
+$mapper = new ObjectMapper(
+    ObjectMapperConfig::forProduction()
+        ->withSharedCache()
+        ->withWarmup()  // Preload configurations
+);
 
 // Preload mappings for better performance
+use Ninja\Granite\Mapping\MappingPreloader;
+
 MappingPreloader::preload($mapper, [
     [UserEntity::class, UserResponse::class],
     [ProductEntity::class, ProductResponse::class]
@@ -551,14 +478,15 @@ class UserTest extends PHPUnit\Framework\TestCase
         $this->assertEquals('john@example.com', $user->email);
     }
     
-    public function testUserValidation(): void
+    public function testObjectMapping(): void
     {
-        $this->expectException(ValidationException::class);
+        $mapper = new ObjectMapper(ObjectMapperConfig::forTesting());
         
-        User::from([
-            'name' => 'X', // Too short
-            'email' => 'invalid-email'
-        ]);
+        $entity = new UserEntity(1, 'John Doe', 'john@example.com', new DateTime());
+        $dto = $mapper->map($entity, UserDto::class);
+        
+        $this->assertInstanceOf(UserDto::class, $dto);
+        $this->assertEquals(1, $dto->id);
     }
     
     public function testImmutability(): void
@@ -588,30 +516,6 @@ composer require diego-ninja/granite
 # Optional: Configure cache directory for persistent mapping cache
 mkdir cache/granite
 chmod 755 cache/granite
-```
-
-## 🏗 Architecture
-
-Granite follows clean architecture principles:
-
-```
-src/
-├── Contracts/           # Core interfaces
-├── Validation/          # Validation system
-│   ├── Attributes/      # Validation attributes
-│   ├── Rules/           # Validation rules
-│   └── ...
-├── Serialization/       # Serialization system
-│   ├── Attributes/      # Serialization attributes
-│   └── ...
-├── Mapping/             # AutoMapper system
-│   ├── Attributes/      # Mapping attributes
-│   ├── Conventions/     # Naming conventions
-│   ├── Transformers/    # Data transformers
-│   └── ...
-├── Support/             # Utilities (reflection cache, etc.)
-├── Exceptions/          # Custom exceptions
-└── Enums/              # System enums
 ```
 
 ## 🤝 Contributing

@@ -3,7 +3,7 @@
 namespace Tests\Unit\Mapping\Attributes;
 
 use Ninja\Granite\Mapping\Attributes\MapFrom;
-use Ninja\Granite\Mapping\AutoMapper;
+use Ninja\Granite\Mapping\ObjectMapper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -12,11 +12,11 @@ use Tests\Helpers\TestCase;
 #[CoversClass(MapFrom::class)]
 class MapFromTest extends TestCase
 {
-    private AutoMapper $mapper;
+    private ObjectMapper $mapper;
 
     protected function setUp(): void
     {
-        $this->mapper = new AutoMapper();
+        $this->mapper = new ObjectMapper();
         parent::setUp();
     }
 
