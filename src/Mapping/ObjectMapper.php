@@ -118,9 +118,6 @@ final class ObjectMapper implements Mapper, MappingStorage
         return $this;
     }
 
-    /**
-     * @throws ReflectionException
-     */
     private function registerProfiles(array $profiles): void
     {
         foreach ($profiles as $profile) {
