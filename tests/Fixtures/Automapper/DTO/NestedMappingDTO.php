@@ -12,4 +12,10 @@ final readonly class NestedMappingDTO extends GraniteDTO
 
     #[MapFrom('user.profile.email')]
     public string $userEmail;
+
+    public function __construct(string $userName, string $userEmail)
+    {
+        $this->userName = $userName;
+        $this->userEmail = $userEmail;
+    }
 }

@@ -121,4 +121,9 @@ class SharedMappingCache implements MappingCache
             'hit_rate' => round($hitRate, 2) . '%'
         ];
     }
+
+    public static function resetInstanceForTesting(): void
+    {
+        self::$instance = null;
+    }
 }

@@ -29,9 +29,66 @@ abstract readonly class GraniteDTO implements GraniteObject
     public static function from(string|array|GraniteObject $data): static
     {
         $data = self::normalizeInputData($data);
-        $instance = self::createEmptyInstance();
+        $reflectionClass = ReflectionCache::getClass(static::class);
+        $constructor = $reflectionClass->getConstructor(); // Use cached reflection
 
-        return self::hydrateInstance($instance, $data);
+        $propertyCount = count($reflectionClass->getProperties(\ReflectionProperty::IS_PUBLIC | \ReflectionProperty::IS_PROTECTED | \ReflectionProperty::IS_PRIVATE));
+        if (!$constructor && $reflectionClass->isReadOnly() && $propertyCount > 0) {
+            // A readonly class with properties should have an implicit constructor if none is defined.
+            // This check is to see if we're unexpectedly getting no constructor for readonly DTOs.
+            throw Exceptions\ReflectionException::noImplicitConstructorFound(static::class . " (Actual Property Count: {$propertyCount})");
+        }
+
+        $constructorArgs = [];
+        $remainingData = $data; // Data not used in constructor
+        $metadata = MetadataCache::getMetadata(static::class); // Needed for serializedName lookup for constructor params
+
+        if ($constructor) {
+            foreach ($constructor->getParameters() as $param) {
+                $paramName = $param->getName();
+                $paramType = $param->getType();
+                $serializedName = $metadata->getSerializedName($paramName);
+                $dataKeyUsed = null;
+
+                if (array_key_exists($paramName, $data)) {
+                    $dataKeyUsed = $paramName;
+                } elseif ($paramName !== $serializedName && array_key_exists($serializedName, $data)) {
+                    $dataKeyUsed = $serializedName;
+                }
+
+                if ($dataKeyUsed !== null) {
+                    $value = self::convertValueToType($data[$dataKeyUsed], $paramType);
+                    $constructorArgs[$param->getPosition()] = $value;
+                    unset($remainingData[$dataKeyUsed]);
+                } elseif ($param->isDefaultValueAvailable()) {
+                    $constructorArgs[$param->getPosition()] = $param->getDefaultValue();
+                } elseif ($param->allowsNull()) {
+                    $constructorArgs[$param->getPosition()] = null;
+                } else {
+                    $typeName = $paramType instanceof ReflectionNamedType ? $paramType->getName() : (string) $paramType;
+                    if (is_subclass_of($typeName, GraniteObject::class) || $typeName === GraniteObject::class) {
+                        throw new Exceptions\ReflectionException(
+                            "Missing required constructor parameter '{$paramName}' of type '{$typeName}' for class " . static::class . ". No data provided and no default value available."
+                        );
+                    }
+                    $constructorArgs[$param->getPosition()] = match ($typeName) {
+                        'int' => 0,
+                        'float' => 0.0,
+                        'string' => '',
+                        'bool' => false,
+                        'array' => [],
+                        default => null,
+                    };
+                }
+            }
+        }
+
+        $instance = $reflectionClass->newInstanceArgs($constructorArgs);
+
+        // Hydrate remaining public, non-readonly properties
+        self::hydratePublicWritableProperties($instance, $remainingData);
+
+        return $instance;
     }
 
     protected static function normalizeInputData(string|array|GraniteObject $data): array
@@ -48,60 +105,46 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
-     * @throws Exceptions\ReflectionException
-     */
-    private static function createEmptyInstance(): object
-    {
-        try {
-            $reflection = ReflectionCache::getClass(static::class);
-            return $reflection->newInstanceWithoutConstructor();
-        } catch (ReflectionException $e) {
-            throw Exceptions\ReflectionException::classNotFound(static::class);
-        }
-    }
-
-    /**
      * @param GraniteObject $instance Instance to hydrate
      * @param array $data Data to hydrate with
-     * @return static Hydrated instance
      * @throws DateMalformedStringException
      * @throws Exceptions\ReflectionException
      */
-    private static function hydrateInstance(GraniteObject $instance, array $data): GraniteObject
+    private static function hydratePublicWritableProperties(GraniteObject $instance, array $data): void
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
-
-        // Get serialization metadata
         $metadata = MetadataCache::getMetadata(static::class);
 
-        // Process each property
         foreach ($properties as $property) {
             $phpName = $property->getName();
-            $serializedName = $metadata->getSerializedName($phpName);
 
-            // Try to find the value in the input data - could be under PHP name or serialized name
-            $value = null;
+            // Skip readonly properties as they should be set by constructor
+            if ($property->isReadOnly()) {
+                continue;
+            }
+
+            $serializedName = $metadata->getSerializedName($phpName); // For name mapping
+            $valueToSet = null; // Renamed $value to $valueToSet for clarity
             $found = false;
 
-            if (array_key_exists($phpName, $data)) {
-                $value = $data[$phpName];
+            if (array_key_exists($phpName, $data)) { // Prefer direct PHP name
+                $valueToSet = $data[$phpName];
                 $found = true;
-            } elseif ($phpName !== $serializedName && array_key_exists($serializedName, $data)) {
-                $value = $data[$serializedName];
+            } elseif ($phpName !== $serializedName && array_key_exists($serializedName, $data)) { // Fallback to serialized name
+                $valueToSet = $data[$serializedName];
                 $found = true;
             }
 
-            // Skip if property is not in data
+            // Skip if property is not found in the remaining data
             if (!$found) {
                 continue;
             }
 
             $type = $property->getType();
-            $convertedValue = self::convertValueToType($value, $type);
+            // Use $valueToSet instead of $value
+            $convertedValue = self::convertValueToType($valueToSet, $type);
             $property->setValue($instance, $convertedValue);
         }
-
-        return $instance;
     }
 
     /**

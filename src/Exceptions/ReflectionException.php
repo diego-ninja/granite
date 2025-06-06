@@ -69,4 +69,16 @@ class ReflectionException extends GraniteException
             $previous
         );
     }
+
+    /**
+     * Create exception for when no implicit constructor is found for a readonly class with properties.
+     */
+    public static function noImplicitConstructorFound(string $className): static
+    {
+        return new static(
+            $className,
+            'implicit_constructor_loading',
+            sprintf('No constructor found for readonly class %s which has properties. PHP should provide an implicit constructor.', $className)
+        );
+    }
 }
