@@ -3,12 +3,13 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
 [![Total Downloads](https://img.shields.io/packagist/dt/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
 ![PHP Version](https://img.shields.io/packagist/php-v/diego-ninja/granite.svg?style=flat&color=blue)
+[![Code Style](https://img.shields.io/badge/code%20style-PER-blue.svg?style=flat)](https://www.php-fig.org/per/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
 [![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
 
 [![PHPStan Level](https://img.shields.io/badge/PHPStan-max%20level-green.svg?style=flat)](https://phpstan.org/)
-[![Code Style](https://img.shields.io/badge/code%20style-PER-green.svg?style=flat)](https://www.php-fig.org/per/)
+[![Coverage](https://img.shields.io/codecov/c/github/diego-ninja/granite?style=flat)](https://codecov.io/gh/diego-ninja/granite)
 [![PHPUnit](https://img.shields.io/badge/PHPUnit-✓%20passing-green.svg?style=flat)](https://phpunit.de/)
 [![Tests](https://img.shields.io/badge/tests-1078%20passed-green.svg?style=flat)](https://phpunit.de/)
 

@@ -46,16 +46,19 @@ jobs:
 
     - name: Run PHPUnit with coverage
       if: matrix.php-version == '8.4'
-      run: composer run test:coverage
+      run: composer run test:coverage-clover
 
     - name: Upload coverage reports to Codecov
-      if: matrix.php-version == '8.4'
+      if: matrix.php-version == '8.4' && env.CODECOV_TOKEN != ''
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage/clover.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   static-analysis:
     name: Static Analysis
