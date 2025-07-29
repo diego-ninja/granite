@@ -33,6 +33,13 @@ abstract readonly class GraniteDTO implements GraniteObject
     public static function from(string|array|GraniteObject $data): static
     {
         $data = self::normalizeInputData($data);
+
+        // Check if class is readonly and has constructor
+        $reflection = ReflectionCache::getClass(static::class);
+        if ($reflection->isReadOnly() && $reflection->getConstructor()) {
+            return self::createReadonlyInstance($data);
+        }
+
         $instance = self::createEmptyInstance();
 
         /** @var static $result */
@@ -125,6 +132,74 @@ abstract readonly class GraniteDTO implements GraniteObject
     protected static function hiddenProperties(): array
     {
         return [];
+    }
+
+    /**
+     * Creates instance for readonly classes using constructor.
+     *
+     * @param array $data Source data
+     * @return static New readonly instance
+     * @throws DateMalformedStringException
+     * @throws Exceptions\ReflectionException
+     */
+    private static function createReadonlyInstance(array $data): static
+    {
+        try {
+            $reflection = ReflectionCache::getClass(static::class);
+            $constructor = $reflection->getConstructor();
+
+            if ( ! $constructor) {
+                throw new RuntimeException('Readonly class ' . static::class . ' must have a constructor');
+            }
+
+            $parameters = $constructor->getParameters();
+            $args = [];
+
+            // Get serialization metadata and class convention
+            $metadata = MetadataCache::getMetadata(static::class);
+            $classConvention = self::getClassConvention(static::class);
+
+            foreach ($parameters as $parameter) {
+                $paramName = $parameter->getName();
+                $serializedName = $metadata->getSerializedName($paramName);
+
+                // Find value using same strategy as hydrateInstance
+                $value = self::findValueInData($data, $paramName, $serializedName, $classConvention);
+
+                if (null === $value && ! array_key_exists($paramName, $data) && ! array_key_exists($serializedName, $data)) {
+                    // If parameter is not present in data, fall back to reflection approach
+                    // This allows properties to remain uninitialized regardless of default values
+                    return self::fallbackToReflectionApproach($data);
+                }
+                $convertedValue = self::convertValueToType($value, $parameter->getType());
+                $args[] = $convertedValue;
+
+            }
+
+            /** @var static $instance */
+            $instance = $reflection->newInstanceArgs($args);
+            return $instance;
+
+        } catch (ReflectionException $e) {
+            throw Exceptions\ReflectionException::classNotFound(static::class);
+        }
+    }
+
+    /**
+     * Fallback method for readonly classes when constructor approach fails.
+     *
+     * @param array $data Source data
+     * @return static New instance using reflection
+     * @throws DateMalformedStringException
+     * @throws Exceptions\ReflectionException
+     */
+    private static function fallbackToReflectionApproach(array $data): static
+    {
+        $instance = self::createEmptyInstance();
+
+        /** @var static $result */
+        $result = self::hydrateInstance($instance, $data);
+        return $result;
     }
 
     /**
