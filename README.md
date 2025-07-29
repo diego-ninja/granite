@@ -32,6 +32,7 @@ This documentation has been generated almost in its entirety using 🦠 Claude 4
 
 ### 📦 **Smart Serialization**
 - JSON/Array serialization with custom property names
+- Class-level naming conventions with `SerializationConvention` attribute
 - Hide sensitive properties automatically
 - DateTime and Enum handling
 - Nested object serialization
@@ -59,6 +60,7 @@ use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
 use Ninja\Granite\Validation\Attributes\Min;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 
 // Create a Value Object with validation
@@ -99,6 +101,32 @@ $json = $user->json();
 
 $array = $user->array();
 // password is hidden, created_at uses custom name
+```
+
+### Serialization Conventions
+
+Apply naming conventions to all properties in a class during serialization:
+
+```php
+use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
+
+#[SerializationConvention(SnakeCaseConvention::class)]
+final readonly class UserProfile extends GraniteVO
+{
+    public function __construct(
+        public string $firstName,      // serialized as "first_name"
+        public string $lastName,       // serialized as "last_name"
+        public string $emailAddress,   // serialized as "email_address"
+        
+        #[SerializedName('user_id')]   // explicit name takes precedence
+        public int $id
+    ) {}
+}
+
+$profile = new UserProfile('John', 'Doe', 'john@example.com', 123);
+$json = $profile->json();
+// {"first_name":"John","last_name":"Doe","email_address":"john@example.com","user_id":123}
 ```
 
 ## 📖 Documentation
