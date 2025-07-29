@@ -16,6 +16,6 @@ readonly class MapBidirectional
      * @param string $otherProperty Name of the corresponding property in the other class
      */
     public function __construct(
-        public string $otherProperty
+        public string $otherProperty,
     ) {}
 }

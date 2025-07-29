@@ -11,8 +11,7 @@ final readonly class IgnoredFieldsDTO extends GraniteDTO
         public int $id,
         public string $name,
         public string $email,
-
         #[Ignore]
-        public ?string $password = null
+        public ?string $password = null,
     ) {}
 }

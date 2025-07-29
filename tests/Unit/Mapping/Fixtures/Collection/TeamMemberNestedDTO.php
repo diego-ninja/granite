@@ -6,6 +6,6 @@ class TeamMemberNestedDTO
 {
     public function __construct(
         public string $name,
-        public string $role
+        public string $role,
     ) {}
 }

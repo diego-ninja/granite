@@ -10,7 +10,7 @@ final readonly class ClassTransformerDTO extends GraniteDTO
 {
     public function __construct(
         #[MapWith(CustomTransformer::class)]
-        public string $value
+        public string $value,
     ) {}
 }
 
@@ -18,6 +18,6 @@ class CustomTransformer implements Transformer
 {
     public function transform(mixed $value, array $sourceData = []): string
     {
-        return strtoupper($value) . '_TRANSFORMED';
+        return mb_strtoupper($value) . '_TRANSFORMED';
     }
 }

@@ -10,6 +10,6 @@ final readonly class ProjectDTO extends GraniteDTO
         public int $id,
         public string $name,
         public array $tags = [],
-        public array $settings = []
+        public array $settings = [],
     ) {}
 }

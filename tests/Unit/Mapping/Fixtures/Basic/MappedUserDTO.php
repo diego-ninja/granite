@@ -10,11 +10,9 @@ final readonly class MappedUserDTO extends GraniteDTO
     public function __construct(
         #[MapFrom('user_id')]
         public int $id,
-
         #[MapFrom('full_name')]
         public string $name,
-
         #[MapFrom('email_address')]
-        public string $email
+        public string $email,
     ) {}
 }

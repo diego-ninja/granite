@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Serialization/SerializationPrecedenceTest.php
 
 declare(strict_types=1);
@@ -7,8 +8,8 @@ namespace Tests\Unit\Serialization;
 
 use Ninja\Granite\GraniteDTO;
 use PHPUnit\Framework\Attributes\CoversClass;
-use Tests\Helpers\TestCase;
 use Tests\Fixtures\DTOs\SerializableDTO;
+use Tests\Helpers\TestCase;
 
 /**
  * Test to understand and verify serialization name precedence behavior
@@ -31,14 +32,14 @@ use Tests\Fixtures\DTOs\SerializableDTO;
         $actualValue = $dto->firstName;
 
         // Document the actual behavior
-        if ($actualValue === 'FromSerializedName') {
+        if ('FromSerializedName' === $actualValue) {
             $this->assertEquals('FromSerializedName', $dto->firstName);
             $this->addToAssertionCount(1); // Serialized name wins
-        } elseif ($actualValue === 'FromPhpName') {
+        } elseif ('FromPhpName' === $actualValue) {
             $this->assertEquals('FromPhpName', $dto->firstName);
             $this->addToAssertionCount(1); // PHP name wins
         } else {
-            $this->fail("Unexpected value: $actualValue. Expected either 'FromSerializedName' or 'FromPhpName'");
+            $this->fail("Unexpected value: {$actualValue}. Expected either 'FromSerializedName' or 'FromPhpName'");
         }
     }
 
@@ -71,7 +72,7 @@ use Tests\Fixtures\DTOs\SerializableDTO;
 
             // Only one name provided
             'email' => 'test@example.com',
-            'password' => 'secret'
+            'password' => 'secret',
         ];
 
         $dto = SerializableDTO::from($data);
@@ -80,7 +81,7 @@ use Tests\Fixtures\DTOs\SerializableDTO;
         $firstNameValue = $dto->firstName;
         $lastNameValue = $dto->lastName;
 
-        if ($firstNameValue === 'SerializedFirst') {
+        if ('SerializedFirst' === $firstNameValue) {
             // If serialized wins for firstName, it should win for lastName too
             $this->assertEquals('SerializedLast', $lastNameValue);
         } else {
@@ -103,7 +104,7 @@ use Tests\Fixtures\DTOs\SerializableDTO;
         $dto = SerializableDTO::from($data);
 
         // Should handle null values appropriately
-        $this->assertTrue($dto->firstName === null || $dto->firstName === 'NotNull');
+        $this->assertTrue(null === $dto->firstName || 'NotNull' === $dto->firstName);
     }
 
     public function test_case_sensitivity_in_names(): void
@@ -121,7 +122,7 @@ use Tests\Fixtures\DTOs\SerializableDTO;
 
         // Should use either correct PHP name or serialized name
         $this->assertTrue(
-            $dto->firstName === 'correctCase' || $dto->firstName === 'serialized'
+            'correctCase' === $dto->firstName || 'serialized' === $dto->firstName,
         );
     }
 }

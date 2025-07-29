@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/IpAddressTest.php
 
 declare(strict_types=1);
@@ -8,6 +9,7 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\IpAddress;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(IpAddress::class)]
@@ -21,6 +23,66 @@ class IpAddressTest extends TestCase
         parent::setUp();
     }
 
+    public static function validIpAddressesProvider(): array
+    {
+        return [
+            // IPv4 addresses
+            'localhost' => ['127.0.0.1'],
+            'private class A' => ['10.0.0.1'],
+            'private class B' => ['172.16.0.1'],
+            'private class C' => ['192.168.1.1'],
+            'google dns' => ['8.8.8.8'],
+            'cloudflare dns' => ['1.1.1.1'],
+            'broadcast' => ['255.255.255.255'],
+            'zero address' => ['0.0.0.0'],
+
+            // IPv6 addresses
+            'ipv6 localhost' => ['::1'],
+            'ipv6 any' => ['::'],
+            'ipv6 full' => ['2001:0db8:85a3:0000:0000:8a2e:0370:7334'],
+            'ipv6 compressed' => ['2001:db8:85a3::8a2e:370:7334'],
+            'ipv6 link local' => ['fe80::1'],
+            'ipv6 multicast' => ['ff02::1'],
+            'google ipv6 dns' => ['2001:4860:4860::8888'],
+            'ipv6 short' => ['2001:db8::1'],
+        ];
+    }
+
+    public static function invalidIpAddressesProvider(): array
+    {
+        return [
+            // Invalid IPv4
+            'out of range octet' => ['256.1.1.1'],
+            'negative octet' => ['192.168.-1.1'],
+            'missing octet' => ['192.168.1'],
+            'extra octet' => ['192.168.1.1.1'],
+            'non-numeric' => ['a.b.c.d'],
+            'with port' => ['192.168.1.1:80'],
+            'with protocol' => ['http://192.168.1.1'],
+
+            // Invalid IPv6
+            'invalid hex' => ['2001:0db8:85a3::8a2e:370g:7334'],
+            'triple colon' => ['2001:0db8:::8a2e:370:7334'],
+            'multiple double colon' => ['2001:db8::8a2e::7334'],
+            'too many groups' => ['2001:0db8:85a3:0000:0000:8a2e:0370:7334:extra'],
+            'ipv6 with port' => ['[::1]:80'],
+
+            // Non-IP strings
+            'domain name' => ['example.com'],
+            'empty string' => [''],
+            'whitespace' => [' '],
+            'text' => ['not-an-ip'],
+
+            // Non-string types
+            'integer' => [123],
+            'float' => [3.14],
+            'boolean true' => [true],
+            'boolean false' => [false],
+            'array' => [[]],
+            'object' => [new stdClass()],
+        ];
+    }
+
     public function test_validates_ipv4_addresses(): void
     {
         $validIpv4 = [
@@ -32,11 +94,11 @@ class IpAddressTest extends TestCase
             '255.255.255.255',
             '0.0.0.0',
             '1.1.1.1',
-            '208.67.222.222'
+            '208.67.222.222',
         ];
 
         foreach ($validIpv4 as $ip) {
-            $this->assertTrue($this->rule->validate($ip), "Failed to validate IPv4: $ip");
+            $this->assertTrue($this->rule->validate($ip), "Failed to validate IPv4: {$ip}");
         }
     }
 
@@ -52,11 +114,11 @@ class IpAddressTest extends TestCase
             'ff02::1',
             '2001:0db8:0000:0042:0000:8a2e:0370:7334',
             '2001:db8:0:42::8a2e:370:7334',
-            'fe80::200:f8ff:fe21:67cf'
+            'fe80::200:f8ff:fe21:67cf',
         ];
 
         foreach ($validIpv6 as $ip) {
-            $this->assertTrue($this->rule->validate($ip), "Failed to validate IPv6: $ip");
+            $this->assertTrue($this->rule->validate($ip), "Failed to validate IPv6: {$ip}");
         }
     }
 
@@ -77,7 +139,7 @@ class IpAddressTest extends TestCase
         ];
 
         foreach ($invalidIpv4 as $ip) {
-            $this->assertFalse($this->rule->validate($ip), "Incorrectly validated invalid IPv4: $ip");
+            $this->assertFalse($this->rule->validate($ip), "Incorrectly validated invalid IPv4: {$ip}");
         }
     }
 
@@ -95,7 +157,7 @@ class IpAddressTest extends TestCase
         ];
 
         foreach ($invalidIpv6 as $ip) {
-            $this->assertFalse($this->rule->validate($ip), "Incorrectly validated invalid IPv6: $ip");
+            $this->assertFalse($this->rule->validate($ip), "Incorrectly validated invalid IPv6: {$ip}");
         }
     }
 
@@ -109,7 +171,7 @@ class IpAddressTest extends TestCase
         $this->assertFalse($this->rule->validate(123));
         $this->assertFalse($this->rule->validate(true));
         $this->assertFalse($this->rule->validate([]));
-        $this->assertFalse($this->rule->validate(new \stdClass()));
+        $this->assertFalse($this->rule->validate(new stdClass()));
         $this->assertFalse($this->rule->validate(3.14));
     }
 
@@ -222,73 +284,13 @@ class IpAddressTest extends TestCase
     #[DataProvider('validIpAddressesProvider')]
     public function test_validates_various_ip_formats(string $ip): void
     {
-        $this->assertTrue($this->rule->validate($ip), "Failed to validate IP: $ip");
-    }
-
-    public static function validIpAddressesProvider(): array
-    {
-        return [
-            // IPv4 addresses
-            'localhost' => ['127.0.0.1'],
-            'private class A' => ['10.0.0.1'],
-            'private class B' => ['172.16.0.1'],
-            'private class C' => ['192.168.1.1'],
-            'google dns' => ['8.8.8.8'],
-            'cloudflare dns' => ['1.1.1.1'],
-            'broadcast' => ['255.255.255.255'],
-            'zero address' => ['0.0.0.0'],
-
-            // IPv6 addresses
-            'ipv6 localhost' => ['::1'],
-            'ipv6 any' => ['::'],
-            'ipv6 full' => ['2001:0db8:85a3:0000:0000:8a2e:0370:7334'],
-            'ipv6 compressed' => ['2001:db8:85a3::8a2e:370:7334'],
-            'ipv6 link local' => ['fe80::1'],
-            'ipv6 multicast' => ['ff02::1'],
-            'google ipv6 dns' => ['2001:4860:4860::8888'],
-            'ipv6 short' => ['2001:db8::1'],
-        ];
+        $this->assertTrue($this->rule->validate($ip), "Failed to validate IP: {$ip}");
     }
 
     #[DataProvider('invalidIpAddressesProvider')]
     public function test_rejects_invalid_ip_formats(mixed $value): void
     {
         $this->assertFalse($this->rule->validate($value), "Incorrectly validated invalid IP: " . var_export($value, true));
-    }
-
-    public static function invalidIpAddressesProvider(): array
-    {
-        return [
-            // Invalid IPv4
-            'out of range octet' => ['256.1.1.1'],
-            'negative octet' => ['192.168.-1.1'],
-            'missing octet' => ['192.168.1'],
-            'extra octet' => ['192.168.1.1.1'],
-            'non-numeric' => ['a.b.c.d'],
-            'with port' => ['192.168.1.1:80'],
-            'with protocol' => ['http://192.168.1.1'],
-
-            // Invalid IPv6
-            'invalid hex' => ['2001:0db8:85a3::8a2e:370g:7334'],
-            'triple colon' => ['2001:0db8:::8a2e:370:7334'],
-            'multiple double colon' => ['2001:db8::8a2e::7334'],
-            'too many groups' => ['2001:0db8:85a3:0000:0000:8a2e:0370:7334:extra'],
-            'ipv6 with port' => ['[::1]:80'],
-
-            // Non-IP strings
-            'domain name' => ['example.com'],
-            'empty string' => [''],
-            'whitespace' => [' '],
-            'text' => ['not-an-ip'],
-
-            // Non-string types
-            'integer' => [123],
-            'float' => [3.14],
-            'boolean true' => [true],
-            'boolean false' => [false],
-            'array' => [[]],
-            'object' => [new \stdClass()],
-        ];
     }
 
     public function test_rule_implements_validation_rule_interface(): void
@@ -313,7 +315,7 @@ class IpAddressTest extends TestCase
         ];
 
         foreach ($compressedFormats as $ip) {
-            $this->assertTrue($this->rule->validate($ip), "Failed to validate compressed IPv6: $ip");
+            $this->assertTrue($this->rule->validate($ip), "Failed to validate compressed IPv6: {$ip}");
         }
     }
 
@@ -325,7 +327,7 @@ class IpAddressTest extends TestCase
             '2001:db8::1',
             '::1',
             'invalid-ip',
-            '256.1.1.1'
+            '256.1.1.1',
         ];
 
         $start = microtime(true);

@@ -11,6 +11,6 @@ use Attribute;
 readonly class MapFrom
 {
     public function __construct(
-        public string $source
+        public string $source,
     ) {}
 }

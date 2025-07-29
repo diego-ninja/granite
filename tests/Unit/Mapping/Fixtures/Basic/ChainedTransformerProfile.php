@@ -13,8 +13,10 @@ class ChainedTransformerProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ChainedTransformerDTO::class)
-            ->forMember('text', fn($mapping) =>
-                $mapping->using(fn($value) => strtoupper($value) . '!')
+            ->forMember(
+                'text',
+                fn($mapping) =>
+                $mapping->using(fn($value) => mb_strtoupper($value) . '!'),
             );
     }
 }

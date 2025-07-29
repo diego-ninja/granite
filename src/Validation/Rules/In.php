@@ -10,7 +10,7 @@ class In extends AbstractRule
      * @param array $values Allowed values
      */
     public function __construct(
-        private readonly array $values
+        private readonly array $values,
     ) {}
 
     /**
@@ -22,7 +22,7 @@ class In extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        return $value === null || in_array($value, $this->values, true);
+        return null === $value || in_array($value, $this->values, true);
     }
 
     /**
@@ -34,7 +34,13 @@ class In extends AbstractRule
     protected function defaultMessage(string $property): string
     {
         $valuesList = implode(', ', array_map(function ($val) {
-            return is_string($val) ? "'{$val}'" : (string)$val;
+            if (is_string($val)) {
+                return "'{$val}'";
+            }
+            if (is_scalar($val) || (is_object($val) && method_exists($val, '__toString'))) {
+                return (string) $val;
+            }
+            return 'non-displayable';
         }, $this->values));
 
         return sprintf("%s must be one of: %s", $property, $valuesList);

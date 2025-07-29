@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/EnumTypeTest.php
 
 declare(strict_types=1);
@@ -8,15 +9,44 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\EnumType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Helpers\TestCase;
-use Tests\Fixtures\Enums\UserStatus;
-use Tests\Fixtures\Enums\Priority;
+use stdClass;
 use Tests\Fixtures\Enums\Color;
+use Tests\Fixtures\Enums\Priority;
 use Tests\Fixtures\Enums\Size;
+use Tests\Fixtures\Enums\UserStatus;
+use Tests\Helpers\TestCase;
 
 #[CoversClass(EnumType::class)]
 class EnumTypeTest extends TestCase
 {
+    public static function validEnumScenariosProvider(): array
+    {
+        return [
+            // UserStatus (string backed)
+            'valid user status enum' => [UserStatus::class, UserStatus::ACTIVE, true],
+            'valid user status string' => [UserStatus::class, 'active', true],
+            'invalid user status string' => [UserStatus::class, 'unknown', false],
+            'user status wrong type' => [UserStatus::class, 1, false],
+
+            // Priority (int backed)
+            'valid priority enum' => [Priority::class, Priority::HIGH, true],
+            'valid priority int' => [Priority::class, 3, true],
+            'invalid priority int' => [Priority::class, 0, false],
+            'priority wrong type' => [Priority::class, 'high', false],
+
+            // Color (unit enum)
+            'valid color enum' => [Color::class, Color::RED, true],
+            'valid color name' => [Color::class, 'RED', true],
+            'invalid color name' => [Color::class, 'PURPLE', false],
+            'color wrong case' => [Color::class, 'red', false],
+
+            // Size (string backed)
+            'valid size enum' => [Size::class, Size::LARGE, true],
+            'valid size string' => [Size::class, 'L', true],
+            'invalid size string' => [Size::class, 'LARGE', false],
+            'size wrong type' => [Size::class, 3, false],
+        ];
+    }
     public function test_validates_backed_enum_instances(): void
     {
         $rule = new EnumType(UserStatus::class);
@@ -121,7 +151,7 @@ class EnumTypeTest extends TestCase
         $this->assertFalse($rule->validate(123));
         $this->assertFalse($rule->validate(true));
         $this->assertFalse($rule->validate([]));
-        $this->assertFalse($rule->validate(new \stdClass()));
+        $this->assertFalse($rule->validate(new stdClass()));
         $this->assertFalse($rule->validate(3.14));
     }
 
@@ -211,35 +241,6 @@ class EnumTypeTest extends TestCase
         $this->assertEquals($expected, $rule->validate($value));
     }
 
-    public static function validEnumScenariosProvider(): array
-    {
-        return [
-            // UserStatus (string backed)
-            'valid user status enum' => [UserStatus::class, UserStatus::ACTIVE, true],
-            'valid user status string' => [UserStatus::class, 'active', true],
-            'invalid user status string' => [UserStatus::class, 'unknown', false],
-            'user status wrong type' => [UserStatus::class, 1, false],
-
-            // Priority (int backed)
-            'valid priority enum' => [Priority::class, Priority::HIGH, true],
-            'valid priority int' => [Priority::class, 3, true],
-            'invalid priority int' => [Priority::class, 0, false],
-            'priority wrong type' => [Priority::class, 'high', false],
-
-            // Color (unit enum)
-            'valid color enum' => [Color::class, Color::RED, true],
-            'valid color name' => [Color::class, 'RED', true],
-            'invalid color name' => [Color::class, 'PURPLE', false],
-            'color wrong case' => [Color::class, 'red', false],
-
-            // Size (string backed)
-            'valid size enum' => [Size::class, Size::LARGE, true],
-            'valid size string' => [Size::class, 'L', true],
-            'invalid size string' => [Size::class, 'LARGE', false],
-            'size wrong type' => [Size::class, 3, false],
-        ];
-    }
-
     public function test_rule_implements_validation_rule_interface(): void
     {
         $rule = new EnumType(UserStatus::class);
@@ -316,7 +317,7 @@ class EnumTypeTest extends TestCase
 
         // Array/object should not match
         $this->assertFalse($rule->validate(['active']));
-        $this->assertFalse($rule->validate((object)['status' => 'active']));
+        $this->assertFalse($rule->validate((object) ['status' => 'active']));
     }
 
     public function test_validates_all_cases_of_enum(): void

@@ -23,7 +23,7 @@ final readonly class SourceNormalizer
             $source instanceof GraniteObject => $source->array(),
             $source instanceof stdClass => (array) $source,
             is_object($source) => $this->objectToArray($source),
-            default => throw MappingException::unsupportedSourceType($source)
+            default => throw MappingException::unsupportedSourceType($source),
         };
     }
 

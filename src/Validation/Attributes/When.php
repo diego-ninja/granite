@@ -38,7 +38,7 @@ class When
     {
         $rule = new Rules\When($this->condition, $this->rule);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

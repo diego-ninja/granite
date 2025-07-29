@@ -4,17 +4,38 @@ declare(strict_types=1);
 
 namespace Tests\Helpers;
 
-use PHPUnit\Framework\TestCase as BaseTestCase;
 use InvalidArgumentException;
+use PHPUnit\Framework\TestCase as BaseTestCase;
+use ReflectionClass;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Temporary files created during tests (for cleanup)
+     */
+    private array $tempFiles = [];
+
+    /**
+     * Clean up temporary files after each test
+     */
+    protected function tearDown(): void
+    {
+        // Clean up temporary files
+        foreach ($this->tempFiles as $filename) {
+            if (file_exists($filename)) {
+                unlink($filename);
+            }
+        }
+        $this->tempFiles = [];
+
+        parent::tearDown();
+    }
     /**
      * Create test data for common scenarios
      */
     protected function createTestData(string $type = 'user'): array
     {
-        return match($type) {
+        return match ($type) {
             'user' => [
                 'id' => 1,
                 'name' => 'Test User',
@@ -22,30 +43,30 @@ abstract class TestCase extends BaseTestCase
                 'firstName' => 'Test',
                 'lastName' => 'User',
                 'created_at' => '2024-01-01T10:00:00Z',
-                'age' => 30
+                'age' => 30,
             ],
             'order' => [
                 'id' => 1,
                 'total' => 100.00,
                 'status' => 'pending',
                 'created_at' => '2024-01-01T10:00:00Z',
-                'items' => []
+                'items' => [],
             ],
             'address' => [
                 'street' => '123 Main St',
                 'city' => 'Test City',
                 'country' => 'Test Country',
-                'zipCode' => '12345'
+                'zipCode' => '12345',
             ],
             'empty' => [],
-            default => []
+            default => [],
         };
     }
 
     /**
      * Assert that a callback throws a validation error
      */
-    protected function assertValidationError(callable $callback, string $expectedField = null): void
+    protected function assertValidationError(callable $callback, ?string $expectedField = null): void
     {
         try {
             $callback();
@@ -67,11 +88,6 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Temporary files created during tests (for cleanup)
-     */
-    private array $tempFiles = [];
-
-    /**
      * Create a temporary file with content for testing
      */
     protected function createTempFile(string $content, string $extension = 'tmp'): string
@@ -86,27 +102,11 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Clean up temporary files after each test
-     */
-    protected function tearDown(): void
-    {
-        // Clean up temporary files
-        foreach ($this->tempFiles as $filename) {
-            if (file_exists($filename)) {
-                unlink($filename);
-            }
-        }
-        $this->tempFiles = [];
-
-        parent::tearDown();
-    }
-
-    /**
      * Get a reflection property value (for testing private/protected properties)
      */
     protected function getPropertyValue(object $object, string $propertyName): mixed
     {
-        $reflection = new \ReflectionClass($object);
+        $reflection = new ReflectionClass($object);
         $property = $reflection->getProperty($propertyName);
         $property->setAccessible(true);
 
@@ -118,7 +118,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function setPropertyValue(object $object, string $propertyName, mixed $value): void
     {
-        $reflection = new \ReflectionClass($object);
+        $reflection = new ReflectionClass($object);
         $property = $reflection->getProperty($propertyName);
         $property->setAccessible(true);
         $property->setValue($object, $value);
@@ -129,7 +129,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function callMethod(object $object, string $methodName, array $args = []): mixed
     {
-        $reflection = new \ReflectionClass($object);
+        $reflection = new ReflectionClass($object);
         $method = $reflection->getMethod($methodName);
         $method->setAccessible(true);
 

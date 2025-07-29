@@ -10,7 +10,7 @@ class Callback extends AbstractRule
      * @param callable $callback Validation callback that returns a boolean
      */
     public function __construct(
-        private readonly mixed $callback
+        private readonly mixed $callback,
     ) {}
 
     /**
@@ -22,7 +22,7 @@ class Callback extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        return ($value === null) || call_user_func($this->callback, $value);
+        return (null === $value) || call_user_func($this->callback, $value);
     }
 
     /**

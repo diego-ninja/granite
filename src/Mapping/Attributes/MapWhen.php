@@ -16,6 +16,6 @@ readonly class MapWhen
      * @param mixed $condition A callable or the name of a method in the source class
      */
     public function __construct(
-        public mixed $condition
+        public mixed $condition,
     ) {}
 }

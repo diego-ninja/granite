@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Serialization;
 
-use PHPUnit\Framework\TestCase;
+use InvalidArgumentException;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\MetadataCache;
-use Tests\Fixtures\DTOs\TestSnakeCaseDto;
-use Tests\Fixtures\DTOs\TestKebabCaseDto;
-use Tests\Fixtures\DTOs\TestOverrideDto;
+use PHPUnit\Framework\TestCase;
 use Tests\Fixtures\DTOs\TestHiddenDto;
-use Tests\Fixtures\DTOs\TestUnidirectionalDto;
+use Tests\Fixtures\DTOs\TestKebabCaseDto;
 use Tests\Fixtures\DTOs\TestOrderDto;
+use Tests\Fixtures\DTOs\TestOverrideDto;
+use Tests\Fixtures\DTOs\TestSnakeCaseDto;
+use Tests\Fixtures\DTOs\TestUnidirectionalDto;
 
 class SerializationConventionTest extends TestCase
 {
@@ -27,7 +28,7 @@ class SerializationConventionTest extends TestCase
         $dto = TestSnakeCaseDto::from([
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ]);
 
         $this->assertEquals('John', $dto->firstName);
@@ -38,7 +39,7 @@ class SerializationConventionTest extends TestCase
         $expected = [
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ];
 
         $this->assertEquals($expected, $serialized);
@@ -49,7 +50,7 @@ class SerializationConventionTest extends TestCase
         $dto = TestKebabCaseDto::from([
             'product-name' => 'Test Product',
             'unit-price' => 29.99,
-            'is-available' => true
+            'is-available' => true,
         ]);
 
         $this->assertEquals('Test Product', $dto->productName);
@@ -60,7 +61,7 @@ class SerializationConventionTest extends TestCase
         $expected = [
             'product-name' => 'Test Product',
             'unit-price' => 29.99,
-            'is-available' => true
+            'is-available' => true,
         ];
 
         $this->assertEquals($expected, $serialized);
@@ -71,7 +72,7 @@ class SerializationConventionTest extends TestCase
         $dto = TestOverrideDto::from([
             'first_name' => 'John',
             'custom_last' => 'Doe',  // This uses the SerializedName override
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ]);
 
         $this->assertEquals('John', $dto->firstName);
@@ -82,7 +83,7 @@ class SerializationConventionTest extends TestCase
         $expected = [
             'first_name' => 'John',
             'custom_last' => 'Doe',      // Override preserved
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ];
 
         $this->assertEquals($expected, $serialized);
@@ -92,7 +93,7 @@ class SerializationConventionTest extends TestCase
     {
         $dto = TestHiddenDto::from([
             'public_field' => 'visible',
-            'secret_field' => 'hidden'
+            'secret_field' => 'hidden',
         ]);
 
         $this->assertEquals('visible', $dto->publicField);
@@ -100,7 +101,7 @@ class SerializationConventionTest extends TestCase
 
         $serialized = $dto->array();
         $expected = [
-            'public_field' => 'visible'
+            'public_field' => 'visible',
             // secret_field should not be present
         ];
 
@@ -112,14 +113,14 @@ class SerializationConventionTest extends TestCase
     {
         // Bidirectional = false means convention only applies to serialization
         $dto = TestUnidirectionalDto::from([
-            'testField' => 'value'  // camelCase input should work
+            'testField' => 'value',  // camelCase input should work
         ]);
 
         $this->assertEquals('value', $dto->testField);
 
         $serialized = $dto->array();
         $expected = [
-            'test_field' => 'value'  // But output should be snake_case
+            'test_field' => 'value',  // But output should be snake_case
         ];
 
         $this->assertEquals($expected, $serialized);
@@ -131,9 +132,9 @@ class SerializationConventionTest extends TestCase
             'order_number' => 'ORD-123',
             'customer_info' => [
                 'first_name' => 'Jane',
-                'last_name' => 'Smith'
+                'last_name' => 'Smith',
             ],
-            'total_amount' => 99.99
+            'total_amount' => 99.99,
         ];
 
         $dto = TestOrderDto::from($orderData);
@@ -152,7 +153,7 @@ class SerializationConventionTest extends TestCase
 
     public function testInvalidConventionClass(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("Convention class 'NonExistentConvention' does not exist");
 
         $attribute = new SerializationConvention('NonExistentConvention');
@@ -164,7 +165,7 @@ class SerializationConventionTest extends TestCase
         // Test graceful degradation when convention application fails
         $dto = TestSnakeCaseDto::from([
             'firstName' => 'John',    // camelCase should still work as fallback
-            'last_name' => 'Doe'      // snake_case should work via convention
+            'last_name' => 'Doe',      // snake_case should work via convention
         ]);
 
         $this->assertEquals('John', $dto->firstName);
@@ -187,7 +188,7 @@ class SerializationConventionTest extends TestCase
         $dto = TestSnakeCaseDto::from([
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ]);
 
         $json = $dto->json();
@@ -196,10 +197,9 @@ class SerializationConventionTest extends TestCase
         $expected = [
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ];
 
         $this->assertEquals($expected, $decoded);
     }
 }
-

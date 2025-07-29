@@ -1,18 +1,19 @@
 <?php
+
 // tests/Unit/Validation/GraniteValidatorTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Validation;
 
+use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\Validation\GraniteValidator;
 use Ninja\Granite\Validation\RuleCollection;
+use Ninja\Granite\Validation\Rules\Email;
+use Ninja\Granite\Validation\Rules\Max;
+use Ninja\Granite\Validation\Rules\Min;
 use Ninja\Granite\Validation\Rules\Required;
 use Ninja\Granite\Validation\Rules\StringType;
-use Ninja\Granite\Validation\Rules\Min;
-use Ninja\Granite\Validation\Rules\Max;
-use Ninja\Granite\Validation\Rules\Email;
-use Ninja\Granite\Exceptions\ValidationException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
 
@@ -37,7 +38,7 @@ use Tests\Helpers\TestCase;
     {
         $collections = [
             new RuleCollection('name', new Required()),
-            new RuleCollection('email', [new Required(), new Email()])
+            new RuleCollection('email', [new Required(), new Email()]),
         ];
         $validator = new GraniteValidator($collections);
 
@@ -130,7 +131,7 @@ use Tests\Helpers\TestCase;
 
         $validData = [
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $validator->validate($validData);
@@ -146,7 +147,7 @@ use Tests\Helpers\TestCase;
 
         $invalidData = [
             'name' => null,
-            'email' => 'invalid-email'
+            'email' => 'invalid-email',
         ];
 
         try {
@@ -212,7 +213,7 @@ use Tests\Helpers\TestCase;
         $rulesArray = [
             'name' => 'required|string|min:3',
             'email' => 'required|email',
-            'age' => 'integer|min:18'
+            'age' => 'integer|min:18',
         ];
 
         $validator = GraniteValidator::fromArray($rulesArray);
@@ -224,14 +225,14 @@ use Tests\Helpers\TestCase;
     {
         $rulesArray = [
             'name' => 'required|string|min:3',
-            'email' => 'required|email'
+            'email' => 'required|email',
         ];
 
         $validator = GraniteValidator::fromArray($rulesArray);
 
         $validData = [
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $validator->validate($validData);
@@ -249,7 +250,7 @@ use Tests\Helpers\TestCase;
 
         $validData = [
             'name' => 'Test',
-            'tags' => ['tag1', 'tag2']
+            'tags' => ['tag1', 'tag2'],
         ];
 
         $validator->validate($validData);
@@ -270,7 +271,7 @@ use Tests\Helpers\TestCase;
         $validData = [
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 25
+            'age' => 25,
         ];
 
         $validator->validate($validData);
@@ -285,7 +286,7 @@ use Tests\Helpers\TestCase;
             ->method('validate')
             ->with(
                 $this->equalTo('test value'),
-                $this->equalTo(['name' => 'test value', 'email' => 'test@example.com'])
+                $this->equalTo(['name' => 'test value', 'email' => 'test@example.com']),
             )
             ->willReturn(true);
 

@@ -1,10 +1,15 @@
 <?php
+
 // tests/Unit/Mapping/MappingProfileTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Mapping;
 
+use Ninja\Granite\Mapping\MappingProfile;
+use Ninja\Granite\Mapping\PropertyMapping;
+use Ninja\Granite\Mapping\TypeMapping;
+use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Fixtures\Automapper\BasicProfile;
 use Tests\Fixtures\Automapper\ComplexProfile;
 use Tests\Fixtures\Automapper\ConfigureProfile;
@@ -13,10 +18,6 @@ use Tests\Fixtures\Automapper\EmptyProfile;
 use Tests\Fixtures\Automapper\InheritedProfile;
 use Tests\Fixtures\Automapper\PerformanceProfile;
 use Tests\Fixtures\Automapper\PropertyMappingProfile;
-use Ninja\Granite\Mapping\MappingProfile;
-use Ninja\Granite\Mapping\PropertyMapping;
-use Ninja\Granite\Mapping\TypeMapping;
-use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(MappingProfile::class)]
@@ -170,12 +171,12 @@ class MappingProfileTest extends TestCase
         // Add many mappings
         for ($i = 0; $i < 1000; $i++) {
             $mapping = new PropertyMapping();
-            $profile->addPropertyMapping("Source$i", "Dest$i", "prop$i", $mapping);
+            $profile->addPropertyMapping("Source{$i}", "Dest{$i}", "prop{$i}", $mapping);
         }
 
         // Retrieve many mappings
         for ($i = 0; $i < 1000; $i++) {
-            $profile->getMapping("Source$i", "Dest$i", "prop$i");
+            $profile->getMapping("Source{$i}", "Dest{$i}", "prop{$i}");
         }
 
         $elapsed = microtime(true) - $start;

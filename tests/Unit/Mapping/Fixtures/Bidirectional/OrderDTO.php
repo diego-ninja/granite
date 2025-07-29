@@ -8,7 +8,6 @@ class OrderDTO
         public string $number,
         public string $customerName,
         public array $items,
-        public float $total
-    ) {
-    }
+        public float $total,
+    ) {}
 }

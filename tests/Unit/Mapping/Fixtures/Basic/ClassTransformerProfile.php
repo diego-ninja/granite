@@ -13,10 +13,10 @@ class ClassTransformerProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ClassTransformerDTO::class)
-            ->forMember('value', fn($mapping) => 
-                $mapping->using(function($value) {
-                    return strtoupper($value) . '_TRANSFORMED';
-                })
+            ->forMember(
+                'value',
+                fn($mapping) =>
+                $mapping->using(fn($value) => mb_strtoupper($value) . '_TRANSFORMED'),
             );
     }
 }

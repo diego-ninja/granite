@@ -2,22 +2,17 @@
 
 namespace Tests\Unit\Mapping;
 
-use Ninja\Granite\Enums\CacheType;
-use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Mapping\MapperConfig;
 use Ninja\Granite\Mapping\ObjectMapper;
-use Ninja\Granite\Mapping\Exceptions\MappingException;
-use Ninja\Granite\Mapping\MappingProfile;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Helpers\TestCase;
-use Tests\Unit\Mapping\Fixtures\Bidirectional\UserEntity;
-use Tests\Unit\Mapping\Fixtures\Bidirectional\UserDTO;
-use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderEntity;
-use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderDTO;
-use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderItemEntity;
-use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderItemDTO;
 use Tests\Unit\Mapping\Fixtures\Bidirectional\BidirectionalMappingProfile;
+use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderDTO;
+use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderEntity;
+use Tests\Unit\Mapping\Fixtures\Bidirectional\OrderItemEntity;
+use Tests\Unit\Mapping\Fixtures\Bidirectional\UserDTO;
+use Tests\Unit\Mapping\Fixtures\Bidirectional\UserEntity;
 
 #[CoversClass(ObjectMapper::class)]
 class BidirectionalMappingTest extends TestCase
@@ -29,7 +24,7 @@ class BidirectionalMappingTest extends TestCase
         $profile = new BidirectionalMappingProfile();
         $this->mapper = new ObjectMapper(
             MapperConfig::create()
-                ->withProfile($profile)
+                ->withProfile($profile),
         );
         parent::setUp();
     }
@@ -41,7 +36,7 @@ class BidirectionalMappingTest extends TestCase
             id: 1,
             firstName: 'John',
             lastName: 'Doe',
-            emailAddress: 'john@example.com'
+            emailAddress: 'john@example.com',
         );
 
         $result = $this->mapper->map($source, UserDTO::class);
@@ -58,7 +53,7 @@ class BidirectionalMappingTest extends TestCase
         $source = new UserDTO(
             id: 1,
             fullName: 'John Doe',
-            email: 'john@example.com'
+            email: 'john@example.com',
         );
 
         $result = $this->mapper->map($source, UserEntity::class);
@@ -78,7 +73,7 @@ class BidirectionalMappingTest extends TestCase
             id: 1,
             firstName: 'John',
             lastName: null,
-            emailAddress: 'john@example.com'
+            emailAddress: 'john@example.com',
         );
 
         $dto = $this->mapper->map($source, UserDTO::class);
@@ -97,12 +92,12 @@ class BidirectionalMappingTest extends TestCase
             id: 1,
             firstName: 'John',
             lastName: 'Doe',
-            emailAddress: 'john@example.com'
+            emailAddress: 'john@example.com',
         );
 
         // Map to DTO
         $dto = $this->mapper->map($original, UserDTO::class);
-        
+
         // Map back to entity
         $roundTrip = $this->mapper->map($dto, UserEntity::class);
 
@@ -119,19 +114,19 @@ class BidirectionalMappingTest extends TestCase
         $sourceCollection = [
             new UserEntity(1, 'John', 'Doe', 'john@example.com'),
             new UserEntity(2, 'Jane', 'Smith', 'jane@example.com'),
-            new UserEntity(3, 'Bob', 'Johnson', 'bob@example.com')
+            new UserEntity(3, 'Bob', 'Johnson', 'bob@example.com'),
         ];
 
         // Map to DTOs
         $dtoCollection = $this->mapper->mapArray($sourceCollection, UserDTO::class);
         $this->assertCount(3, $dtoCollection);
         $this->assertContainsOnlyInstancesOf(UserDTO::class, $dtoCollection);
-        
+
         // Map back to entities
         $entityCollection = $this->mapper->mapArray($dtoCollection, UserEntity::class);
         $this->assertCount(3, $entityCollection);
         $this->assertContainsOnlyInstancesOf(UserEntity::class, $entityCollection);
-        
+
         // Verify data
         $this->assertEquals('John', $entityCollection[0]->firstName);
         $this->assertEquals('Jane', $entityCollection[1]->firstName);
@@ -147,22 +142,22 @@ class BidirectionalMappingTest extends TestCase
             customer: new UserEntity(1, 'John', 'Doe', 'john@example.com'),
             items: [
                 new OrderItemEntity(1, 'Product 1', 2, 10.99),
-                new OrderItemEntity(2, 'Product 2', 1, 24.99)
+                new OrderItemEntity(2, 'Product 2', 1, 24.99),
             ],
-            totalAmount: 46.97
+            totalAmount: 46.97,
         );
 
         // Map to DTO
         $orderDTO = $this->mapper->map($source, OrderDTO::class);
-        
+
         $this->assertEquals('ORD-001', $orderDTO->number);
         $this->assertEquals('John Doe', $orderDTO->customerName);
         $this->assertCount(2, $orderDTO->items);
         $this->assertEquals(46.97, $orderDTO->total);
-        
+
         // Map back to entity
         $orderEntity = $this->mapper->map($orderDTO, OrderEntity::class);
-        
+
         $this->assertEquals(0, $orderEntity->id);
         $this->assertEquals('ORD-001', $orderEntity->orderNumber);
         $this->assertInstanceOf(UserEntity::class, $orderEntity->customer);

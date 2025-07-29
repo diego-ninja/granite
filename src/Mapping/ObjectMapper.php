@@ -5,13 +5,13 @@ namespace Ninja\Granite\Mapping;
 use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Exceptions\ReflectionException;
+use Ninja\Granite\Mapping\Cache\CacheFactory;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
 use Ninja\Granite\Mapping\Contracts\MappingStorage;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
-use Ninja\Granite\Mapping\Core\MappingEngine;
 use Ninja\Granite\Mapping\Core\ConfigurationBuilder;
-use Ninja\Granite\Mapping\Cache\CacheFactory;
+use Ninja\Granite\Mapping\Core\MappingEngine;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 
 /**
@@ -40,7 +40,7 @@ final class ObjectMapper implements Mapper, MappingStorage
         $this->configBuilder = new ConfigurationBuilder(
             $this->cache,
             $config->useConventions,
-            $config->conventionThreshold
+            $config->conventionThreshold,
         );
         $this->engine = new MappingEngine($this->configBuilder);
 
@@ -51,16 +51,71 @@ final class ObjectMapper implements Mapper, MappingStorage
         }
     }
 
+    // ================
+    // Global Instance
+    // ================
+
+    /**
+     * @throws ReflectionException
+     */
+    public static function getInstance(): self
+    {
+        if (null === self::$globalInstance) {
+            self::$globalInstance = new self(
+                MapperConfig::default()
+                    ->withCacheType(CacheType::Shared)
+                    ->withConventions(true, 0.75)
+                    ->withoutWarmup(),
+            );
+        }
+
+        return self::$globalInstance;
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public static function configure(callable $configurator): void
+    {
+        $config = MapperConfig::default();
+        $configurator($config);
+
+        self::$globalInstance = new self($config);
+        self::$isConfigured = true;
+    }
+
+    public static function isConfigured(): bool
+    {
+        return self::$isConfigured;
+    }
+
+    public static function reset(): void
+    {
+        self::$globalInstance = null;
+        self::$isConfigured = false;
+    }
+
+    public static function setGlobalInstance(self $instance): void
+    {
+        self::$globalInstance = $instance;
+        self::$isConfigured = true;
+    }
+
     // =================
     // Core Mapping API
     // =================
 
     /**
+     * @template T of object
+     * @param mixed $source
+     * @param class-string<T> $destinationType
+     * @return T
      * @throws GraniteException
      * @throws MappingException
      */
     public function map(mixed $source, string $destinationType): object
     {
+        /** @var T */
         return $this->engine->map($source, $destinationType);
     }
 
@@ -72,14 +127,19 @@ final class ObjectMapper implements Mapper, MappingStorage
         return $this->engine->mapTo($source, $destination);
     }
 
+    /**
+     * @template T of object
+     * @param array $source Source array
+     * @param class-string<T> $destinationType Destination type
+     * @return array<T> Array of mapped objects
+     * @throws GraniteException
+     * @throws MappingException
+     */
     public function mapArray(array $source, string $destinationType): array
     {
         return array_map(
-        /**
-         * @throws GraniteException
-         * @throws MappingException
-         */ fn($item) => $this->map($item, $destinationType),
-            $source
+            fn($item) => $this->map($item, $destinationType),
+            $source,
         );
     }
 
@@ -87,17 +147,27 @@ final class ObjectMapper implements Mapper, MappingStorage
     // Mapping Configuration
     // ======================
 
+    /**
+     * @param class-string $sourceType Source type
+     * @param class-string $destinationType Destination type
+     */
     public function createMap(string $sourceType, string $destinationType): TypeMapping
     {
         return new TypeMapping($this, $sourceType, $destinationType);
     }
 
+    /**
+     * @param class-string $typeA Type A
+     * @param class-string $typeB Type B
+     */
     public function createMapBidirectional(string $typeA, string $typeB): BidirectionalTypeMapping
     {
         return new BidirectionalTypeMapping($this, $typeA, $typeB);
     }
 
     /**
+     * @param class-string $sourceType
+     * @param class-string $destinationType
      * @throws MappingException
      */
     public function createReverseMap(string $sourceType, string $destinationType): TypeMapping
@@ -116,13 +186,6 @@ final class ObjectMapper implements Mapper, MappingStorage
         $this->profiles[] = $profile;
         $this->configBuilder->addProfile($profile);
         return $this;
-    }
-
-    private function registerProfiles(array $profiles): void
-    {
-        foreach ($profiles as $profile) {
-            $this->addProfile($profile);
-        }
     }
 
     // =================
@@ -188,53 +251,12 @@ final class ObjectMapper implements Mapper, MappingStorage
         return $this->configBuilder->getMappingsForTypes($sourceType, $destinationType);
     }
 
-    // ================
-    // Global Instance
-    // ================
-
-    /**
-     * @throws ReflectionException
-     */
-    public static function getInstance(): self
+    private function registerProfiles(array $profiles): void
     {
-        if (self::$globalInstance === null) {
-            self::$globalInstance = new self(
-                MapperConfig::default()
-                    ->withCacheType(CacheType::Shared)
-                    ->withConventions(true, 0.75)
-                    ->withoutWarmup()
-            );
+        foreach ($profiles as $profile) {
+            if ($profile instanceof MappingProfile) {
+                $this->addProfile($profile);
+            }
         }
-
-        return self::$globalInstance;
-    }
-
-    /**
-     * @throws ReflectionException
-     */
-    public static function configure(callable $configurator): void
-    {
-        $config = MapperConfig::default();
-        $configurator($config);
-
-        self::$globalInstance = new self($config);
-        self::$isConfigured = true;
-    }
-
-    public static function isConfigured(): bool
-    {
-        return self::$isConfigured;
-    }
-
-    public static function reset(): void
-    {
-        self::$globalInstance = null;
-        self::$isConfigured = false;
-    }
-
-    public static function setGlobalInstance(self $instance): void
-    {
-        self::$globalInstance = $instance;
-        self::$isConfigured = true;
     }
 }

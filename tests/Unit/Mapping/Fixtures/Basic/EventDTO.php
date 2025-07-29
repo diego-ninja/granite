@@ -2,7 +2,6 @@
 
 namespace Tests\Unit\Mapping\Fixtures\Basic;
 
-use DateTimeImmutable;
 use DateTimeInterface;
 use Ninja\Granite\GraniteDTO;
 
@@ -12,6 +11,6 @@ final readonly class EventDTO extends GraniteDTO
         public int $id,
         public string $name,
         public ?DateTimeInterface $startDate = null,
-        public ?DateTimeInterface $endDate = null
+        public ?DateTimeInterface $endDate = null,
     ) {}
 }

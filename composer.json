@@ -41,23 +41,25 @@
         "php": "^8.3|^8.4"
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.0",
+        "fakerphp/faker": "^1.23",
+        "laravel/pint": "^1.24",
         "mockery/mockery": "^1.6",
-        "phpstan/phpstan": "^1.10",
-        "squizlabs/php_codesniffer": "^3.7",
-        "rector/rector": "^1.0",
-        "fakerphp/faker": "^1.23"
+        "phpstan/phpstan": "^2",
+        "phpunit/phpunit": "^11.0",
+        "rector/rector": "^2.0",
+        "squizlabs/php_codesniffer": "^3.7"
     },
     "scripts": {
         "test": "phpunit",
         "test:unit": "phpunit --testsuite=Unit",
         "test:integration": "phpunit --testsuite=Integration",
-        "test:coverage": "phpunit --coverage-html coverage/html",
+        "test:coverage": "phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html --coverage-text coverage/coverage.txt",
+        "test:coverage-clover": "phpunit --coverage-clover coverage/clover.xml",
         "test:support": "phpunit --testsuite=Support",
         "test:exceptions": "phpunit --testsuite=Exceptions",
         "analyse": "phpstan analyse",
-        "cs:check": "phpcs src tests",
-        "cs:fix": "phpcbf src tests"
+        "cs:check": "pint --test src tests",
+        "cs:fix": "pint src tests"
     },
     "config": {
         "sort-packages": true,

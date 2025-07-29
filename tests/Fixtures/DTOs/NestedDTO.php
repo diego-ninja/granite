@@ -1,4 +1,5 @@
 <?php
+
 // tests/Fixtures/DTOs/NestedDTO.php
 
 declare(strict_types=1);
@@ -15,8 +16,7 @@ final readonly class NestedDTO extends GraniteDTO
         public string $title,
         public ?UserDTO $author = null,
         public array $tags = [],
-
         #[Hidden]
-        public ?string $internalNotes = null
+        public ?string $internalNotes = null,
     ) {}
 }

@@ -34,7 +34,7 @@ readonly class Email
     public function asRule(): Rules\Email
     {
         $rule = new Rules\Email();
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

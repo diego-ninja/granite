@@ -10,7 +10,7 @@ class Max extends AbstractRule
      * @param int|float $max Maximum value
      */
     public function __construct(
-        private readonly int|float $max
+        private readonly int|float $max,
     ) {}
 
     /**
@@ -22,15 +22,17 @@ class Max extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        if ($value === null) {
+        if (null === $value) {
             return true;
         }
 
         if (is_string($value)) {
             return mb_strlen($value) <= $this->max;
-        } elseif (is_int($value) || is_float($value)) {
+        }
+        if (is_int($value) || is_float($value)) {
             return $value <= $this->max;
-        } elseif (is_array($value)) {
+        }
+        if (is_array($value)) {
             return count($value) <= $this->max;
         }
 

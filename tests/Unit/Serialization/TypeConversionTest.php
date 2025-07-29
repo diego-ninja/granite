@@ -1,22 +1,26 @@
 <?php
+
 // tests/Unit/Serialization/TypeConversionTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Serialization;
 
+use DateTimeImmutable;
+use DateTimeInterface;
+use Exception;
 use Ninja\Granite\GraniteDTO;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Fixtures\DTOs\BackedEnumDTO;
+use Tests\Fixtures\DTOs\ComplexDTO;
 use Tests\Fixtures\DTOs\DateDTO;
 use Tests\Fixtures\DTOs\ScalarDTO;
 use Tests\Fixtures\DTOs\UserDTO;
 use Tests\Fixtures\Enums\Color;
+use Tests\Fixtures\Enums\Priority;
+use Tests\Fixtures\Enums\UserStatus;
 use Tests\Fixtures\VOs\Address;
 use Tests\Helpers\TestCase;
-use Tests\Fixtures\DTOs\ComplexDTO;
-use Tests\Fixtures\Enums\UserStatus;
-use Tests\Fixtures\Enums\Priority;
 
 /**
  * @group type-conversion
@@ -28,10 +32,10 @@ use Tests\Fixtures\Enums\Priority;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => '2024-01-01T10:00:00Z'
+            'createdAt' => '2024-01-01T10:00:00Z',
         ]);
 
-        $this->assertInstanceOf(\DateTimeInterface::class, $dto->createdAt);
+        $this->assertInstanceOf(DateTimeInterface::class, $dto->createdAt);
         $this->assertEquals('2024-01-01T10:00:00+00:00', $dto->createdAt->format('c'));
     }
 
@@ -49,11 +53,11 @@ use Tests\Fixtures\Enums\Priority;
             $dto = ComplexDTO::from([
                 'id' => 1,
                 'name' => 'Test',
-                'createdAt' => $input
+                'createdAt' => $input,
             ]);
 
-            $this->assertInstanceOf(\DateTimeInterface::class, $dto->createdAt);
-            $this->assertEquals($expected, $dto->createdAt->format('c'), "Failed for input: $input");
+            $this->assertInstanceOf(DateTimeInterface::class, $dto->createdAt);
+            $this->assertEquals($expected, $dto->createdAt->format('c'), "Failed for input: {$input}");
         }
     }
 
@@ -62,7 +66,7 @@ use Tests\Fixtures\Enums\Priority;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => null
+            'createdAt' => null,
         ]);
 
         $this->assertNull($dto->createdAt);
@@ -73,7 +77,7 @@ use Tests\Fixtures\Enums\Priority;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->assertInstanceOf(UserStatus::class, $dto->status);
@@ -94,10 +98,10 @@ use Tests\Fixtures\Enums\Priority;
             $dto = ComplexDTO::from([
                 'id' => 1,
                 'name' => 'Test',
-                'status' => $input
+                'status' => $input,
             ]);
 
-            $this->assertEquals($expected, $dto->status, "Failed for status: $input");
+            $this->assertEquals($expected, $dto->status, "Failed for status: {$input}");
         }
     }
 
@@ -123,13 +127,13 @@ use Tests\Fixtures\Enums\Priority;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'status' => 'invalid_status'
+            'status' => 'invalid_status',
         ]);
 
         // Should handle gracefully - might be null or throw exception depending on implementation
         $this->assertTrue(
-            $dto->status === null || $dto->status instanceof UserStatus,
-            'Invalid enum value should result in null or valid enum'
+            null === $dto->status || $dto->status instanceof UserStatus,
+            'Invalid enum value should result in null or valid enum',
         );
     }
 
@@ -140,7 +144,7 @@ use Tests\Fixtures\Enums\Priority;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'status' => $status
+            'status' => $status,
         ]);
 
         $this->assertSame($status, $dto->status);
@@ -148,12 +152,12 @@ use Tests\Fixtures\Enums\Priority;
 
     public function test_preserves_existing_datetime_instances(): void
     {
-        $dateTime = new \DateTimeImmutable('2024-01-01T10:00:00Z');
+        $dateTime = new DateTimeImmutable('2024-01-01T10:00:00Z');
 
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => $dateTime->format('c')
+            'createdAt' => $dateTime->format('c'),
         ]);
 
         $this->assertEquals($dateTime, $dto->createdAt);
@@ -168,8 +172,8 @@ use Tests\Fixtures\Enums\Priority;
                 'city' => 'New York',
                 'state' => 'NY',
                 'zipCode' => '10001',
-                'country' => 'US'
-            ]
+                'country' => 'US',
+            ],
         ];
 
         $userInstance = UserDTO::from($userData);
@@ -184,7 +188,7 @@ use Tests\Fixtures\Enums\Priority;
     {
         // Test with string that should convert to DateTime
         $instance1 = DateDTO::from(['flexibleDate' => '2024-01-01T10:00:00Z']);
-        $this->assertInstanceOf(\DateTimeInterface::class, $instance1->flexibleDate);
+        $this->assertInstanceOf(DateTimeInterface::class, $instance1->flexibleDate);
 
         // Test with null
         $instance3 = DateDTO::from(['flexibleDate' => null]);
@@ -206,17 +210,17 @@ use Tests\Fixtures\Enums\Priority;
                 $dto = ComplexDTO::from([
                     'id' => 1,
                     'name' => 'Test',
-                    'createdAt' => $malformedDate
+                    'createdAt' => $malformedDate,
                 ]);
 
                 // If no exception, should either be null or the original string
                 $this->assertTrue(
-                    $dto->createdAt === null || is_string($dto->createdAt),
-                    "Malformed date '$malformedDate' should result in null or string"
+                    null === $dto->createdAt || is_string($dto->createdAt),
+                    "Malformed date '{$malformedDate}' should result in null or string",
                 );
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Exception is also acceptable for malformed dates
-                $this->assertInstanceOf(\Exception::class, $e);
+                $this->assertInstanceOf(Exception::class, $e);
             }
         }
     }
@@ -228,7 +232,7 @@ use Tests\Fixtures\Enums\Priority;
             'name' => 'Test',
             'createdAt' => '2024-01-01T10:00:00Z',
             'status' => 'active',
-            'metadata' => ['key' => 'value']
+            'metadata' => ['key' => 'value'],
         ];
 
         $iterations = 1000;
@@ -252,7 +256,7 @@ use Tests\Fixtures\Enums\Priority;
             'name' => 'Test Product',
             'price' => 99.99,
             'active' => true,
-            'tags' => ['php', 'testing']
+            'tags' => ['php', 'testing'],
         ];
 
         $instance = ScalarDTO::from($data);

@@ -2,20 +2,20 @@
 
 namespace Ninja\Granite\Mapping\Transformers;
 
-use DateMalformedStringException;
 use DateTimeImmutable;
 use DateTimeInterface;
+use Exception;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 
 final readonly class DateTimeTransformer implements Transformer
 {
     public function __construct(
-        private string $format = DateTimeInterface::ATOM
+        private string $format = DateTimeInterface::ATOM,
     ) {}
 
     public function transform(mixed $value, array $sourceData = []): mixed
     {
-        if ($value === null) {
+        if (null === $value) {
             return null;
         }
 
@@ -26,11 +26,21 @@ final readonly class DateTimeTransformer implements Transformer
         if (is_string($value)) {
             try {
                 return new DateTimeImmutable($value);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 return null;
             }
         }
 
         return $value;
+    }
+
+    /**
+     * Get the format used for parsing.
+     *
+     * @return string Date format
+     */
+    public function getFormat(): string
+    {
+        return $this->format;
     }
 }

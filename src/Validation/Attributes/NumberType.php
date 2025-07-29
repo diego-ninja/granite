@@ -25,7 +25,7 @@ class NumberType
     {
         $rule = new Rules\NumberType();
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

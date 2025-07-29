@@ -13,7 +13,6 @@ use Tests\Unit\Mapping\Fixtures\Collection\CommentDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\ConfigDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\DepartmentDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\KeyValueDTO;
-use Tests\Unit\Mapping\Fixtures\Collection\MixedCollectionDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\OrganizationDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\ProjectDTO;
 use Tests\Unit\Mapping\Fixtures\Collection\TeamDTO;
@@ -40,7 +39,7 @@ class CollectionMappingTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'Project X',
-            'tags' => ['php', 'testing', 'mapping']
+            'tags' => ['php', 'testing', 'mapping'],
         ];
 
         $result = $this->mapper->map($source, ProjectDTO::class);
@@ -60,8 +59,8 @@ class CollectionMappingTest extends TestCase
             'members' => [
                 ['id' => 1, 'name' => 'John', 'role' => 'Developer'],
                 ['id' => 2, 'name' => 'Jane', 'role' => 'Designer'],
-                ['id' => 3, 'name' => 'Bob', 'role' => 'Manager']
-            ]
+                ['id' => 3, 'name' => 'Bob', 'role' => 'Manager'],
+            ],
         ];
 
         $result = $this->mapper->map($source, TeamDTO::class);
@@ -70,17 +69,17 @@ class CollectionMappingTest extends TestCase
         $this->assertEquals(1, $result->id);
         $this->assertEquals('Team Alpha', $result->name);
         $this->assertCount(3, $result->members);
-        
+
         $this->assertInstanceOf(TeamMemberDTO::class, $result->members[0]);
         $this->assertEquals(1, $result->members[0]->id);
         $this->assertEquals('John', $result->members[0]->name);
         $this->assertEquals('Developer', $result->members[0]->role);
-        
+
         $this->assertInstanceOf(TeamMemberDTO::class, $result->members[1]);
         $this->assertEquals(2, $result->members[1]->id);
         $this->assertEquals('Jane', $result->members[1]->name);
         $this->assertEquals('Designer', $result->members[1]->role);
-        
+
         $this->assertInstanceOf(TeamMemberDTO::class, $result->members[2]);
         $this->assertEquals(3, $result->members[2]->id);
         $this->assertEquals('Bob', $result->members[2]->name);
@@ -95,8 +94,8 @@ class CollectionMappingTest extends TestCase
             'title' => 'My Article',
             'comments' => [
                 ['id' => 1, 'text' => 'Great article!', 'author' => 'John'],
-                ['id' => 2, 'text' => 'Thanks for sharing', 'author' => 'Jane']
-            ]
+                ['id' => 2, 'text' => 'Thanks for sharing', 'author' => 'Jane'],
+            ],
         ];
 
         $result = $this->mapper->map($source, ArticleDTO::class);
@@ -105,12 +104,12 @@ class CollectionMappingTest extends TestCase
         $this->assertEquals(1, $result->id);
         $this->assertEquals('My Article', $result->title);
         $this->assertCount(2, $result->comments);
-        
+
         $this->assertInstanceOf(CommentDTO::class, $result->comments[0]);
         $this->assertEquals(1, $result->comments[0]->id);
         $this->assertEquals('Great article!', $result->comments[0]->text);
         $this->assertEquals('John', $result->comments[0]->author);
-        
+
         $this->assertInstanceOf(CommentDTO::class, $result->comments[1]);
         $this->assertEquals(2, $result->comments[1]->id);
         $this->assertEquals('Thanks for sharing', $result->comments[1]->text);
@@ -126,8 +125,8 @@ class CollectionMappingTest extends TestCase
             'items' => [
                 ['id' => 1, 'text' => 'Buy groceries', 'done' => true],
                 ['id' => 2, 'text' => 'Clean house', 'done' => false],
-                ['id' => 3, 'text' => 'Do laundry']
-            ]
+                ['id' => 3, 'text' => 'Do laundry'],
+            ],
         ];
 
         $result = $this->mapper->map($source, TodoListDTO::class);
@@ -136,13 +135,13 @@ class CollectionMappingTest extends TestCase
         $this->assertEquals(1, $result->id);
         $this->assertEquals('My Todo List', $result->name);
         $this->assertCount(3, $result->items);
-        
+
         $this->assertEquals('Buy groceries', $result->items[0]['text']);
         $this->assertTrue($result->items[0]['completed']);
-        
+
         $this->assertEquals('Clean house', $result->items[1]['text']);
         $this->assertFalse($result->items[1]['completed']);
-        
+
         $this->assertEquals('Do laundry', $result->items[2]['text']);
         $this->assertFalse($result->items[2]['completed']);
     }
@@ -161,17 +160,17 @@ class CollectionMappingTest extends TestCase
                             'name' => 'Frontend',
                             'members' => [
                                 ['name' => 'Alice', 'role' => 'Lead'],
-                                ['name' => 'Bob', 'role' => 'Developer']
-                            ]
+                                ['name' => 'Bob', 'role' => 'Developer'],
+                            ],
                         ],
                         [
                             'name' => 'Backend',
                             'members' => [
                                 ['name' => 'Charlie', 'role' => 'Lead'],
-                                ['name' => 'Dave', 'role' => 'Developer']
-                            ]
-                        ]
-                    ]
+                                ['name' => 'Dave', 'role' => 'Developer'],
+                            ],
+                        ],
+                    ],
                 ],
                 [
                     'name' => 'Marketing',
@@ -180,12 +179,12 @@ class CollectionMappingTest extends TestCase
                             'name' => 'Digital',
                             'members' => [
                                 ['name' => 'Eve', 'role' => 'Lead'],
-                                ['name' => 'Frank', 'role' => 'Specialist']
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                ['name' => 'Frank', 'role' => 'Specialist'],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
 
         $result = $this->mapper->map($source, OrganizationDTO::class);
@@ -194,30 +193,30 @@ class CollectionMappingTest extends TestCase
         $this->assertEquals(1, $result->id);
         $this->assertEquals('ACME Corp', $result->name);
         $this->assertCount(2, $result->departments);
-        
+
         // Engineering department
         $this->assertInstanceOf(DepartmentDTO::class, $result->departments[0]);
         $this->assertEquals('Engineering', $result->departments[0]->name);
         $this->assertCount(2, $result->departments[0]->teams);
-        
+
         // Frontend team
         $this->assertInstanceOf(TeamNestedDTO::class, $result->departments[0]->teams[0]);
         $this->assertEquals('Frontend', $result->departments[0]->teams[0]->name);
         $this->assertCount(2, $result->departments[0]->teams[0]->members);
-        
+
         $this->assertInstanceOf(TeamMemberNestedDTO::class, $result->departments[0]->teams[0]->members[0]);
         $this->assertEquals('Alice', $result->departments[0]->teams[0]->members[0]->name);
         $this->assertEquals('Lead', $result->departments[0]->teams[0]->members[0]->role);
-        
+
         // Backend team
         $this->assertInstanceOf(TeamNestedDTO::class, $result->departments[0]->teams[1]);
         $this->assertEquals('Backend', $result->departments[0]->teams[1]->name);
-        
+
         // Marketing department
         $this->assertInstanceOf(DepartmentDTO::class, $result->departments[1]);
         $this->assertEquals('Marketing', $result->departments[1]->name);
         $this->assertCount(1, $result->departments[1]->teams);
-        
+
         // Digital team
         $this->assertInstanceOf(TeamNestedDTO::class, $result->departments[1]->teams[0]);
         $this->assertEquals('Digital', $result->departments[1]->teams[0]->name);
@@ -233,8 +232,8 @@ class CollectionMappingTest extends TestCase
                 'debug' => true,
                 'cache' => false,
                 'timeout' => 30,
-                'retries' => 3
-            ]
+                'retries' => 3,
+            ],
         ];
 
         $result = $this->mapper->map($source, ConfigDTO::class);
@@ -243,16 +242,16 @@ class CollectionMappingTest extends TestCase
         $this->assertEquals(1, $result->id);
         $this->assertEquals('App Config', $result->name);
         $this->assertCount(4, $result->settings);
-        
+
         $this->assertArrayHasKey('debug', $result->settings);
         $this->assertTrue($result->settings['debug']);
-        
+
         $this->assertArrayHasKey('cache', $result->settings);
         $this->assertFalse($result->settings['cache']);
-        
+
         $this->assertArrayHasKey('timeout', $result->settings);
         $this->assertEquals(30, $result->settings['timeout']);
-        
+
         $this->assertArrayHasKey('retries', $result->settings);
         $this->assertEquals(3, $result->settings['retries']);
     }
@@ -265,8 +264,8 @@ class CollectionMappingTest extends TestCase
             'mappings' => [
                 'key1' => 'value1',
                 'key2' => 'value2',
-                'key3' => 'value3'
-            ]
+                'key3' => 'value3',
+            ],
         ];
 
         $result = $this->mapper->map($source, KeyValueDTO::class);

@@ -34,7 +34,7 @@ readonly class BooleanType
     public function asRule(): Rules\BooleanType
     {
         $rule = new Rules\BooleanType();
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

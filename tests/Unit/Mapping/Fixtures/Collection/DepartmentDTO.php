@@ -6,6 +6,6 @@ class DepartmentDTO
 {
     public function __construct(
         public string $name,
-        public array $teams = []
+        public array $teams = [],
     ) {}
 }

@@ -31,12 +31,12 @@ class PrefixConvention implements NamingConvention
         'validate',
         'make',
     ];
-    
+
     public function getName(): string
     {
         return 'prefix';
     }
-    
+
     public function matches(string $name): bool
     {
         foreach ($this->prefixes as $prefix) {
@@ -44,74 +44,74 @@ class PrefixConvention implements NamingConvention
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     public function normalize(string $name): string
     {
         foreach ($this->prefixes as $prefix) {
             if (preg_match('/^' . $prefix . '([A-Z].*)$/', $name, $matches)) {
                 // Convert first letter to lowercase
                 $withoutPrefix = lcfirst($matches[1]);
-                
+
                 // Use camelCase normalization for the rest
                 $camelConvention = new CamelCaseConvention();
                 return $camelConvention->normalize($withoutPrefix);
             }
         }
-        
+
         return $name;
     }
-    
+
     public function denormalize(string $normalized): string
     {
         // By default, we use 'get' prefix for denormalization
         $camelConvention = new CamelCaseConvention();
         $camelCase = $camelConvention->denormalize($normalized);
-        
+
         return 'get' . ucfirst($camelCase);
     }
-    
+
     public function calculateMatchConfidence(string $sourceName, string $destinationName): float
     {
         // If one property uses a prefix and the other doesn't
-        if ($this->matches($sourceName) && !$this->matches($destinationName)) {
+        if ($this->matches($sourceName) && ! $this->matches($destinationName)) {
             $sourceNormalized = $this->normalize($sourceName);
-            
+
             // Detect convention of destination property
             $destinationConvention = $this->detectConvention($destinationName);
-            if ($destinationConvention !== null) {
+            if (null !== $destinationConvention) {
                 $destinationNormalized = $destinationConvention->normalize($destinationName);
-                
+
                 // Compare normalized forms
                 return $sourceNormalized === $destinationNormalized ? 0.9 : 0.0;
             }
-        } 
+        }
         // Opposite case: destination with prefix, source without
-        else if (!$this->matches($sourceName) && $this->matches($destinationName)) {
+        elseif ( ! $this->matches($sourceName) && $this->matches($destinationName)) {
             $destinationNormalized = $this->normalize($destinationName);
-            
+
             // Detect convention of source property
             $sourceConvention = $this->detectConvention($sourceName);
-            if ($sourceConvention !== null) {
+            if (null !== $sourceConvention) {
                 $sourceNormalized = $sourceConvention->normalize($sourceName);
-                
+
                 // Compare normalized forms
                 return $sourceNormalized === $destinationNormalized ? 0.9 : 0.0;
             }
         }
         // Both have prefixes
-        else if ($this->matches($sourceName) && $this->matches($destinationName)) {
+        elseif ($this->matches($sourceName) && $this->matches($destinationName)) {
             $sourceNormalized = $this->normalize($sourceName);
             $destinationNormalized = $this->normalize($destinationName);
-            
+
             return $sourceNormalized === $destinationNormalized ? 1.0 : 0.0;
         }
-        
+
         return 0.0;
     }
-    
+
     /**
      * Detects which convention a property name uses.
      */
@@ -121,15 +121,15 @@ class PrefixConvention implements NamingConvention
             new CamelCaseConvention(),
             new PascalCaseConvention(),
             new SnakeCaseConvention(),
-            new KebabCaseConvention()
+            new KebabCaseConvention(),
         ];
-        
+
         foreach ($conventions as $convention) {
             if ($convention->matches($name)) {
                 return $convention;
             }
         }
-        
+
         return null;
     }
 }

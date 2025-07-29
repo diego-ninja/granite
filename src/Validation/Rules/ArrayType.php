@@ -13,7 +13,7 @@ class ArrayType extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        return $value === null || is_array($value);
+        return null === $value || is_array($value);
     }
 
     /**

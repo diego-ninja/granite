@@ -6,6 +6,7 @@ namespace Tests\Unit\Validation\Rules;
 
 use Ninja\Granite\Validation\Rules\Url;
 use PHPUnit\Framework\Attributes\CoversClass;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Url::class)] class UrlTest extends TestCase
@@ -41,7 +42,7 @@ use Tests\Helpers\TestCase;
         ];
 
         foreach ($validUrls as $url) {
-            $this->assertTrue($this->rule->validate($url), "Failed to validate: $url");
+            $this->assertTrue($this->rule->validate($url), "Failed to validate: {$url}");
         }
     }
 
@@ -61,7 +62,7 @@ use Tests\Helpers\TestCase;
         ];
 
         foreach ($invalidUrls as $url) {
-            $this->assertFalse($this->rule->validate($url), "Incorrectly validated: $url");
+            $this->assertFalse($this->rule->validate($url), "Incorrectly validated: {$url}");
         }
     }
 
@@ -75,7 +76,7 @@ use Tests\Helpers\TestCase;
         $this->assertFalse($this->rule->validate(123));
         $this->assertFalse($this->rule->validate(true));
         $this->assertFalse($this->rule->validate([]));
-        $this->assertFalse($this->rule->validate(new \stdClass()));
+        $this->assertFalse($this->rule->validate(new stdClass()));
     }
 
     public function test_returns_default_message(): void

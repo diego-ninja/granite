@@ -1,13 +1,18 @@
 <?php
+
 // tests/Unit/Validation/Rules/ArrayTypeTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Validation\Rules;
 
+use ArrayIterator;
+use ArrayObject;
 use Ninja\Granite\Validation\Rules\ArrayType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use SplFixedArray;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(ArrayType::class)]
@@ -19,6 +24,43 @@ class ArrayTypeTest extends TestCase
     {
         $this->rule = new ArrayType();
         parent::setUp();
+    }
+
+    public static function validArrayValuesProvider(): array
+    {
+        return [
+            'empty array' => [[]],
+            'indexed numeric' => [[1, 2, 3]],
+            'indexed string' => [['a', 'b', 'c']],
+            'indexed mixed' => [[1, 'two', true, null]],
+            'associative simple' => [['key' => 'value']],
+            'associative complex' => [['name' => 'John', 'age' => 30, 'active' => true]],
+            'nested arrays' => [['level1' => ['level2' => ['level3' => 'deep']]]],
+            'mixed structure' => [[0 => 'indexed', 'key' => 'associative', 1 => 'mixed']],
+            'array with objects' => [[new stdClass(), (object) ['test' => true]]],
+            'multidimensional' => [[[1, 2], [3, 4], [5, 6]]],
+        ];
+    }
+
+    public static function invalidNonArrayValuesProvider(): array
+    {
+        return [
+            'empty string' => [''],
+            'non-empty string' => ['text'],
+            'json string' => ['["a","b","c"]'],
+            'comma separated' => ['a,b,c'],
+            'zero integer' => [0],
+            'positive integer' => [123],
+            'negative integer' => [-456],
+            'zero float' => [0.0],
+            'positive float' => [3.14],
+            'negative float' => [-2.71],
+            'true boolean' => [true],
+            'false boolean' => [false],
+            'stdClass object' => [new stdClass()],
+            'anonymous object' => [(object) ['array' => [1, 2, 3]]],
+            'ArrayObject' => [new ArrayObject([1, 2, 3])],
+        ];
     }
 
     public function test_validates_empty_array(): void
@@ -46,9 +88,9 @@ class ArrayTypeTest extends TestCase
         $this->assertTrue($this->rule->validate([
             'users' => [
                 ['name' => 'John', 'age' => 30],
-                ['name' => 'Jane', 'age' => 25]
+                ['name' => 'Jane', 'age' => 25],
             ],
-            'meta' => ['total' => 2]
+            'meta' => ['total' => 2],
         ]));
 
         $this->assertTrue($this->rule->validate([[[['deep']]]]));
@@ -60,7 +102,7 @@ class ArrayTypeTest extends TestCase
             0 => 'indexed',
             'key' => 'associative',
             1 => 'mixed',
-            'nested' => ['array' => 'value']
+            'nested' => ['array' => 'value'],
         ]));
     }
 
@@ -94,11 +136,11 @@ class ArrayTypeTest extends TestCase
 
     public function test_rejects_object_values(): void
     {
-        $this->assertFalse($this->rule->validate(new \stdClass()));
+        $this->assertFalse($this->rule->validate(new stdClass()));
         $this->assertFalse($this->rule->validate((object) ['key' => 'value']));
 
         // ArrayObject implements array-like interface but is still an object
-        $this->assertFalse($this->rule->validate(new \ArrayObject(['a', 'b', 'c'])));
+        $this->assertFalse($this->rule->validate(new ArrayObject(['a', 'b', 'c'])));
     }
 
     public function test_rejects_resource_values(): void
@@ -112,7 +154,7 @@ class ArrayTypeTest extends TestCase
     {
         $this->assertFalse($this->rule->validate('strlen'));
         $this->assertFalse($this->rule->validate(fn() => 'test'));
-        $this->assertFalse($this->rule->validate(function() { return 'test'; }));
+        $this->assertFalse($this->rule->validate(fn() => 'test'));
     }
 
     public function test_ignores_all_data_parameter(): void
@@ -158,47 +200,10 @@ class ArrayTypeTest extends TestCase
         $this->assertTrue($this->rule->validate($value));
     }
 
-    public static function validArrayValuesProvider(): array
-    {
-        return [
-            'empty array' => [[]],
-            'indexed numeric' => [[1, 2, 3]],
-            'indexed string' => [['a', 'b', 'c']],
-            'indexed mixed' => [[1, 'two', true, null]],
-            'associative simple' => [['key' => 'value']],
-            'associative complex' => [['name' => 'John', 'age' => 30, 'active' => true]],
-            'nested arrays' => [['level1' => ['level2' => ['level3' => 'deep']]]],
-            'mixed structure' => [[0 => 'indexed', 'key' => 'associative', 1 => 'mixed']],
-            'array with objects' => [[new \stdClass(), (object)['test' => true]]],
-            'multidimensional' => [[[1, 2], [3, 4], [5, 6]]],
-        ];
-    }
-
     #[DataProvider('invalidNonArrayValuesProvider')]
     public function test_rejects_non_array_values(mixed $value): void
     {
         $this->assertFalse($this->rule->validate($value));
-    }
-
-    public static function invalidNonArrayValuesProvider(): array
-    {
-        return [
-            'empty string' => [''],
-            'non-empty string' => ['text'],
-            'json string' => ['["a","b","c"]'],
-            'comma separated' => ['a,b,c'],
-            'zero integer' => [0],
-            'positive integer' => [123],
-            'negative integer' => [-456],
-            'zero float' => [0.0],
-            'positive float' => [3.14],
-            'negative float' => [-2.71],
-            'true boolean' => [true],
-            'false boolean' => [false],
-            'stdClass object' => [new \stdClass()],
-            'anonymous object' => [(object) ['array' => [1, 2, 3]]],
-            'ArrayObject' => [new \ArrayObject([1, 2, 3])],
-        ];
     }
 
     public function test_rule_implements_validation_rule_interface(): void
@@ -228,7 +233,7 @@ class ArrayTypeTest extends TestCase
         // Test with large associative array
         $largeAssoc = [];
         for ($i = 0; $i < 100; $i++) {
-            $largeAssoc["key_$i"] = "value_$i";
+            $largeAssoc["key_{$i}"] = "value_{$i}";
         }
         $this->assertTrue($this->rule->validate($largeAssoc));
     }
@@ -240,10 +245,10 @@ class ArrayTypeTest extends TestCase
         $this->assertTrue($this->rule->validate([1, 2, 3]));
 
         // Array-like objects should fail
-        $this->assertFalse($this->rule->validate(new \ArrayObject()));
-        $this->assertFalse($this->rule->validate(new \SplFixedArray(3)));
+        $this->assertFalse($this->rule->validate(new ArrayObject()));
+        $this->assertFalse($this->rule->validate(new SplFixedArray(3)));
 
         // Iterator objects should fail
-        $this->assertFalse($this->rule->validate(new \ArrayIterator([1, 2, 3])));
+        $this->assertFalse($this->rule->validate(new ArrayIterator([1, 2, 3])));
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 // tests/Fixtures/DTOs/TestUninitializedDTO.php
 
 declare(strict_types=1);

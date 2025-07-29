@@ -15,7 +15,7 @@ final readonly class ProductVO extends GraniteVO
         public string $sku,
         public float $price,
         public int $quantity,
-        public string $category
+        public string $category,
     ) {}
 
     protected static function rules(): array
@@ -25,7 +25,7 @@ final readonly class ProductVO extends GraniteVO
             'sku' => 'required|string|regex:/^[A-Z0-9]{10}$/',
             'price' => 'required|number|min:0.01',
             'quantity' => 'required|integer|min:0',
-            'category' => 'required|in:electronics,clothing,books,home'
+            'category' => 'required|in:electronics,clothing,books,home',
         ];
     }
 }

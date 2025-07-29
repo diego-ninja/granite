@@ -32,6 +32,14 @@
     <logging>
         <junit outputFile="tests/_reports/junit.xml"/>
     </logging>
+    
+    <coverage>
+        <report>
+            <clover outputFile="coverage/clover.xml"/>
+            <html outputDirectory="coverage/html"/>
+            <text outputFile="coverage/coverage.txt"/>
+        </report>
+    </coverage>
 
     <php>
         <env name="APP_ENV" value="testing"/>

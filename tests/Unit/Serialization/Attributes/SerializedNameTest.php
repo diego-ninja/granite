@@ -1,12 +1,15 @@
 <?php
+
 // tests/Unit/Serialization/Attributes/SerializedNameTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Serialization\Attributes;
 
+use Attribute;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(SerializedName::class)] class SerializedNameTest extends TestCase
@@ -21,20 +24,20 @@ use Tests\Helpers\TestCase;
 
     public function test_is_readonly_class(): void
     {
-        $reflection = new \ReflectionClass(SerializedName::class);
+        $reflection = new ReflectionClass(SerializedName::class);
 
         $this->assertTrue($reflection->isReadonly());
     }
 
     public function test_has_correct_attribute_target(): void
     {
-        $reflection = new \ReflectionClass(SerializedName::class);
-        $attributes = $reflection->getAttributes(\Attribute::class);
+        $reflection = new ReflectionClass(SerializedName::class);
+        $attributes = $reflection->getAttributes(Attribute::class);
 
         $this->assertCount(1, $attributes);
 
         $attributeInstance = $attributes[0]->newInstance();
-        $this->assertEquals(\Attribute::TARGET_PROPERTY, $attributeInstance->flags);
+        $this->assertEquals(Attribute::TARGET_PROPERTY, $attributeInstance->flags);
     }
 
     public function test_accepts_empty_string_name(): void
@@ -56,7 +59,7 @@ use Tests\Helpers\TestCase;
             'name123',
             '123name',
             'UPPERCASE_NAME',
-            'MiXeD_CaSe-Name.123'
+            'MiXeD_CaSe-Name.123',
         ];
 
         foreach ($specialNames as $name) {
@@ -73,7 +76,7 @@ use Tests\Helpers\TestCase;
             'configuración',
             'ñoño',
             'café',
-            'résumé'
+            'résumé',
         ];
 
         foreach ($unicodeNames as $name) {
@@ -84,7 +87,7 @@ use Tests\Helpers\TestCase;
 
     public function test_property_is_public_readonly(): void
     {
-        $reflection = new \ReflectionClass(SerializedName::class);
+        $reflection = new ReflectionClass(SerializedName::class);
         $nameProperty = $reflection->getProperty('name');
 
         $this->assertTrue($nameProperty->isPublic());

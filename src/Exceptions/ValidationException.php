@@ -23,7 +23,7 @@ class ValidationException extends GraniteException
 
         $context = [
             'object_type' => $objectType,
-            'validation_errors' => $errors
+            'validation_errors' => $errors,
         ];
 
         parent::__construct($message, $code, $previous, $context);
@@ -42,7 +42,8 @@ class ValidationException extends GraniteException
      */
     public function getFieldErrors(string $field): array
     {
-        return $this->errors[$field] ?? [];
+        $fieldErrors = $this->errors[$field] ?? [];
+        return is_array($fieldErrors) ? $fieldErrors : [];
     }
 
     /**
@@ -50,7 +51,7 @@ class ValidationException extends GraniteException
      */
     public function hasFieldErrors(string $field): bool
     {
-        return isset($this->errors[$field]) && !empty($this->errors[$field]);
+        return isset($this->errors[$field]) && ! empty($this->errors[$field]);
     }
 
     /**
@@ -68,8 +69,12 @@ class ValidationException extends GraniteException
     {
         $messages = [];
         foreach ($this->errors as $fieldErrors) {
-            foreach ($fieldErrors as $error) {
-                $messages[] = $error;
+            if (is_array($fieldErrors)) {
+                foreach ($fieldErrors as $error) {
+                    if (is_string($error)) {
+                        $messages[] = $error;
+                    }
+                }
             }
         }
         return $messages;
@@ -82,15 +87,19 @@ class ValidationException extends GraniteException
     {
         $messages = [];
         foreach ($this->errors as $fieldErrors) {
-            foreach ($fieldErrors as $error) {
-                $messages[] = "• {$error}";
+            if (is_array($fieldErrors)) {
+                foreach ($fieldErrors as $error) {
+                    if (is_string($error)) {
+                        $messages[] = "• {$error}";
+                    }
+                }
             }
         }
 
         return sprintf(
             "Validation failed for %s:\n%s",
             $this->objectType,
-            implode("\n", $messages)
+            implode("\n", $messages),
         );
     }
 }

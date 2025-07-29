@@ -2,6 +2,7 @@
 
 namespace Ninja\Granite\Mapping;
 
+use Exception;
 use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Mapping\Contracts\MappingStorage;
 use Ninja\Granite\Mapping\Contracts\Transformer;
@@ -29,7 +30,7 @@ final class TypeMapping
     public function __construct(
         private readonly MappingStorage $storage,
         private readonly string $sourceType,
-        private readonly string $destinationType
+        private readonly string $destinationType,
     ) {}
 
     /**
@@ -47,7 +48,7 @@ final class TypeMapping
                 $this->sourceType,
                 $this->destinationType,
                 "Cannot modify mapping after it has been sealed",
-                $destinationProperty
+                $destinationProperty,
             );
         }
 
@@ -58,7 +59,7 @@ final class TypeMapping
             $this->sourceType,
             $this->destinationType,
             $destinationProperty,
-            $mapping
+            $mapping,
         );
 
         return $this;
@@ -84,7 +85,7 @@ final class TypeMapping
             $this->validateDestinationProperties($mappings);
 
             // Validate source properties when possible
-            if ($this->sourceType !== 'array' && class_exists($this->sourceType)) {
+            if ('array' !== $this->sourceType && class_exists($this->sourceType)) {
                 $this->validateSourceProperties($mappings);
             }
 
@@ -101,7 +102,7 @@ final class TypeMapping
         } catch (MappingException $e) {
             // Re-throw mapping exceptions
             throw $e;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Wrap other exceptions
             throw new MappingException(
                 $this->sourceType,
@@ -109,153 +110,8 @@ final class TypeMapping
                 "Error while validating mapping: " . $e->getMessage(),
                 null,
                 0,
-                $e
+                $e,
             );
-        }
-    }
-
-    /**
-     * Validate that all destination properties exist.
-     *
-     * @param array $mappings Property mappings to validate
-     * @throws MappingException If a destination property doesn't exist
-     */
-    private function validateDestinationProperties(array $mappings): void
-    {
-        if (!class_exists($this->destinationType)) {
-            throw new MappingException(
-                $this->sourceType,
-                $this->destinationType,
-                "Destination type '{$this->destinationType}' does not exist"
-            );
-        }
-
-        try {
-            $destProperties = ReflectionCache::getPublicProperties($this->destinationType);
-            $destPropNames = array_map(
-                fn(ReflectionProperty $p) => $p->getName(),
-                $destProperties
-            );
-
-            foreach (array_keys($mappings) as $propName) {
-                if (!in_array($propName, $destPropNames)) {
-                    throw new MappingException(
-                        $this->sourceType,
-                        $this->destinationType,
-                        "Destination property '{$propName}' does not exist in '{$this->destinationType}'",
-                        $propName
-                    );
-                }
-            }
-        } catch (ReflectionException $e) {
-            throw new MappingException(
-                $this->sourceType,
-                $this->destinationType,
-                "Error examining destination type: " . $e->getMessage()
-            );
-        }
-    }
-
-    /**
-     * Validate that all source properties exist.
-     *
-     * @param array $mappings Property mappings to validate
-     * @throws MappingException If a source property doesn't exist
-     */
-    private function validateSourceProperties(array $mappings): void
-    {
-        try {
-            $sourceProperties = ReflectionCache::getPublicProperties($this->sourceType);
-            $sourcePropNames = array_map(
-                fn(ReflectionProperty $p) => $p->getName(),
-                $sourceProperties
-            );
-
-            foreach ($mappings as $destProp => $mapping) {
-                $sourceProp = $mapping->getSourceProperty();
-
-                // Skip if no explicit source property or using dot notation (nested properties)
-                if ($sourceProp === null || str_contains($sourceProp, '.')) {
-                    continue;
-                }
-
-                if (!in_array($sourceProp, $sourcePropNames)) {
-                    throw new MappingException(
-                        $this->sourceType,
-                        $this->destinationType,
-                        "Source property '{$sourceProp}' does not exist in '{$this->sourceType}'",
-                        $destProp
-                    );
-                }
-            }
-        } catch (ReflectionException $e) {
-            throw new MappingException(
-                $this->sourceType,
-                $this->destinationType,
-                "Error examining source type: " . $e->getMessage()
-            );
-        }
-    }
-
-    /**
-     * Validate transformers and conditions.
-     *
-     * @param array $mappings Property mappings to validate
-     * @throws MappingException If a transformer or condition is invalid
-     */
-    private function validateTransformersAndConditions(array $mappings): void
-    {
-        foreach ($mappings as $destProp => $mapping) {
-            $transformer = $mapping->getTransformer();
-
-            if ($transformer !== null && !($transformer instanceof Transformer) && !is_callable($transformer)) {
-                throw new MappingException(
-                    $this->sourceType,
-                    $this->destinationType,
-                    "Invalid transformer for property '{$destProp}': must be callable or implement Transformer",
-                    $destProp
-                );
-            }
-
-            // We would also validate conditions here if PropertyMapping exposed the condition
-            // For now we're assuming the condition is properly checked within PropertyMapping
-        }
-    }
-
-    /**
-     * Detect redundant or conflicting mappings.
-     *
-     * @param array $mappings Property mappings to check
-     * @throws MappingException If conflicts are found
-     */
-    private function detectConflicts(array $mappings): void
-    {
-        $sourceProps = [];
-        $ignoredProps = [];
-
-        // Collect source properties and ignored flags
-        foreach ($mappings as $destProp => $mapping) {
-            if ($mapping->isIgnored()) {
-                $ignoredProps[$destProp] = true;
-                continue;
-            }
-
-            $sourceProp = $mapping->getSourceProperty();
-            if ($sourceProp !== null) {
-                $sourceProps[$sourceProp][] = $destProp;
-            }
-        }
-
-        // Check for properties that are both mapped and ignored
-        foreach ($ignoredProps as $destProp => $ignored) {
-            if (isset($mappings[$destProp]) && $mappings[$destProp]->getSourceProperty() !== null) {
-                throw new MappingException(
-                    $this->sourceType,
-                    $this->destinationType,
-                    "Property '{$destProp}' is both mapped and ignored",
-                    $destProp
-                );
-            }
         }
     }
 
@@ -287,5 +143,154 @@ final class TypeMapping
     public function getDestinationType(): string
     {
         return $this->destinationType;
+    }
+
+    /**
+     * Validate that all destination properties exist.
+     *
+     * @param array $mappings Property mappings to validate
+     * @throws MappingException If a destination property doesn't exist
+     */
+    private function validateDestinationProperties(array $mappings): void
+    {
+        if ( ! class_exists($this->destinationType)) {
+            throw new MappingException(
+                $this->sourceType,
+                $this->destinationType,
+                "Destination type '{$this->destinationType}' does not exist",
+            );
+        }
+
+        try {
+            $destProperties = ReflectionCache::getPublicProperties($this->destinationType);
+            $destPropNames = array_map(
+                fn(ReflectionProperty $p) => $p->getName(),
+                $destProperties,
+            );
+
+            foreach (array_keys($mappings) as $propName) {
+                if ( ! in_array($propName, $destPropNames)) {
+                    throw new MappingException(
+                        $this->sourceType,
+                        $this->destinationType,
+                        "Destination property '{$propName}' does not exist in '{$this->destinationType}'",
+                        $propName,
+                    );
+                }
+            }
+        } catch (ReflectionException $e) {
+            throw new MappingException(
+                $this->sourceType,
+                $this->destinationType,
+                "Error examining destination type: " . $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Validate that all source properties exist.
+     *
+     * @param array $mappings Property mappings to validate
+     * @throws MappingException If a source property doesn't exist
+     */
+    private function validateSourceProperties(array $mappings): void
+    {
+        if ( ! class_exists($this->sourceType)) {
+            return; // Skip validation for non-class types like 'array'
+        }
+
+        try {
+            $sourceProperties = ReflectionCache::getPublicProperties($this->sourceType);
+            $sourcePropNames = array_map(
+                fn(ReflectionProperty $p) => $p->getName(),
+                $sourceProperties,
+            );
+
+            foreach ($mappings as $destProp => $mapping) {
+                $sourceProp = $mapping->getSourceProperty();
+
+                // Skip if no explicit source property or using dot notation (nested properties)
+                if (null === $sourceProp || ! is_string($sourceProp) || str_contains($sourceProp, '.')) {
+                    continue;
+                }
+
+                if ( ! in_array($sourceProp, $sourcePropNames)) {
+                    throw new MappingException(
+                        $this->sourceType,
+                        $this->destinationType,
+                        "Source property '{$sourceProp}' does not exist in '{$this->sourceType}'",
+                        $destProp,
+                    );
+                }
+            }
+        } catch (ReflectionException $e) {
+            throw new MappingException(
+                $this->sourceType,
+                $this->destinationType,
+                "Error examining source type: " . $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Validate transformers and conditions.
+     *
+     * @param array $mappings Property mappings to validate
+     * @throws MappingException If a transformer or condition is invalid
+     */
+    private function validateTransformersAndConditions(array $mappings): void
+    {
+        foreach ($mappings as $destProp => $mapping) {
+            $transformer = $mapping->getTransformer();
+
+            if (null !== $transformer && ! ($transformer instanceof Transformer) && ! is_callable($transformer)) {
+                throw new MappingException(
+                    $this->sourceType,
+                    $this->destinationType,
+                    "Invalid transformer for property '{$destProp}': must be callable or implement Transformer",
+                    $destProp,
+                );
+            }
+
+            // We would also validate conditions here if PropertyMapping exposed the condition
+            // For now we're assuming the condition is properly checked within PropertyMapping
+        }
+    }
+
+    /**
+     * Detect redundant or conflicting mappings.
+     *
+     * @param array $mappings Property mappings to check
+     * @throws MappingException If conflicts are found
+     */
+    private function detectConflicts(array $mappings): void
+    {
+        $sourceProps = [];
+        $ignoredProps = [];
+
+        // Collect source properties and ignored flags
+        foreach ($mappings as $destProp => $mapping) {
+            if ($mapping->isIgnored()) {
+                $ignoredProps[$destProp] = true;
+                continue;
+            }
+
+            $sourceProp = $mapping->getSourceProperty();
+            if (null !== $sourceProp) {
+                $sourceProps[$sourceProp][] = $destProp;
+            }
+        }
+
+        // Check for properties that are both mapped and ignored
+        foreach ($ignoredProps as $destProp => $ignored) {
+            if (isset($mappings[$destProp]) && null !== $mappings[$destProp]->getSourceProperty()) {
+                throw new MappingException(
+                    $this->sourceType,
+                    $this->destinationType,
+                    "Property '{$destProp}' is both mapped and ignored",
+                    $destProp,
+                );
+            }
+        }
     }
 }

@@ -1,14 +1,17 @@
 <?php
+
 // tests/Unit/Mapping/PropertyMappingTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Mapping;
 
-use Tests\Fixtures\Automapper\TestTransformer;
+use Exception;
 use Ninja\Granite\Mapping\PropertyMapping;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
+use Tests\Fixtures\Automapper\TestTransformer;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(PropertyMapping::class)]
@@ -20,6 +23,32 @@ class PropertyMappingTest extends TestCase
     {
         $this->mapping = new PropertyMapping();
         parent::setUp();
+    }
+
+    public static function transformerTypesProvider(): array
+    {
+        return [
+            'closure' => [
+                fn($value) => 'closure: ' . $value,
+                'test',
+                'closure: test',
+            ],
+            'callable array' => [
+                [self::class, 'staticTransformer'],
+                'test',
+                'static: test',
+            ],
+            'transformer instance' => [
+                new TestTransformer(),
+                'test',
+                'TRANSFORMED: test',
+            ],
+        ];
+    }
+
+    public static function staticTransformer($value): string
+    {
+        return 'static: ' . $value;
     }
 
     public function test_creates_property_mapping(): void
@@ -37,7 +66,7 @@ class PropertyMappingTest extends TestCase
 
     public function test_using_sets_transformer_with_callable(): void
     {
-        $transformer = fn($value) => strtoupper($value);
+        $transformer = fn($value) => mb_strtoupper($value);
 
         $result = $this->mapping->using($transformer);
 
@@ -63,7 +92,7 @@ class PropertyMappingTest extends TestCase
 
     public function test_transforms_value_with_callable(): void
     {
-        $transformer = fn($value) => strtoupper($value);
+        $transformer = fn($value) => mb_strtoupper($value);
         $this->mapping->using($transformer);
 
         $result = $this->mapping->transform('hello', []);
@@ -83,9 +112,7 @@ class PropertyMappingTest extends TestCase
 
     public function test_transforms_value_with_source_data_context(): void
     {
-        $transformer = function($value, $sourceData) {
-            return $value . ' from ' . ($sourceData['location'] ?? 'unknown');
-        };
+        $transformer = fn($value, $sourceData) => $value . ' from ' . ($sourceData['location'] ?? 'unknown');
 
         $this->mapping->using($transformer);
 
@@ -114,7 +141,7 @@ class PropertyMappingTest extends TestCase
     {
         $result = $this->mapping
             ->mapFrom('sourceField')
-            ->using(fn($value) => strtoupper($value));
+            ->using(fn($value) => mb_strtoupper($value));
 
         $this->assertSame($this->mapping, $result);
         $this->assertEquals('sourceField', $this->mapping->getSourceProperty());
@@ -171,35 +198,9 @@ class PropertyMappingTest extends TestCase
         $this->assertEquals($expected, $result);
     }
 
-    public static function transformerTypesProvider(): array
-    {
-        return [
-            'closure' => [
-                fn($value) => 'closure: ' . $value,
-                'test',
-                'closure: test'
-            ],
-            'callable array' => [
-                [self::class, 'staticTransformer'],
-                'test',
-                'static: test'
-            ],
-            'transformer instance' => [
-                new TestTransformer(),
-                'test',
-                'TRANSFORMED: test'
-            ]
-        ];
-    }
-
-    public static function staticTransformer($value): string
-    {
-        return 'static: ' . $value;
-    }
-
     public function test_handles_complex_transformations(): void
     {
-        $transformer = function($value, $sourceData) {
+        $transformer = function ($value, $sourceData) {
             $multiplier = $sourceData['multiplier'] ?? 1;
             $prefix = $sourceData['prefix'] ?? '';
 
@@ -219,7 +220,7 @@ class PropertyMappingTest extends TestCase
 
     public function test_handles_null_values(): void
     {
-        $transformer = fn($value) => $value === null ? 'NULL' : 'NOT_NULL';
+        $transformer = fn($value) => null === $value ? 'NULL' : 'NOT_NULL';
         $this->mapping->using($transformer);
 
         $result1 = $this->mapping->transform(null, []);
@@ -231,9 +232,7 @@ class PropertyMappingTest extends TestCase
 
     public function test_handles_empty_source_data(): void
     {
-        $transformer = function($value, $sourceData) {
-            return $value . ' (count: ' . count($sourceData) . ')';
-        };
+        $transformer = fn($value, $sourceData) => $value . ' (count: ' . count($sourceData) . ')';
 
         $this->mapping->using($transformer);
 
@@ -244,13 +243,13 @@ class PropertyMappingTest extends TestCase
 
     public function test_performance_with_complex_transformer(): void
     {
-        $transformer = function($value, $sourceData) {
+        $transformer = function ($value, $sourceData) {
             // Simulate complex transformation
             $result = $value;
             for ($i = 0; $i < 100; $i++) {
                 $result = md5($result);
             }
-            return substr($result, 0, 8);
+            return mb_substr($result, 0, 8);
         };
 
         $this->mapping->using($transformer);
@@ -258,7 +257,7 @@ class PropertyMappingTest extends TestCase
         $start = microtime(true);
 
         for ($i = 0; $i < 1000; $i++) {
-            $this->mapping->transform("test$i", []);
+            $this->mapping->transform("test{$i}", []);
         }
 
         $elapsed = microtime(true) - $start;
@@ -268,9 +267,9 @@ class PropertyMappingTest extends TestCase
 
     public function test_transformer_exception_handling(): void
     {
-        $transformer = function($value) {
-            if ($value === 'error') {
-                throw new \Exception('TestTransformer error');
+        $transformer = function ($value) {
+            if ('error' === $value) {
+                throw new Exception('TestTransformer error');
             }
             return $value;
         };
@@ -281,7 +280,7 @@ class PropertyMappingTest extends TestCase
         $this->assertEquals('normal', $this->mapping->transform('normal', []));
 
         // Should propagate exceptions
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage('TestTransformer error');
         $this->mapping->transform('error', []);
     }
@@ -300,7 +299,7 @@ class PropertyMappingTest extends TestCase
             'property_with_underscores',
             'property.with.dots',
             'property[with][brackets]',
-            'property with spaces'
+            'property with spaces',
         ];
 
         foreach ($specialNames as $name) {
@@ -326,14 +325,14 @@ class PropertyMappingTest extends TestCase
 
     public function test_works_with_different_value_types(): void
     {
-        $transformer = function($value) {
-            return match(gettype($value)) {
+        $transformer = function ($value) {
+            return match (gettype($value)) {
                 'string' => 'STRING: ' . $value,
                 'integer' => 'INT: ' . $value,
                 'array' => 'ARRAY: ' . count($value),
                 'boolean' => 'BOOL: ' . ($value ? 'true' : 'false'),
                 'NULL' => 'NULL',
-                default => 'UNKNOWN: ' . gettype($value)
+                default => 'UNKNOWN: ' . gettype($value),
             };
         };
 
@@ -346,7 +345,7 @@ class PropertyMappingTest extends TestCase
             [true, 'BOOL: true'],
             [false, 'BOOL: false'],
             [null, 'NULL'],
-            [new \stdClass(), 'UNKNOWN: object']
+            [new stdClass(), 'UNKNOWN: object'],
         ];
 
         foreach ($testCases as [$input, $expected]) {

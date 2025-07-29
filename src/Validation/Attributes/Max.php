@@ -17,9 +17,7 @@ final readonly class Max
      * @param int|float $max Maximum value
      * @param string|null $message Custom error message
      */
-    public function __construct(private int|float $max, private ?string $message = null)
-    {
-    }
+    public function __construct(private int|float $max, private ?string $message = null) {}
 
     /**
      * Create a validation rule from this attribute.
@@ -30,11 +28,10 @@ final readonly class Max
     {
         $rule = new Rules\Max($this->max);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 
         return $rule;
     }
 }
-

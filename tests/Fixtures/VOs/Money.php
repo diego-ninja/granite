@@ -1,4 +1,5 @@
 <?php
+
 // tests/Fixtures/ValueObjects/Money.php
 
 declare(strict_types=1);
@@ -6,8 +7,8 @@ declare(strict_types=1);
 namespace Tests\Fixtures\VOs;
 
 use Ninja\Granite\GraniteVO;
-use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Min;
+use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\StringType;
 
 final readonly class Money extends GraniteVO
@@ -16,10 +17,9 @@ final readonly class Money extends GraniteVO
         #[Required]
         #[Min(0)]
         public float $amount,
-
         #[Required]
         #[StringType]
-        public string $currency = 'USD'
+        public string $currency = 'USD',
     ) {}
 
     public function format(): string

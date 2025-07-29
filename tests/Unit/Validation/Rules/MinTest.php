@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/MinTest.php
 
 declare(strict_types=1);
@@ -8,10 +9,41 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\Min;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Min::class)] class MinTest extends TestCase
 {
+    public static function validMinValuesProvider(): array
+    {
+        return [
+            // String length tests
+            [3, 'abc', true],
+            [3, 'ab', false],
+            [0, '', true],
+            [1, 'x', true],
+
+            // Numeric tests
+            [10, 10, true],
+            [10, 11, true],
+            [10, 9, false],
+            [5.5, 5.5, true],
+            [5.5, 5.6, true],
+            [5.5, 5.4, false],
+
+            // Array tests
+            [2, ['a', 'b'], true],
+            [2, ['a'], false],
+            [0, [], true],
+            [1, ['item'], true],
+
+            // Edge cases
+            [0, 0, true],
+            [0, -1, false],
+            [-5, -4, true],
+            [-5, -6, false],
+        ];
+    }
     public function test_validates_string_length(): void
     {
         $rule = new Min(3);
@@ -65,7 +97,7 @@ use Tests\Helpers\TestCase;
     {
         $rule = new Min(5);
 
-        $this->assertTrue($rule->validate(new \stdClass()));
+        $this->assertTrue($rule->validate(new stdClass()));
         $this->assertTrue($rule->validate(true));
         $this->assertTrue($rule->validate(false));
     }
@@ -109,36 +141,5 @@ use Tests\Helpers\TestCase;
     {
         $rule = new Min($min);
         $this->assertEquals($expected, $rule->validate($value));
-    }
-
-    public static function validMinValuesProvider(): array
-    {
-        return [
-            // String length tests
-            [3, 'abc', true],
-            [3, 'ab', false],
-            [0, '', true],
-            [1, 'x', true],
-
-            // Numeric tests
-            [10, 10, true],
-            [10, 11, true],
-            [10, 9, false],
-            [5.5, 5.5, true],
-            [5.5, 5.6, true],
-            [5.5, 5.4, false],
-
-            // Array tests
-            [2, ['a', 'b'], true],
-            [2, ['a'], false],
-            [0, [], true],
-            [1, ['item'], true],
-
-            // Edge cases
-            [0, 0, true],
-            [0, -1, false],
-            [-5, -4, true],
-            [-5, -6, false],
-        ];
     }
 }

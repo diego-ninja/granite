@@ -16,6 +16,6 @@ readonly class MapDefault
      * @param mixed $value Default value to use when the property is null or condition fails
      */
     public function __construct(
-        public mixed $value
+        public mixed $value,
     ) {}
 }

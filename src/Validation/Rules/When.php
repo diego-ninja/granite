@@ -14,9 +14,8 @@ class When extends AbstractRule
      */
     public function __construct(
         private readonly mixed $condition,
-        private readonly ValidationRule $rule
-    ) {
-    }
+        private readonly ValidationRule $rule,
+    ) {}
 
     /**
      * Check if the value passes the validation rule.
@@ -28,7 +27,7 @@ class When extends AbstractRule
     public function validate(mixed $value, ?array $allData = null): bool
     {
         // If the condition is false, validation passes automatically
-        if (!call_user_func($this->condition, $value, $allData)) {
+        if ( ! call_user_func($this->condition, $value, $allData)) {
             return true;
         }
 

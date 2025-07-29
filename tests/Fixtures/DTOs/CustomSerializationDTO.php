@@ -6,6 +6,8 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures\DTOs;
 
+use DateTimeImmutable;
+use DateTimeInterface;
 use Ninja\Granite\GraniteDTO;
 
 final readonly class CustomSerializationDTO extends GraniteDTO
@@ -15,22 +17,8 @@ final readonly class CustomSerializationDTO extends GraniteDTO
         public string $description,
         public array $settings = [],
         public string $internalCode = '',
-        public \DateTimeInterface $createdAt = new \DateTimeImmutable()
+        public DateTimeInterface $createdAt = new DateTimeImmutable(),
     ) {}
-
-    protected static function serializedNames(): array
-    {
-        return [
-            'name' => 'display_name',
-            'description' => 'desc',
-            'createdAt' => 'created_timestamp'
-        ];
-    }
-
-    protected static function hiddenProperties(): array
-    {
-        return ['internalCode'];
-    }
 
     public function array(): array
     {
@@ -47,5 +35,19 @@ final readonly class CustomSerializationDTO extends GraniteDTO
         }
 
         return $data;
+    }
+
+    protected static function serializedNames(): array
+    {
+        return [
+            'name' => 'display_name',
+            'description' => 'desc',
+            'createdAt' => 'created_timestamp',
+        ];
+    }
+
+    protected static function hiddenProperties(): array
+    {
+        return ['internalCode'];
     }
 }

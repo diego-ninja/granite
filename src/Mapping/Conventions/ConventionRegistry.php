@@ -10,7 +10,7 @@ class ConventionRegistry
      * @var array<string, NamingConvention>
      */
     private array $conventions = [];
-    
+
     public function __construct()
     {
         // Registrar convenciones predeterminadas
@@ -21,7 +21,7 @@ class ConventionRegistry
         $this->register(new PrefixConvention());
         $this->register(new AbbreviationConvention());
     }
-    
+
     /**
      * Registra una nueva convención.
      */
@@ -29,7 +29,7 @@ class ConventionRegistry
     {
         $this->conventions[$convention->getName()] = $convention;
     }
-    
+
     /**
      * Obtiene una convención por su nombre.
      */
@@ -37,9 +37,11 @@ class ConventionRegistry
     {
         return $this->conventions[$name] ?? null;
     }
-    
+
     /**
      * Obtiene todas las convenciones registradas.
+     *
+     * @return array<string, NamingConvention>
      */
     public function getAll(): array
     {

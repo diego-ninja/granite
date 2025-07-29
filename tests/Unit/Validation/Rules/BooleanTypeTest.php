@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/BooleanTypeTest.php
 
 declare(strict_types=1);
@@ -8,6 +9,7 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\BooleanType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(BooleanType::class)]
@@ -19,6 +21,32 @@ class BooleanTypeTest extends TestCase
     {
         $this->rule = new BooleanType();
         parent::setUp();
+    }
+
+    public static function validBooleanValuesProvider(): array
+    {
+        return [
+            'true' => [true],
+            'false' => [false],
+        ];
+    }
+
+    public static function invalidNonBooleanValuesProvider(): array
+    {
+        return [
+            'string true' => ['true'],
+            'string false' => ['false'],
+            'integer 1' => [1],
+            'integer 0' => [0],
+            'float 1.0' => [1.0],
+            'float 0.0' => [0.0],
+            'empty string' => [''],
+            'non-empty string' => ['text'],
+            'empty array' => [[]],
+            'filled array' => [[true]],
+            'stdClass object' => [new stdClass()],
+            'anonymous object' => [(object) ['bool' => true]],
+        ];
     }
 
     public function test_validates_true_boolean(): void
@@ -73,7 +101,7 @@ class BooleanTypeTest extends TestCase
 
     public function test_rejects_object_values(): void
     {
-        $this->assertFalse($this->rule->validate(new \stdClass()));
+        $this->assertFalse($this->rule->validate(new stdClass()));
         $this->assertFalse($this->rule->validate((object) ['value' => true]));
     }
 
@@ -128,36 +156,10 @@ class BooleanTypeTest extends TestCase
         $this->assertTrue($this->rule->validate($value));
     }
 
-    public static function validBooleanValuesProvider(): array
-    {
-        return [
-            'true' => [true],
-            'false' => [false],
-        ];
-    }
-
     #[DataProvider('invalidNonBooleanValuesProvider')]
     public function test_rejects_non_boolean_values(mixed $value): void
     {
         $this->assertFalse($this->rule->validate($value));
-    }
-
-    public static function invalidNonBooleanValuesProvider(): array
-    {
-        return [
-            'string true' => ['true'],
-            'string false' => ['false'],
-            'integer 1' => [1],
-            'integer 0' => [0],
-            'float 1.0' => [1.0],
-            'float 0.0' => [0.0],
-            'empty string' => [''],
-            'non-empty string' => ['text'],
-            'empty array' => [[]],
-            'filled array' => [[true]],
-            'stdClass object' => [new \stdClass()],
-            'anonymous object' => [(object) ['bool' => true]],
-        ];
     }
 
     public function test_rule_implements_validation_rule_interface(): void
@@ -180,8 +182,8 @@ class BooleanTypeTest extends TestCase
         $this->assertTrue($this->rule->validate($falseValue));
 
         // Verify they work as expected in conditionals
-        $this->assertTrue($trueValue === true);
-        $this->assertTrue($falseValue === false);
+        $this->assertTrue(true === $trueValue);
+        $this->assertTrue(false === $falseValue);
     }
 
     public function test_strict_type_checking(): void

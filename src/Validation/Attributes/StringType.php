@@ -34,7 +34,7 @@ readonly class StringType
     public function asRule(): Rules\StringType
     {
         $rule = new Rules\StringType();
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

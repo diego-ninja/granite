@@ -17,7 +17,7 @@ class ReflectionException extends GraniteException
         string $operation,
         string $message = "",
         int $code = 0,
-        ?Exception $previous = null
+        ?Exception $previous = null,
     ) {
         $this->className = $className;
         $this->operation = $operation;
@@ -28,10 +28,36 @@ class ReflectionException extends GraniteException
 
         $context = [
             'class_name' => $className,
-            'operation' => $operation
+            'operation' => $operation,
         ];
 
         parent::__construct($message, $code, $previous, $context);
+    }
+
+    /**
+     * Create exception for class not found errors.
+     */
+    public static function classNotFound(string $className): self
+    {
+        return new self(
+            $className,
+            'class_loading',
+            sprintf('Class "%s" not found', $className),
+        );
+    }
+
+    /**
+     * Create exception for property access errors.
+     */
+    public static function propertyAccessFailed(string $className, string $propertyName, ?Exception $previous = null): self
+    {
+        return new self(
+            $className,
+            'property_access',
+            sprintf('Failed to access property "%s" in class %s', $propertyName, $className),
+            0,
+            $previous,
+        );
     }
 
     public function getClassName(): string
@@ -42,31 +68,5 @@ class ReflectionException extends GraniteException
     public function getOperation(): string
     {
         return $this->operation;
-    }
-
-    /**
-     * Create exception for class not found errors.
-     */
-    public static function classNotFound(string $className): static
-    {
-        return new static(
-            $className,
-            'class_loading',
-            sprintf('Class "%s" not found', $className)
-        );
-    }
-
-    /**
-     * Create exception for property access errors.
-     */
-    public static function propertyAccessFailed(string $className, string $propertyName, ?Exception $previous = null): static
-    {
-        return new static(
-            $className,
-            'property_access',
-            sprintf('Failed to access property "%s" in class %s', $propertyName, $className),
-            0,
-            $previous
-        );
     }
 }

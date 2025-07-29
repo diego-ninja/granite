@@ -17,9 +17,7 @@ final readonly class Min
      * @param int|float $min Minimum value
      * @param string|null $message Custom error message
      */
-    public function __construct(private int|float $min, private ?string $message = null)
-    {
-    }
+    public function __construct(private int|float $min, private ?string $message = null) {}
 
     /**
      * Create a validation rule from this attribute.
@@ -30,11 +28,10 @@ final readonly class Min
     {
         $rule = new Rules\Min($this->min);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 
         return $rule;
     }
 }
-

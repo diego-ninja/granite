@@ -4,23 +4,18 @@ namespace Tests\Unit\Mapping;
 
 use DateTimeImmutable;
 use DateTimeInterface;
-use InvalidArgumentException;
 use Ninja\Granite\Exceptions\GraniteException;
-use Ninja\Granite\GraniteDTO;
-use Ninja\Granite\Mapping\MapperConfig;
-use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Ninja\Granite\Mapping\MapperConfig;
 use Ninja\Granite\Mapping\MappingProfile;
-use Ninja\Granite\Mapping\Attributes\MapFrom;
-use Ninja\Granite\Mapping\Attributes\MapWith;
-use Ninja\Granite\Mapping\Attributes\Ignore;
+use Ninja\Granite\Mapping\ObjectMapper;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\Fixtures\Enums\UserStatus;
+use stdClass;
 use Tests\Fixtures\Enums\Priority;
+use Tests\Fixtures\Enums\UserStatus;
 use Tests\Helpers\TestCase;
 use Tests\Unit\Mapping\Fixtures\Basic;
 
@@ -37,9 +32,9 @@ class BasicMappingTest extends TestCase
             new Basic\ChainedTransformerProfile(),
             new Basic\CircularReferenceProfile(),
             new Basic\ResponseToSimpleUserProfile(),
-            new Basic\ClassTransformerProfile()
+            new Basic\ClassTransformerProfile(),
         ];
-        
+
         $this->mapper = new ObjectMapper(MapperConfig::create()->withProfiles($profiles));
         parent::setUp();
     }
@@ -65,7 +60,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $result = $this->mapper->map($source, Basic\SimpleUserDTO::class);
@@ -88,7 +83,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'user_id' => 42,
             'full_name' => 'Jane Smith',
-            'email_address' => 'jane@example.com'
+            'email_address' => 'jane@example.com',
         ];
 
         $result = $this->mapper->map($source, Basic\MappedUserDTO::class);
@@ -105,7 +100,7 @@ class BasicMappingTest extends TestCase
             'id' => 1,
             'name' => 'John',
             'password' => 'secret123',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $result = $this->mapper->map($source, Basic\IgnoredFieldsDTO::class);
@@ -122,7 +117,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'john doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $result = $this->mapper->map($source, Basic\TransformedUserDTO::class);
@@ -139,16 +134,16 @@ class BasicMappingTest extends TestCase
             'user' => [
                 'personal' => [
                     'firstName' => 'John',
-                    'lastName' => 'Doe'
+                    'lastName' => 'Doe',
                 ],
                 'contact' => [
                     'email' => 'john@example.com',
-                    'phone' => '+1234567890'
-                ]
+                    'phone' => '+1234567890',
+                ],
             ],
             'metadata' => [
-                'createdAt' => '2024-01-01T10:00:00Z'
-            ]
+                'createdAt' => '2024-01-01T10:00:00Z',
+            ],
         ];
 
         $result = $this->mapper->map($source, Basic\NestedMappingDTO::class);
@@ -166,11 +161,11 @@ class BasicMappingTest extends TestCase
         $source = [
             'user' => [
                 'personal' => [
-                    'firstName' => 'John'
+                    'firstName' => 'John',
                     // lastName missing
                 ],
                 // contact missing entirely
-            ]
+            ],
         ];
 
         $result = $this->mapper->map($source, Basic\NestedMappingDTO::class);
@@ -191,7 +186,7 @@ class BasicMappingTest extends TestCase
             'id' => 1,
             'name' => 'Event',
             'startDate' => $date,
-            'endDate' => '2024-01-02T10:00:00Z'
+            'endDate' => '2024-01-02T10:00:00Z',
         ];
 
         $result = $this->mapper->map($source, Basic\EventDTO::class);
@@ -208,7 +203,7 @@ class BasicMappingTest extends TestCase
             'id' => 1,
             'name' => 'John',
             'status' => 'active',
-            'priority' => 2
+            'priority' => 2,
         ];
 
         $result = $this->mapper->map($source, Basic\UserWithEnumsDTO::class);
@@ -228,8 +223,8 @@ class BasicMappingTest extends TestCase
             'tags' => ['php', 'testing', 'mapping'],
             'settings' => [
                 'public' => true,
-                'maxUsers' => 10
-            ]
+                'maxUsers' => 10,
+            ],
         ];
 
         $result = $this->mapper->map($source, Basic\ProjectDTO::class);
@@ -255,7 +250,7 @@ class BasicMappingTest extends TestCase
             'firstName' => 'John',
             'lastName' => 'Doe',
             'birthDate' => '1990-01-01',
-            'emailAddress' => 'john@example.com'
+            'emailAddress' => 'john@example.com',
         ];
 
         $result = $mapper->map($source, Basic\ProfileMappedUserDTO::class);
@@ -274,7 +269,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'firstName' => 'John',
             'lastName' => 'Doe',
-            'user_type' => 'admin'
+            'user_type' => 'admin',
         ];
 
         $result = $mapper->map($source, Basic\HybridMappedUserDTO::class);
@@ -288,7 +283,7 @@ class BasicMappingTest extends TestCase
     #[Test]
     public function it_maps_regular_object_to_dto(): void
     {
-        $source = new \stdClass();
+        $source = new stdClass();
         $source->id = 1;
         $source->name = 'John Doe';
         $source->email = 'john@example.com';
@@ -306,7 +301,7 @@ class BasicMappingTest extends TestCase
         $source = new Basic\UserResponseDTO(
             id: 1,
             displayName: 'John Doe',
-            email: 'john@example.com'
+            email: 'john@example.com',
         );
 
         $result = $this->mapper->map($source, Basic\SimpleUserDTO::class);
@@ -322,7 +317,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $destination = new Basic\MutableUserDTO();
@@ -341,7 +336,7 @@ class BasicMappingTest extends TestCase
     {
         $source = [
             'name' => 'john doe',
-            'age' => 30
+            'age' => 30,
         ];
 
         $result = $this->mapper->map($source, Basic\CallableTransformerDTO::class);
@@ -354,7 +349,7 @@ class BasicMappingTest extends TestCase
     public function it_applies_class_transformer(): void
     {
         $source = [
-            'value' => 'test'
+            'value' => 'test',
         ];
 
         $result = $this->mapper->map($source, Basic\ClassTransformerDTO::class);
@@ -366,7 +361,7 @@ class BasicMappingTest extends TestCase
     public function it_handles_transformer_exceptions(): void
     {
         $source = [
-            'value' => 'trigger_error'
+            'value' => 'trigger_error',
         ];
 
         $this->expectException(MappingException::class);
@@ -381,7 +376,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'id' => 1,
             'name' => null,
-            'email' => null
+            'email' => null,
         ];
 
         $result = $this->mapper->map($source, Basic\NullableUserDTO::class);
@@ -408,7 +403,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $result = $this->mapper->map($source, Basic\ReadonlyUserDTO::class);
@@ -425,7 +420,7 @@ class BasicMappingTest extends TestCase
             'id' => 1,
             'name' => 'Admin User',
             'email' => 'admin@example.com',
-            'permissions' => ['read', 'write', 'delete']
+            'permissions' => ['read', 'write', 'delete'],
         ];
 
         $result = $this->mapper->map($source, Basic\AdminUserDTO::class);
@@ -460,12 +455,12 @@ class BasicMappingTest extends TestCase
             'user' => [
                 'id' => 1,
                 'firstName' => 'John',
-                'lastName' => 'Doe'
+                'lastName' => 'Doe',
             ],
             'contact' => [
                 'email' => 'john@example.com',
-                'phone' => '123-456-7890'
-            ]
+                'phone' => '123-456-7890',
+            ],
         ];
 
         $result = $mapper->map($source, Basic\ComplexMappedDTO::class);
@@ -474,7 +469,7 @@ class BasicMappingTest extends TestCase
         $this->assertEquals('John Doe', $result->fullName);
         $this->assertEquals([
             'email' => 'john@example.com',
-            'phone' => '123-456-7890'
+            'phone' => '123-456-7890',
         ], $result->contactInfo);
     }
 
@@ -487,7 +482,7 @@ class BasicMappingTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'Parent',
-            'parent' => null
+            'parent' => null,
         ];
 
         $result = $mapper->map($source, Basic\CircularReferenceDTO::class);
@@ -500,7 +495,7 @@ class BasicMappingTest extends TestCase
         $source['parent'] = [
             'id' => 2,
             'name' => 'Child',
-            'parent' => null
+            'parent' => null,
         ];
 
         $result = $mapper->map($source, Basic\CircularReferenceDTO::class);

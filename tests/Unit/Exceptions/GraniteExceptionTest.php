@@ -1,14 +1,15 @@
 <?php
+
 // tests/Unit/Exceptions/GraniteExceptionTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Exceptions;
 
+use Exception;
 use Ninja\Granite\Exceptions\GraniteException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
-use Exception;
 
 #[CoversClass(GraniteException::class)] class GraniteExceptionTest extends TestCase
 {
@@ -68,7 +69,7 @@ use Exception;
             'initial' => 'value',
             'type' => 'test',
             'additional' => 'data',
-            'timestamp' => '2024-01-01'
+            'timestamp' => '2024-01-01',
         ], $exception->getContext());
     }
 
@@ -83,7 +84,7 @@ use Exception;
         $this->assertEquals([
             'key1' => 'overwritten',  // Overwritten
             'key2' => 'unchanged',    // Unchanged
-            'key3' => 'new'          // Added
+            'key3' => 'new',          // Added
         ], $exception->getContext());
     }
 
@@ -108,7 +109,7 @@ use Exception;
         $this->assertEquals([
             'first' => 'value',
             'second' => 'value',
-            'third' => 'value'
+            'third' => 'value',
         ], $exception->getContext());
     }
 
@@ -121,7 +122,7 @@ use Exception;
             'boolean' => true,
             'null' => null,
             'array' => ['nested', 'array'],
-            'object' => (object) ['property' => 'value']
+            'object' => (object) ['property' => 'value'],
         ];
 
         $exception = new GraniteException('Test', 0, null, $complexContext);

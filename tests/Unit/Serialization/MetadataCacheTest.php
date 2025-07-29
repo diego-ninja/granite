@@ -1,13 +1,15 @@
 <?php
+
 // tests/Unit/Serialization/MetadataCacheTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Serialization;
 
-use Ninja\Granite\Serialization\MetadataCache;
 use Ninja\Granite\Serialization\Metadata;
+use Ninja\Granite\Serialization\MetadataCache;
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionClass;
 use Tests\Fixtures\DTOs\AttributeBasedDTO;
 use Tests\Fixtures\DTOs\MethodBasedDTO;
 use Tests\Fixtures\DTOs\MixedSerializationDTO;
@@ -15,9 +17,8 @@ use Tests\Fixtures\DTOs\OnlyHiddenDTO;
 use Tests\Fixtures\DTOs\OnlySerializedNameDTO;
 use Tests\Fixtures\DTOs\PlainDTO;
 use Tests\Fixtures\DTOs\ProtectedMethodsDTO;
-use Tests\Helpers\TestCase;
 use Tests\Fixtures\DTOs\SerializableDTO;
-
+use Tests\Helpers\TestCase;
 
 #[CoversClass(MetadataCache::class)] class MetadataCacheTest extends TestCase
 {
@@ -212,7 +213,7 @@ use Tests\Fixtures\DTOs\SerializableDTO;
      */
     private function resetMetadataCache(): void
     {
-        $reflection = new \ReflectionClass(MetadataCache::class);
+        $reflection = new ReflectionClass(MetadataCache::class);
 
         if ($reflection->hasProperty('metadataCache')) {
             $cacheProperty = $reflection->getProperty('metadataCache');

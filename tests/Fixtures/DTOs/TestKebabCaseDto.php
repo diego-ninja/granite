@@ -14,6 +14,6 @@ final readonly class TestKebabCaseDto extends GraniteDTO
     public function __construct(
         public string $productName,
         public float $unitPrice,
-        public bool $isAvailable
+        public bool $isAvailable,
     ) {}
 }

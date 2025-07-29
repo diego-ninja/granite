@@ -1,17 +1,20 @@
 <?php
+
 // tests/Unit/Validation/RuleCollectionTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Validation;
 
+use Exception;
 use Ninja\Granite\Validation\RuleCollection;
+use Ninja\Granite\Validation\Rules\Email;
+use Ninja\Granite\Validation\Rules\Max;
+use Ninja\Granite\Validation\Rules\Min;
 use Ninja\Granite\Validation\Rules\Required;
 use Ninja\Granite\Validation\Rules\StringType;
-use Ninja\Granite\Validation\Rules\Min;
-use Ninja\Granite\Validation\Rules\Max;
-use Ninja\Granite\Validation\Rules\Email;
 use PHPUnit\Framework\Attributes\CoversClass;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(RuleCollection::class)]
@@ -99,7 +102,7 @@ class RuleCollectionTest extends TestCase
             new Required(),
             new StringType(),
             new Min(3),
-            new Max(20)
+            new Max(20),
         ]);
 
         $errors = $collection->validate('validuser');
@@ -113,7 +116,7 @@ class RuleCollectionTest extends TestCase
             new Required(),
             new StringType(),
             new Min(10),      // Will fail
-            new Max(5)        // Will also fail
+            new Max(5),        // Will also fail
         ]);
 
         $errors = $collection->validate('short');
@@ -126,7 +129,7 @@ class RuleCollectionTest extends TestCase
     {
         $collection = new RuleCollection('optional', [
             new StringType(), // Should pass for null
-            new Min(5)        // Should pass for null
+            new Min(5),        // Should pass for null
         ]);
 
         $errors = $collection->validate(null);
@@ -138,7 +141,7 @@ class RuleCollectionTest extends TestCase
     {
         $collection = new RuleCollection('required_field', [
             new Required(),   // Should fail for null
-            new StringType()  // Should pass for null
+            new StringType(),  // Should pass for null
         ]);
 
         $errors = $collection->validate(null);
@@ -155,7 +158,7 @@ class RuleCollectionTest extends TestCase
             ->method('validate')
             ->with(
                 $this->equalTo('test'),
-                $this->equalTo(['username' => 'test', 'email' => 'test@example.com'])
+                $this->equalTo(['username' => 'test', 'email' => 'test@example.com']),
             )
             ->willReturn(true);
 
@@ -231,7 +234,7 @@ class RuleCollectionTest extends TestCase
             new Required(),
             new StringType(),
             new Email(),
-            new Max(255)
+            new Max(255),
         ]);
 
         // Valid email
@@ -248,7 +251,7 @@ class RuleCollectionTest extends TestCase
     {
         $mockRule = $this->createMock(\Ninja\Granite\Validation\ValidationRule::class);
         $mockRule->method('validate')
-            ->willThrowException(new \Exception('Rule exception'));
+            ->willThrowException(new Exception('Rule exception'));
         $mockRule->method('message')
             ->willReturn('Rule failed');
 
@@ -259,7 +262,7 @@ class RuleCollectionTest extends TestCase
             $errors = $collection->validate('test');
             // If no exception is thrown, the rule should be treated as failed
             $this->assertNotEmpty($errors);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // If exception bubbles up, that's also acceptable
             $this->assertEquals('Rule exception', $e->getMessage());
         }
@@ -332,7 +335,7 @@ class RuleCollectionTest extends TestCase
         $this->assertEmpty($collection->validate(true));
         $this->assertEmpty($collection->validate([]));
         $this->assertEmpty($collection->validate(null));
-        $this->assertEmpty($collection->validate(new \stdClass()));
+        $this->assertEmpty($collection->validate(new stdClass()));
     }
 
     public function test_rule_collection_with_realistic_email_validation(): void
@@ -341,25 +344,25 @@ class RuleCollectionTest extends TestCase
             new Required(),
             new StringType(),
             new Email(),
-            new Max(254) // RFC 5321 limit
+            new Max(254), // RFC 5321 limit
         ]);
 
         $validEmails = [
             'user@example.com',
             'test.email@domain.org',
-            'admin@sub.domain.co.uk'
+            'admin@sub.domain.co.uk',
         ];
 
         foreach ($validEmails as $email) {
             $errors = $collection->validate($email);
-            $this->assertEmpty($errors, "Valid email '$email' should not have errors");
+            $this->assertEmpty($errors, "Valid email '{$email}' should not have errors");
         }
 
         $invalidEmails = [
             '',                    // Required fails
             123,                   // StringType fails
             'invalid-email',       // Email fails
-            str_repeat('a', 250) . '@example.com' // Max length fails
+            str_repeat('a', 250) . '@example.com', // Max length fails
         ];
 
         foreach ($invalidEmails as $email) {

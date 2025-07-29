@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/InTest.php
 
 declare(strict_types=1);
@@ -8,11 +9,52 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\In;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(In::class)]
 class InTest extends TestCase
 {
+    public static function validInScenariosProvider(): array
+    {
+        return [
+            // String scenarios
+            'string in list' => [['a', 'b', 'c'], 'b', true],
+            'string not in list' => [['a', 'b', 'c'], 'd', false],
+
+            // Numeric scenarios
+            'int in list' => [[1, 2, 3], 2, true],
+            'int not in list' => [[1, 2, 3], 4, false],
+            'float in list' => [[1.1, 2.2, 3.3], 2.2, true],
+            'float not in list' => [[1.1, 2.2, 3.3], 4.4, false],
+
+            // Boolean scenarios
+            'true in list' => [[true, false], true, true],
+            'false in list' => [[true, false], false, true],
+            'bool not in list' => [[true], false, false],
+
+            // Mixed type scenarios
+            'mixed types match' => [[1, 'two', 3.0], 'two', true],
+            'mixed types no match' => [[1, 'two', 3.0], 2, false],
+
+            // Strict comparison scenarios
+            'strict int vs string' => [['1'], 1, false],
+            'strict string vs int' => [[1], '1', false],
+            'strict bool vs int' => [[1], true, false],
+            'strict int vs bool' => [[true], 1, false],
+
+            // Edge cases
+            'empty list' => [[], 'anything', false],
+            'single item match' => [['only'], 'only', true],
+            'single item no match' => [['only'], 'other', false],
+
+            // Special values
+            'null always valid' => [['a', 'b'], null, true],
+            'empty string in list' => [['', 'a'], '', true],
+            'zero in list' => [[0, 1, 2], 0, true],
+            'false in list' => [[false, true], false, true],
+        ];
+    }
     public function test_validates_value_in_string_list(): void
     {
         $rule = new In(['apple', 'banana', 'cherry']);
@@ -186,47 +228,6 @@ class InTest extends TestCase
         $this->assertEquals($expected, $rule->validate($testValue));
     }
 
-    public static function validInScenariosProvider(): array
-    {
-        return [
-            // String scenarios
-            'string in list' => [['a', 'b', 'c'], 'b', true],
-            'string not in list' => [['a', 'b', 'c'], 'd', false],
-
-            // Numeric scenarios
-            'int in list' => [[1, 2, 3], 2, true],
-            'int not in list' => [[1, 2, 3], 4, false],
-            'float in list' => [[1.1, 2.2, 3.3], 2.2, true],
-            'float not in list' => [[1.1, 2.2, 3.3], 4.4, false],
-
-            // Boolean scenarios
-            'true in list' => [[true, false], true, true],
-            'false in list' => [[true, false], false, true],
-            'bool not in list' => [[true], false, false],
-
-            // Mixed type scenarios
-            'mixed types match' => [[1, 'two', 3.0], 'two', true],
-            'mixed types no match' => [[1, 'two', 3.0], 2, false],
-
-            // Strict comparison scenarios
-            'strict int vs string' => [['1'], 1, false],
-            'strict string vs int' => [[1], '1', false],
-            'strict bool vs int' => [[1], true, false],
-            'strict int vs bool' => [[true], 1, false],
-
-            // Edge cases
-            'empty list' => [[], 'anything', false],
-            'single item match' => [['only'], 'only', true],
-            'single item no match' => [['only'], 'other', false],
-
-            // Special values
-            'null always valid' => [['a', 'b'], null, true],
-            'empty string in list' => [['', 'a'], '', true],
-            'zero in list' => [[0, 1, 2], 0, true],
-            'false in list' => [[false, true], false, true],
-        ];
-    }
-
     public function test_rule_implements_validation_rule_interface(): void
     {
         $rule = new In(['test']);
@@ -277,10 +278,10 @@ class InTest extends TestCase
 
     public function test_validates_with_object_values(): void
     {
-        $obj1 = new \stdClass();
+        $obj1 = new stdClass();
         $obj1->id = 1;
 
-        $obj2 = new \stdClass();
+        $obj2 = new stdClass();
         $obj2->id = 2;
 
         $rule = new In([$obj1, $obj2]);
@@ -288,7 +289,7 @@ class InTest extends TestCase
         $this->assertTrue($rule->validate($obj1));
         $this->assertTrue($rule->validate($obj2));
 
-        $obj3 = new \stdClass();
+        $obj3 = new stdClass();
         $obj3->id = 1; // Same properties but different instance
         $this->assertFalse($rule->validate($obj3)); // Strict comparison by reference
     }

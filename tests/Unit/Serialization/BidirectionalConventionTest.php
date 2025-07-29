@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Serialization;
 
-use PHPUnit\Framework\TestCase;
 use Ninja\Granite\Serialization\MetadataCache;
-use Tests\Fixtures\DTOs\TestBidirectionalSnakeDto;
+use PHPUnit\Framework\TestCase;
 use Tests\Fixtures\DTOs\TestBidirectionalKebabDto;
+use Tests\Fixtures\DTOs\TestBidirectionalSnakeDto;
 
 class BidirectionalConventionTest extends TestCase
 {
@@ -26,7 +26,7 @@ class BidirectionalConventionTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email_address' => 'john@example.com',
-            'phone_number' => '+1234567890'
+            'phone_number' => '+1234567890',
         ];
 
         $dto = TestBidirectionalSnakeDto::from($snakeCaseData);
@@ -44,7 +44,7 @@ class BidirectionalConventionTest extends TestCase
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email_address' => 'john@example.com',
-            'phone_number' => '+1234567890'
+            'phone_number' => '+1234567890',
         ];
 
         $this->assertEquals($expectedSerialized, $serializedData);
@@ -65,7 +65,7 @@ class BidirectionalConventionTest extends TestCase
             'product-name' => 'Awesome Widget',
             'unit-price' => 29.99,
             'is-available' => true,
-            'stock-count' => 100
+            'stock-count' => 100,
         ];
 
         $dto = TestBidirectionalKebabDto::from($kebabCaseData);
@@ -83,7 +83,7 @@ class BidirectionalConventionTest extends TestCase
             'product-name' => 'Awesome Widget',
             'unit-price' => 29.99,
             'is-available' => true,
-            'stock-count' => 100
+            'stock-count' => 100,
         ];
 
         $this->assertEquals($expectedSerialized, $serializedData);
@@ -98,7 +98,7 @@ class BidirectionalConventionTest extends TestCase
         $mixedData = [
             'first_name' => 'Mixed',      // snake_case (correcto)
             'lastName' => 'Format',       // camelCase (fallback)
-            'email_address' => 'mixed@example.com' // snake_case (correcto)
+            'email_address' => 'mixed@example.com', // snake_case (correcto)
         ];
 
         $dto = TestBidirectionalSnakeDto::from($mixedData);
@@ -112,7 +112,7 @@ class BidirectionalConventionTest extends TestCase
         $expected = [
             'first_name' => 'Mixed',
             'last_name' => 'Format',
-            'email_address' => 'mixed@example.com'
+            'email_address' => 'mixed@example.com',
         ];
 
         $this->assertEquals($expected, $serialized);
@@ -124,7 +124,7 @@ class BidirectionalConventionTest extends TestCase
     public function testPartialHydration(): void
     {
         $partialData = [
-            'first_name' => 'John'
+            'first_name' => 'John',
             // last_name y email_address no están presentes
         ];
 
@@ -172,7 +172,7 @@ class BidirectionalConventionTest extends TestCase
             'first_name' => 'Performance',
             'last_name' => 'Test',
             'email_address' => 'perf@example.com',
-            'phone_number' => '+1234567890'
+            'phone_number' => '+1234567890',
         ];
 
         $start = microtime(true);
@@ -187,8 +187,5 @@ class BidirectionalConventionTest extends TestCase
 
         // Debería completarse en menos de 1 segundo
         $this->assertLessThan(1.0, $duration);
-
-        echo "\nPerformance: 100 create+serialize cycles in " . round($duration * 1000, 2) . "ms\n";
     }
 }
-

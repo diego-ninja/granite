@@ -1,15 +1,16 @@
 <?php
+
 // tests/Unit/Exceptions/ReflectionExceptionTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Exceptions;
 
-use Ninja\Granite\Exceptions\ReflectionException;
+use Exception;
 use Ninja\Granite\Exceptions\GraniteException;
+use Ninja\Granite\Exceptions\ReflectionException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
-use Exception;
 
 #[CoversClass(ReflectionException::class)] class ReflectionExceptionTest extends TestCase
 {
@@ -154,7 +155,7 @@ use Exception;
             'property_access',
             'method_invocation',
             'constructor_call',
-            'attribute_parsing'
+            'attribute_parsing',
         ];
 
         foreach ($operations as $operation) {

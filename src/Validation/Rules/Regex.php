@@ -10,7 +10,7 @@ class Regex extends AbstractRule
      * @param string $pattern Regular expression pattern
      */
     public function __construct(
-        private readonly string $pattern
+        private readonly string $pattern,
     ) {}
 
     /**
@@ -22,15 +22,15 @@ class Regex extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        if ($value === null) {
+        if (null === $value) {
             return true;
         }
 
-        if (!is_string($value)) {
+        if ( ! is_string($value)) {
             return false;
         }
 
-        return (bool)preg_match($this->pattern, $value);
+        return (bool) preg_match($this->pattern, $value);
     }
 
     /**

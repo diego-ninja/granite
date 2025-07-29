@@ -55,18 +55,21 @@ class PropertyMapping
         return $this;
     }
 
+    /**
+     * @param class-string $itemType
+     */
     public function asCollection(
         string $itemType,
         bool $preserveKeys = false,
         bool $recursive = false,
-        mixed $itemTransformer = null
-    ): self
-    {
+        mixed $itemTransformer = null,
+    ): self {
         $this->transformer = new Transformers\CollectionTransformer(
             destinationType: $itemType,
+            mapper: null,
             preserveKeys: $preserveKeys,
             recursive: $recursive,
-            itemTransformer: $itemTransformer
+            itemTransformer: $itemTransformer,
         );
 
         return $this;
@@ -96,12 +99,12 @@ class PropertyMapping
         }
 
         // Check condition if set
-        if ($this->condition !== null && !($this->condition)($sourceData)) {
+        if (null !== $this->condition && ! ($this->condition)($sourceData)) {
             return $this->hasDefaultValue ? $this->defaultValue : null;
         }
 
         // Apply transformer if set
-        if ($this->transformer !== null) {
+        if (null !== $this->transformer) {
             if (is_callable($this->transformer)) {
                 $value = ($this->transformer)($value, $sourceData);
             } elseif ($this->transformer instanceof Transformer) {
@@ -110,7 +113,7 @@ class PropertyMapping
         }
 
         // Use default value if the value is null and default is set
-        if ($value === null && $this->hasDefaultValue) {
+        if (null === $value && $this->hasDefaultValue) {
             return $this->defaultValue;
         }
 
@@ -129,7 +132,7 @@ class PropertyMapping
 
     public function hasCondition(): bool
     {
-        return $this->condition !== null;
+        return null !== $this->condition;
     }
 
     /**
@@ -163,7 +166,7 @@ class PropertyMapping
      */
     public function setMapper(mixed $mapper): self
     {
-        if ($this->transformer instanceof Transformers\CollectionTransformer) {
+        if ($this->transformer instanceof Transformers\CollectionTransformer && $mapper instanceof Contracts\Mapper) {
             $this->transformer->setMapper($mapper);
         }
 

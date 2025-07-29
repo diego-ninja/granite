@@ -11,6 +11,6 @@ final readonly class ScalarDTO extends GraniteDTO
         public string $name,
         public float $price,
         public bool $active,
-        public array $tags
+        public array $tags,
     ) {}
 }

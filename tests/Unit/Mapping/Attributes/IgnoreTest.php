@@ -27,7 +27,7 @@ class IgnoreTest extends TestCase
             'id' => 1,
             'name' => 'John Doe',
             'password' => 'secret123',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $result = $this->mapper->map($source, IgnoreDTO::class);
@@ -47,7 +47,7 @@ class IgnoreTest extends TestCase
             'password' => 'secret123',
             'apiKey' => 'api-key-123',
             'secretToken' => 'token-456',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $result = $this->mapper->map($source, MultipleIgnoreDTO::class);
@@ -66,7 +66,7 @@ class IgnoreTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'John Doe',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $destination = new IgnoreDTO();
@@ -86,8 +86,8 @@ class IgnoreTest extends TestCase
             'user' => [
                 'id' => 1,
                 'name' => 'John Doe',
-                'password' => 'secret123'
-            ]
+                'password' => 'secret123',
+            ],
         ];
 
         $result = $this->mapper->map($source, NestedIgnoreDTO::class);
@@ -103,7 +103,7 @@ class IgnoreTest extends TestCase
         $source = [
             'id' => 1,
             'name' => 'John Doe',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $result = $this->mapper->map($source, ConflictingAttributesDTO::class);
@@ -122,9 +122,8 @@ class IgnoreDTO
         public ?string $name = null,
         #[Ignore]
         public ?string $password = null,
-        public ?string $email = null
-    ) {
-    }
+        public ?string $email = null,
+    ) {}
 }
 
 class MultipleIgnoreDTO
@@ -138,9 +137,8 @@ class MultipleIgnoreDTO
         public ?string $apiKey = null,
         #[Ignore]
         public ?string $secretToken = null,
-        public ?string $email = null
-    ) {
-    }
+        public ?string $email = null,
+    ) {}
 }
 
 class NestedIgnoreDTO
@@ -148,15 +146,12 @@ class NestedIgnoreDTO
     public function __construct(
         #[MapFrom('user.id')]
         public ?int $userId = null,
-        
         #[MapFrom('user.name')]
         public ?string $userName = null,
-        
         #[MapFrom('user.password')]
         #[Ignore]
-        public ?string $userPassword = null
-    ) {
-    }
+        public ?string $userPassword = null,
+    ) {}
 }
 
 class ConflictingAttributesDTO
@@ -164,10 +159,8 @@ class ConflictingAttributesDTO
     public function __construct(
         public int $id,
         public string $name,
-        
         #[MapFrom('password')]
         #[Ignore]
-        public ?string $password = null
-    ) {
-    }
+        public ?string $password = null,
+    ) {}
 }

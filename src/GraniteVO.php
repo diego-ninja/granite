@@ -45,17 +45,6 @@ abstract readonly class GraniteVO extends GraniteDTO
     }
 
     /**
-     * Get validation rules for this Value Object.
-     * Override this method in child classes to define validation rules.
-     *
-     * @return array<string, array> Validation rules by property name
-     */
-    protected static function rules(): array
-    {
-        return [];
-    }
-
-    /**
      * Compare this Value Object with another Value Object or array.
      * Two Value Objects are equal if they have the same class and the same property values.
      *
@@ -81,7 +70,7 @@ abstract readonly class GraniteVO extends GraniteDTO
             $thisArray = $this->array();
             $otherArray = $other->array();
 
-            return $thisArray == $otherArray; // Using loose comparison for array values
+            return $thisArray === $otherArray; // Using loose comparison for array values
         }
 
         // If comparing with an array
@@ -90,14 +79,14 @@ abstract readonly class GraniteVO extends GraniteDTO
 
             // Check if the array has all the properties
             foreach ($thisArray as $key => $value) {
-                if (!array_key_exists($key, $other) || $other[$key] != $value) {
+                if ( ! array_key_exists($key, $other) || $other[$key] !== $value) {
                     return false;
                 }
             }
 
             // Check if the array has extra properties
             foreach ($other as $key => $value) {
-                if (!array_key_exists($key, $thisArray)) {
+                if ( ! array_key_exists($key, $thisArray)) {
                     return false;
                 }
             }
@@ -131,6 +120,17 @@ abstract readonly class GraniteVO extends GraniteDTO
 
         // Create new instance with modified data
         return static::from($data);
+    }
+
+    /**
+     * Get validation rules for this Value Object.
+     * Override this method in child classes to define validation rules.
+     *
+     * @return array<string, array> Validation rules by property name
+     */
+    protected static function rules(): array
+    {
+        return [];
     }
 
 }

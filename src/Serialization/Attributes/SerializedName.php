@@ -16,7 +16,6 @@ readonly class SerializedName
      * @param string $name The name to use when serializing
      */
     public function __construct(
-        public string $name
-    ) {
-    }
+        public string $name,
+    ) {}
 }

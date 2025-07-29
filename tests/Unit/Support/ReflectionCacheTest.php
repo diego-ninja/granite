@@ -1,16 +1,17 @@
 <?php
+
 // tests/Unit/Support/ReflectionCacheTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Support;
 
-use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Exceptions\ReflectionException;
+use Ninja\Granite\Support\ReflectionCache;
 use PHPUnit\Framework\Attributes\CoversClass;
-use Tests\Fixtures\DTOs\SimpleDTO;
 use ReflectionClass;
 use ReflectionProperty;
+use Tests\Fixtures\DTOs\SimpleDTO;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(ReflectionCache::class)] class ReflectionCacheTest extends TestCase
@@ -115,7 +116,7 @@ use Tests\Helpers\TestCase;
      */
     private function resetReflectionCache(): void
     {
-        $reflection = new \ReflectionClass(ReflectionCache::class);
+        $reflection = new ReflectionClass(ReflectionCache::class);
 
         if ($reflection->hasProperty('classCache')) {
             $classCache = $reflection->getProperty('classCache');
@@ -137,7 +138,7 @@ use Tests\Helpers\TestCase;
 final class EmptyTestClass
 {
     private string $private = 'private';
-    protected string $protected = 'protected';
+    private string $protected = 'protected';
 
     public function __construct()
     {

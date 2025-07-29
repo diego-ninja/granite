@@ -11,15 +11,14 @@ final readonly class CallableTransformerDTO extends GraniteDTO
     public function __construct(
         #[MapWith([self::class, 'uppercaseTransformer'])]
         public string $name,
-
         #[MapFrom('age')]
         #[MapWith([self::class, 'ageTransformer'])]
-        public string $displayAge
+        public string $displayAge,
     ) {}
 
     public static function uppercaseTransformer(string $value): string
     {
-        return strtoupper($value);
+        return mb_strtoupper($value);
     }
 
     public static function ageTransformer(int $value): string

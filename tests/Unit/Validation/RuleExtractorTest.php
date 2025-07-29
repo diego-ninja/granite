@@ -1,21 +1,24 @@
 <?php
+
 // tests/Unit/Validation/RuleExtractorTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Validation;
 
+use Attribute;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 use Ninja\Granite\Validation\RuleExtractor;
+use Ninja\Granite\Validation\Rules\Email;
+use Ninja\Granite\Validation\Rules\Max;
+use Ninja\Granite\Validation\Rules\Min;
 use Ninja\Granite\Validation\Rules\Required;
 use Ninja\Granite\Validation\Rules\StringType;
-use Ninja\Granite\Validation\Rules\Email;
-use Ninja\Granite\Validation\Rules\Min;
-use Ninja\Granite\Validation\Rules\Max;
 use PHPUnit\Framework\Attributes\CoversClass;
-use Tests\Helpers\TestCase;
+use ReflectionMethod;
 use Tests\Fixtures\VOs\ValidatedUserVO;
+use Tests\Helpers\TestCase;
 
 #[CoversClass(RuleExtractor::class)]
 class RuleExtractorTest extends TestCase
@@ -42,9 +45,15 @@ class RuleExtractorTest extends TestCase
         $minRule = null;
 
         foreach ($nameRules as $rule) {
-            if ($rule instanceof Required) $requiredRule = $rule;
-            if ($rule instanceof StringType) $stringTypeRule = $rule;
-            if ($rule instanceof Min) $minRule = $rule;
+            if ($rule instanceof Required) {
+                $requiredRule = $rule;
+            }
+            if ($rule instanceof StringType) {
+                $stringTypeRule = $rule;
+            }
+            if ($rule instanceof Min) {
+                $minRule = $rule;
+            }
         }
 
         $this->assertInstanceOf(Required::class, $requiredRule);
@@ -63,8 +72,12 @@ class RuleExtractorTest extends TestCase
         $emailRule = null;
 
         foreach ($emailRules as $rule) {
-            if ($rule instanceof Required) $requiredRule = $rule;
-            if ($rule instanceof Email) $emailRule = $rule;
+            if ($rule instanceof Required) {
+                $requiredRule = $rule;
+            }
+            if ($rule instanceof Email) {
+                $emailRule = $rule;
+            }
         }
 
         $this->assertInstanceOf(Required::class, $requiredRule);
@@ -82,8 +95,12 @@ class RuleExtractorTest extends TestCase
         $maxRule = null;
 
         foreach ($ageRules as $rule) {
-            if ($rule instanceof Min) $minRule = $rule;
-            if ($rule instanceof Max) $maxRule = $rule;
+            if ($rule instanceof Min) {
+                $minRule = $rule;
+            }
+            if ($rule instanceof Max) {
+                $maxRule = $rule;
+            }
         }
 
         $this->assertInstanceOf(Min::class, $minRule);
@@ -99,8 +116,12 @@ class RuleExtractorTest extends TestCase
         $minRule = null;
 
         foreach ($nameRules as $rule) {
-            if ($rule instanceof Required) $requiredRule = $rule;
-            if ($rule instanceof Min) $minRule = $rule;
+            if ($rule instanceof Required) {
+                $requiredRule = $rule;
+            }
+            if ($rule instanceof Min) {
+                $minRule = $rule;
+            }
         }
 
         // Check that custom messages are preserved
@@ -110,7 +131,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_class_without_attributes(): void
     {
-        $testClass = new class {
+        $testClass = new class () {
             public string $plainProperty;
             public int $anotherProperty;
         };
@@ -123,7 +144,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_class_with_mixed_attributes(): void
     {
-        $testClass = new class {
+        $testClass = new class () {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[\Ninja\Granite\Validation\Attributes\StringType]
             public string $validatedProperty;
@@ -147,7 +168,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_properties_with_non_validation_attributes(): void
     {
-        $testClass = new class {
+        $testClass = new class () {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[SerializedName('custom_name')]
             public string $mixedAttributesProperty;
@@ -166,7 +187,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_only_from_attributes_with_as_rule_method(): void
     {
-        $testClass = new class {
+        $testClass = new class () {
             #[\Ninja\Granite\Validation\Attributes\Required]
             public string $validAttribute;
 
@@ -182,7 +203,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_handles_attributes_that_return_non_validation_rules(): void
     {
-        $testClass = new class {
+        $testClass = new class () {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[TestAttributeWithWrongReturnType]
             public string $property;
@@ -197,7 +218,7 @@ class RuleExtractorTest extends TestCase
     public function test_extracts_rules_from_private_and_protected_properties(): void
     {
         // RuleExtractor should only work with public properties based on ReflectionCache usage
-        $testClass = new class {
+        $testClass = new class () {
             #[\Ninja\Granite\Validation\Attributes\Required]
             public string $publicProperty;
 
@@ -219,7 +240,7 @@ class RuleExtractorTest extends TestCase
     {
         $this->assertTrue(method_exists(RuleExtractor::class, 'extractRules'));
 
-        $reflection = new \ReflectionMethod(RuleExtractor::class, 'extractRules');
+        $reflection = new ReflectionMethod(RuleExtractor::class, 'extractRules');
         $this->assertTrue($reflection->isStatic());
         $this->assertTrue($reflection->isPublic());
     }
@@ -244,7 +265,7 @@ class RuleExtractorTest extends TestCase
             $classCode .= "
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[\Ninja\Granite\Validation\Attributes\StringType]
-            public string \$property$i;
+            public string \$property{$i};
             ";
         }
 
@@ -293,7 +314,7 @@ class RuleExtractorTest extends TestCase
                 $this->assertInstanceOf(
                     \Ninja\Granite\Validation\ValidationRule::class,
                     $rule,
-                    "Rule for property '$propertyName' should implement ValidationRule interface"
+                    "Rule for property '{$propertyName}' should implement ValidationRule interface",
                 );
             }
         }
@@ -301,7 +322,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_preserves_rule_order(): void
     {
-        $testClass = new class {
+        $testClass = new class () {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[\Ninja\Granite\Validation\Attributes\StringType]
             #[\Ninja\Granite\Validation\Attributes\Min(5)]
@@ -321,7 +342,7 @@ class RuleExtractorTest extends TestCase
 }
 
 // Helper attributes for testing
-#[\Attribute]
+#[Attribute]
 class TestInvalidAttribute
 {
     public function __construct(public string $value) {}
@@ -329,7 +350,7 @@ class TestInvalidAttribute
     // This attribute doesn't have asRule() method
 }
 
-#[\Attribute]
+#[Attribute]
 class TestAttributeWithWrongReturnType
 {
     public function asRule(): string // Wrong return type

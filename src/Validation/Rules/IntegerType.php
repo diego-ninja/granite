@@ -13,7 +13,7 @@ class IntegerType extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        return $value === null || is_int($value);
+        return null === $value || is_int($value);
     }
 
     /**

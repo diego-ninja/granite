@@ -15,7 +15,7 @@ class KeyValueDTO
         #[MapFrom('mappings')]
         #[MapWith([self::class, 'extractValues'])]
         public array $values = [],
-        public array $mappings = []
+        public array $mappings = [],
     ) {}
 
     public static function extractKeys(array $mappings): array

@@ -1,16 +1,18 @@
 <?php
+
 // tests/Unit/Mapping/TypeMappingTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Mapping;
 
-use Tests\Fixtures\Automapper\EmptyProfile;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\PropertyMapping;
 use Ninja\Granite\Mapping\TypeMapping;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Tests\Fixtures\Automapper\EmptyProfile;
 use Tests\Helpers\TestCase;
+use TypeError;
 
 #[CoversClass(TypeMapping::class)]
 class TypeMappingTest extends TestCase
@@ -25,6 +27,11 @@ class TypeMappingTest extends TestCase
         parent::setUp();
     }
 
+    public static function staticTransformer($value): string
+    {
+        return 'STATIC: ' . $value;
+    }
+
     public function test_creates_type_mapping(): void
     {
         $this->assertInstanceOf(TypeMapping::class, $this->typeMapping);
@@ -32,7 +39,7 @@ class TypeMappingTest extends TestCase
 
     public function test_for_member_adds_property_mapping(): void
     {
-        $result = $this->typeMapping->forMember('propertyName', function($mapping) {
+        $result = $this->typeMapping->forMember('propertyName', function ($mapping): void {
             $mapping->mapFrom('sourceProperty');
         });
 
@@ -41,7 +48,7 @@ class TypeMappingTest extends TestCase
 
     public function test_for_member_configures_property_with_map_from(): void
     {
-        $this->typeMapping->forMember('destProperty', function($mapping) {
+        $this->typeMapping->forMember('destProperty', function ($mapping): void {
             $mapping->mapFrom('sourceProperty');
         });
 
@@ -53,9 +60,9 @@ class TypeMappingTest extends TestCase
 
     public function test_for_member_configures_property_with_transformer(): void
     {
-        $transformer = fn($value) => strtoupper($value);
+        $transformer = fn($value) => mb_strtoupper($value);
 
-        $this->typeMapping->forMember('name', function($mapping) use ($transformer) {
+        $this->typeMapping->forMember('name', function ($mapping) use ($transformer): void {
             $mapping->using($transformer);
         });
 
@@ -70,7 +77,7 @@ class TypeMappingTest extends TestCase
 
     public function test_for_member_configures_property_to_ignore(): void
     {
-        $this->typeMapping->forMember('ignoredProperty', function($mapping) {
+        $this->typeMapping->forMember('ignoredProperty', function ($mapping): void {
             $mapping->ignore();
         });
 
@@ -82,11 +89,9 @@ class TypeMappingTest extends TestCase
 
     public function test_for_member_with_complex_configuration(): void
     {
-        $this->typeMapping->forMember('fullName', function($mapping) {
+        $this->typeMapping->forMember('fullName', function ($mapping): void {
             $mapping->mapFrom('firstName')
-                ->using(function($value, $sourceData) {
-                    return $value . ' ' . ($sourceData['lastName'] ?? '');
-                });
+                ->using(fn($value, $sourceData) => $value . ' ' . ($sourceData['lastName'] ?? ''));
         });
 
         $propertyMapping = $this->profile->getMapping('SourceClass', 'DestClass', 'fullName');
@@ -116,12 +121,12 @@ class TypeMappingTest extends TestCase
     public function test_overwrites_existing_property_mapping(): void
     {
         // First configuration
-        $this->typeMapping->forMember('property', function($mapping) {
+        $this->typeMapping->forMember('property', function ($mapping): void {
             $mapping->mapFrom('firstSource');
         });
 
         // Second configuration should overwrite
-        $this->typeMapping->forMember('property', function($mapping) {
+        $this->typeMapping->forMember('property', function ($mapping): void {
             $mapping->mapFrom('secondSource');
         });
 
@@ -133,7 +138,7 @@ class TypeMappingTest extends TestCase
     {
         $receivedMapping = null;
 
-        $this->typeMapping->forMember('test', function($mapping) use (&$receivedMapping) {
+        $this->typeMapping->forMember('test', function ($mapping) use (&$receivedMapping): void {
             $receivedMapping = $mapping;
             $mapping->mapFrom('source');
         });
@@ -143,7 +148,7 @@ class TypeMappingTest extends TestCase
 
     public function test_handles_empty_configuration(): void
     {
-        $this->typeMapping->forMember('emptyConfig', function($mapping) {
+        $this->typeMapping->forMember('emptyConfig', function ($mapping): void {
             // No configuration
         });
 
@@ -156,7 +161,7 @@ class TypeMappingTest extends TestCase
 
     public function test_configuration_with_static_method(): void
     {
-        $this->typeMapping->forMember('staticTransform', function($mapping) {
+        $this->typeMapping->forMember('staticTransform', function ($mapping): void {
             $mapping->using([self::class, 'staticTransformer']);
         });
 
@@ -166,17 +171,12 @@ class TypeMappingTest extends TestCase
         $this->assertEquals('STATIC: test', $result);
     }
 
-    public static function staticTransformer($value): string
-    {
-        return 'STATIC: ' . $value;
-    }
-
     public function test_configuration_with_closure_capturing_variables(): void
     {
         $prefix = 'PREFIX';
         $suffix = 'SUFFIX';
 
-        $this->typeMapping->forMember('captured', function($mapping) use ($prefix, $suffix) {
+        $this->typeMapping->forMember('captured', function ($mapping) use ($prefix, $suffix): void {
             $mapping->using(fn($value) => $prefix . ':' . $value . ':' . $suffix);
         });
 
@@ -210,11 +210,11 @@ class TypeMappingTest extends TestCase
             'propertyWithCamelCase',
             'PropertyWithPascalCase',
             'property123',
-            '123property'
+            '123property',
         ];
 
         foreach ($specialNames as $name) {
-            $this->typeMapping->forMember($name, function($mapping) {
+            $this->typeMapping->forMember($name, function ($mapping): void {
                 $mapping->mapFrom('source');
             });
 
@@ -228,9 +228,9 @@ class TypeMappingTest extends TestCase
         $start = microtime(true);
 
         for ($i = 0; $i < 1000; $i++) {
-            $this->typeMapping->forMember("property$i", function($mapping) use ($i) {
-                $mapping->mapFrom("source$i")
-                    ->using(fn($value) => "transformed_$i: $value");
+            $this->typeMapping->forMember("property{$i}", function ($mapping) use ($i): void {
+                $mapping->mapFrom("source{$i}")
+                    ->using(fn($value) => "transformed_{$i}: {$value}");
             });
         }
 
@@ -249,19 +249,17 @@ class TypeMappingTest extends TestCase
     public function test_realistic_user_mapping_scenario(): void
     {
         $this->typeMapping
-            ->forMember('fullName', function($mapping) {
-                $mapping->using(function($value, $sourceData) {
-                    return ($sourceData['firstName'] ?? '') . ' ' . ($sourceData['lastName'] ?? '');
-                });
+            ->forMember('fullName', function ($mapping): void {
+                $mapping->using(fn($value, $sourceData) => ($sourceData['firstName'] ?? '') . ' ' . ($sourceData['lastName'] ?? ''));
             })
-            ->forMember('email', function($mapping) {
+            ->forMember('email', function ($mapping): void {
                 $mapping->mapFrom('emailAddress');
             })
-            ->forMember('displayAge', function($mapping) {
+            ->forMember('displayAge', function ($mapping): void {
                 $mapping->mapFrom('age')
                     ->using(fn($value) => $value . ' years old');
             })
-            ->forMember('password', function($mapping) {
+            ->forMember('password', function ($mapping): void {
                 $mapping->ignore();
             });
 
@@ -286,7 +284,7 @@ class TypeMappingTest extends TestCase
 
     public function test_nested_source_mapping(): void
     {
-        $this->typeMapping->forMember('userName', function($mapping) {
+        $this->typeMapping->forMember('userName', function ($mapping): void {
             $mapping->mapFrom('user.name');
         });
 
@@ -296,7 +294,7 @@ class TypeMappingTest extends TestCase
 
     public function test_configuration_error_handling(): void
     {
-        $this->expectException(\TypeError::class);
+        $this->expectException(TypeError::class);
 
         // Pass invalid callback (not callable)
         $this->typeMapping->forMember('invalid', 'not-a-callable');
@@ -305,7 +303,7 @@ class TypeMappingTest extends TestCase
     public function test_readonly_properties_configuration(): void
     {
         // This test ensures TypeMapping works with readonly properties
-        $this->typeMapping->forMember('readonlyProp', function($mapping) {
+        $this->typeMapping->forMember('readonlyProp', function ($mapping): void {
             $mapping->mapFrom('source')
                 ->using(fn($value) => 'readonly: ' . $value);
         });

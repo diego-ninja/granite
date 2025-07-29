@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/RequiredTest.php
 
 declare(strict_types=1);
@@ -8,6 +9,7 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\Required;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Required::class)] class RequiredTest extends TestCase
@@ -18,6 +20,21 @@ use Tests\Helpers\TestCase;
     {
         $this->rule = new Required();
         parent::setUp();
+    }
+
+    public static function validNonNullValuesProvider(): array
+    {
+        return [
+            'empty string' => [''],
+            'whitespace string' => [' '],
+            'zero integer' => [0],
+            'zero float' => [0.0],
+            'false boolean' => [false],
+            'empty array' => [[]],
+            'negative number' => [-1],
+            'object' => [new stdClass()],
+            'resource' => [fopen('php://memory', 'r')],
+        ];
     }
 
     public function test_validates_non_null_string_values(): void
@@ -51,7 +68,7 @@ use Tests\Helpers\TestCase;
 
     public function test_validates_non_null_object_values(): void
     {
-        $this->assertTrue($this->rule->validate(new \stdClass()));
+        $this->assertTrue($this->rule->validate(new stdClass()));
         $this->assertTrue($this->rule->validate((object) ['key' => 'value']));
     }
 
@@ -117,21 +134,6 @@ use Tests\Helpers\TestCase;
     #[DataProvider('validNonNullValuesProvider')] public function test_validates_various_non_null_values(mixed $value): void
     {
         $this->assertTrue($this->rule->validate($value));
-    }
-
-    public static function validNonNullValuesProvider(): array
-    {
-        return [
-            'empty string' => [''],
-            'whitespace string' => [' '],
-            'zero integer' => [0],
-            'zero float' => [0.0],
-            'false boolean' => [false],
-            'empty array' => [[]],
-            'negative number' => [-1],
-            'object' => [new \stdClass()],
-            'resource' => [fopen('php://memory', 'r')],
-        ];
     }
 
     public function test_rule_implements_validation_rule_interface(): void

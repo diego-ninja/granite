@@ -1,4 +1,5 @@
 <?php
+
 // tests/bootstrap.php
 
 declare(strict_types=1);
@@ -23,7 +24,7 @@ $directories = [
 ];
 
 foreach ($directories as $directory) {
-    if (!is_dir($directory)) {
+    if ( ! is_dir($directory)) {
         mkdir($directory, 0755, true);
     }
 }
@@ -33,7 +34,7 @@ require_once __DIR__ . '/Helpers/TestCase.php';
 
 // Initialize Mockery
 if (class_exists('Mockery')) {
-    register_shutdown_function(function () {
+    register_shutdown_function(function (): void {
         if (class_exists('Mockery')) {
             Mockery::close();
         }

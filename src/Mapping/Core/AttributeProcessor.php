@@ -44,24 +44,34 @@ final readonly class AttributeProcessor
                 break;
 
             case MapFrom::class:
-                $config['source'] = $attrInstance->source;
+                if ($attrInstance instanceof MapFrom) {
+                    $config['source'] = $attrInstance->source;
+                }
                 break;
 
             case MapWith::class:
-                $config['transformer'] = $attrInstance->transformer;
+                if ($attrInstance instanceof MapWith) {
+                    $config['transformer'] = $attrInstance->transformer;
+                }
                 break;
 
             case MapWhen::class:
-                $config['condition'] = $attrInstance->condition;
+                if ($attrInstance instanceof MapWhen) {
+                    $config['condition'] = $attrInstance->condition;
+                }
                 break;
 
             case MapDefault::class:
-                $config['default'] = $attrInstance->value;
-                $config['hasDefault'] = true;
+                if ($attrInstance instanceof MapDefault) {
+                    $config['default'] = $attrInstance->value;
+                    $config['hasDefault'] = true;
+                }
                 break;
 
             case MapCollection::class:
-                $config['transformer'] = $attrInstance->createTransformer(null);
+                if ($attrInstance instanceof MapCollection) {
+                    $config['transformer'] = $attrInstance->createTransformer(null);
+                }
                 break;
         }
     }

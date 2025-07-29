@@ -39,6 +39,11 @@ final class MappingEngine
             $config = $this->configBuilder->getConfiguration($source, $destinationType);
             $transformedData = $this->dataTransformer->transform($sourceData, $config);
 
+            if ( ! class_exists($destinationType)) {
+                $sourceType = is_object($source) ? get_class($source) : 'array';
+                throw new MappingException($sourceType, $destinationType, "Destination type '{$destinationType}' is not a valid class");
+            }
+
             return $this->objectFactory->create($transformedData, $destinationType);
 
         } catch (GraniteException $e) {
@@ -72,7 +77,7 @@ final class MappingEngine
      */
     private function validateDestinationType(string $destinationType): void
     {
-        if (!class_exists($destinationType)) {
+        if ( ! class_exists($destinationType)) {
             throw MappingException::destinationTypeNotFound($destinationType);
         }
     }
@@ -90,7 +95,7 @@ final class MappingEngine
             "Mapping failed: " . $previous->getMessage(),
             null,
             0,
-            $previous
+            $previous,
         );
     }
 }
