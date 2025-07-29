@@ -7,6 +7,11 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
 [![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
 
+[![PHPStan Level](https://img.shields.io/badge/PHPStan-max%20level-green.svg?style=flat)](https://phpstan.org/)
+[![Code Style](https://img.shields.io/badge/code%20style-PER-green.svg?style=flat)](https://www.php-fig.org/per/)
+[![PHPUnit](https://img.shields.io/badge/PHPUnit-✓%20passing-green.svg?style=flat)](https://phpunit.de/)
+[![Tests](https://img.shields.io/badge/tests-1078%20passed-green.svg?style=flat)](https://phpunit.de/)
+
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 
 This documentation has been generated almost in its entirety using 🦠 Claude 4 Sonnet based on source code analysis. Some sections may be incomplete, outdated or may contain documentation for planned or not-released features. For the most accurate information, please refer to the source code or open an issue on the package repository.
