@@ -19,7 +19,7 @@ class BidirectionalMappingProfile extends MappingProfile
         // UserEntity <-> UserDTO mapping
         $this->createMap(UserEntity::class, UserDTO::class)
             ->forMember('fullName', function ($mapping): void {
-                $mapping->using(fn($value, $source) => mb_trim(($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? '')));
+                $mapping->using(fn($value, $source) => trim(($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? '')));
             })
             ->forMember('email', function ($mapping): void {
                 $mapping->mapFrom('emailAddress');
@@ -82,7 +82,7 @@ class BidirectionalMappingProfile extends MappingProfile
                     if ( ! $customer) {
                         return '';
                     }
-                    return mb_trim(($customer->firstName ?? '') . ' ' . ($customer->lastName ?? ''));
+                    return trim(($customer->firstName ?? '') . ' ' . ($customer->lastName ?? ''));
                 });
             })
             ->forMember('items', function ($mapping): void {

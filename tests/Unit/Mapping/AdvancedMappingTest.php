@@ -365,7 +365,7 @@ class AdvancedMappingTest extends TestCase
                 // Entity to DTO
                 $this->createMap('array', UserDTO::class)
                     ->forMember('fullName', function ($mapping): void {
-                        $mapping->using(fn($value, $source) => mb_trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
+                        $mapping->using(fn($value, $source) => trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
                     })
                     ->forMember('email', function ($mapping): void {
                         $mapping->mapFrom('email_address');
@@ -814,7 +814,7 @@ class BidirectionalMappingProfile extends MappingProfile
         // Entity to DTO
         $this->createMap('array', UserDTO::class)
             ->forMember('fullName', function ($mapping): void {
-                $mapping->using(fn($value, $source) => mb_trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
+                $mapping->using(fn($value, $source) => trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
             })
             ->forMember('email', function ($mapping): void {
                 $mapping->mapFrom('email_address');
@@ -827,7 +827,7 @@ class BidirectionalMappingProfile extends MappingProfile
                     if (empty($source->fullName)) {
                         return '';
                     }
-                    $parts = explode(' ', mb_trim($source->fullName), 2);
+                    $parts = explode(' ', trim($source->fullName), 2);
                     return $parts[0];
                 });
             })
@@ -836,7 +836,7 @@ class BidirectionalMappingProfile extends MappingProfile
                     if (empty($source->fullName)) {
                         return '';
                     }
-                    $parts = explode(' ', mb_trim($source->fullName), 2);
+                    $parts = explode(' ', trim($source->fullName), 2);
                     return $parts[1] ?? '';
                 });
             })

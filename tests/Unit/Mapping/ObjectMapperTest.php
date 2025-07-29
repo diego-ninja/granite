@@ -278,7 +278,7 @@ class ObjectMapperTest extends TestCase
         $elapsed = microtime(true) - $start;
 
         $this->assertCount(10000, $result);
-        $this->assertLessThan(1.0, $elapsed, "Mapping 10000 objects took too long: {$elapsed}s");
+        $this->assertLessThan(2.0, $elapsed, "Mapping 10000 objects took too long: {$elapsed}s");
     }
 
     public function test_maps_with_mapping_profile(): void

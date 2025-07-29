@@ -263,7 +263,7 @@ class CallbackTest extends TestCase
             }
 
             // Simulate some processing
-            $processed = mb_strtolower(mb_trim($value));
+            $processed = mb_strtolower(trim($value));
             $words = explode(' ', $processed);
 
             return count($words) >= 2 && count($words) <= 10 &&

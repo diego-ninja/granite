@@ -35,11 +35,11 @@ class KebabCaseConvention extends AbstractNamingConvention implements NamingConv
         $result = '';
 
         foreach ($words as $i => $word) {
-            if ('' !== mb_trim($word)) {
+            if ('' !== trim($word)) {
                 if ($i > 0) {
                     $result .= '-';
                 }
-                $result .= mb_strtolower(mb_trim($word));
+                $result .= mb_strtolower(trim($word));
             }
         }
 

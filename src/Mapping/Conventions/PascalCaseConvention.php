@@ -37,8 +37,8 @@ class PascalCaseConvention extends AbstractNamingConvention implements NamingCon
         $result = '';
 
         foreach ($words as $word) {
-            if ('' !== mb_trim($word)) {
-                $result .= ucfirst(mb_strtolower(mb_trim($word)));
+            if ('' !== trim($word)) {
+                $result .= ucfirst(mb_strtolower(trim($word)));
             }
         }
 

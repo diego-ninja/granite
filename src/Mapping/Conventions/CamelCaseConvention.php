@@ -37,8 +37,8 @@ class CamelCaseConvention extends AbstractNamingConvention implements NamingConv
         $result = mb_strtolower($words[0]);
 
         for ($i = 1; $i < count($words); $i++) {
-            if ('' !== mb_trim($words[$i])) {
-                $result .= ucfirst(mb_strtolower(mb_trim($words[$i])));
+            if ('' !== trim($words[$i])) {
+                $result .= ucfirst(mb_strtolower(trim($words[$i])));
             }
         }
 
