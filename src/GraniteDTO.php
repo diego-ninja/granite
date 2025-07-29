@@ -9,8 +9,11 @@ use DateTimeInterface;
 use Exception;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\SerializationException;
+use Ninja\Granite\Mapping\Contracts\NamingConvention;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\MetadataCache;
 use Ninja\Granite\Support\ReflectionCache;
+use ReflectionAttribute;
 use ReflectionException;
 use ReflectionNamedType;
 use ReflectionType;
@@ -71,28 +74,21 @@ abstract readonly class GraniteDTO implements GraniteObject
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
 
-        // Get serialization metadata
+        // Get serialization metadata and class convention
         $metadata = MetadataCache::getMetadata(static::class);
+        $classConvention = self::getClassConvention(static::class);
 
         // Process each property
         foreach ($properties as $property) {
             $phpName = $property->getName();
             $serializedName = $metadata->getSerializedName($phpName);
 
-            // Try to find the value in the input data - could be under PHP name or serialized name
-            $value = null;
-            $found = false;
+            // Try to find the value in the input data with multiple strategies
+            $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
 
-            if (array_key_exists($phpName, $data)) {
-                $value = $data[$phpName];
-                $found = true;
-            } elseif ($phpName !== $serializedName && array_key_exists($serializedName, $data)) {
-                $value = $data[$serializedName];
-                $found = true;
-            }
-
-            // Skip if property is not in data
-            if (!$found) {
+            // Skip if property is not found in data
+            if ($value === null && !array_key_exists($phpName, $data) &&
+                !array_key_exists($serializedName, $data)) {
                 continue;
             }
 
@@ -102,6 +98,105 @@ abstract readonly class GraniteDTO implements GraniteObject
         }
 
         return $instance;
+    }
+
+    /**
+     * Find value in data using multiple lookup strategies.
+     *
+     * @param array $data Input data
+     * @param string $phpName PHP property name
+     * @param string $serializedName Configured serialized name
+     * @param NamingConvention|null $convention Class convention
+     * @return mixed Found value or null
+     */
+    private static function findValueInData(
+        array $data,
+        string $phpName,
+        string $serializedName,
+        ?NamingConvention $convention
+    ): mixed {
+        // Strategy 1: Direct PHP name match
+        if (array_key_exists($phpName, $data)) {
+            return $data[$phpName];
+        }
+
+        // Strategy 2: Configured serialized name match
+        if ($phpName !== $serializedName && array_key_exists($serializedName, $data)) {
+            return $data[$serializedName];
+        }
+
+        // Strategy 3: Convention-based lookup (bidirectional)
+        if ($convention !== null) {
+            // Try to find a key that would convert to our PHP property name via the convention
+            foreach (array_keys($data) as $key) {
+                if (self::conventionMatches($key, $phpName, $convention)) {
+                    return $data[$key];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if a data key matches the PHP property name via convention.
+     *
+     * @param string $dataKey Key from input data
+     * @param string $phpName PHP property name
+     * @param NamingConvention $convention Naming convention
+     * @return bool Whether they match
+     */
+    private static function conventionMatches(string $dataKey, string $phpName, NamingConvention $convention): bool
+    {
+        try {
+            // Normalize both names and compare
+            $dataKeyNormalized = $dataKey;
+            $phpNameNormalized = $phpName;
+
+            // If dataKey matches the convention, normalize it
+            if ($convention->matches($dataKey)) {
+                $dataKeyNormalized = $convention->normalize($dataKey);
+            }
+
+            // If phpName matches a different convention, we need to normalize it too
+            // For now, assume phpNames are in camelCase and normalize via convention
+            if ($convention->matches($phpName)) {
+                $phpNameNormalized = $convention->normalize($phpName);
+            } else {
+                // Try to convert phpName to the normalized form
+                // This is a simplified approach - in practice you might want more sophisticated detection
+                $phpNameNormalized = strtolower(preg_replace('/([a-z])([A-Z])/', '$1 $2', $phpName));
+            }
+
+            return $dataKeyNormalized === $phpNameNormalized;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get the class-level naming convention if defined.
+     *
+     * @param string $class Class name
+     * @return NamingConvention|null The naming convention or null if not defined
+     */
+    private static function getClassConvention(string $class): ?NamingConvention
+    {
+        try {
+            $reflection = ReflectionCache::getClass($class);
+            $conventionAttrs = $reflection->getAttributes(SerializationConvention::class, ReflectionAttribute::IS_INSTANCEOF);
+
+            if (empty($conventionAttrs)) {
+                return null;
+            }
+
+            $conventionAttr = $conventionAttrs[0]->newInstance();
+
+            // Only return if bidirectional is enabled
+            return $conventionAttr->bidirectional ? $conventionAttr->getConvention() : null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
@@ -228,7 +323,7 @@ abstract readonly class GraniteDTO implements GraniteObject
             $value = $property->getValue($this);
             $serializedValue = $this->serializeValue($phpName, $value);
 
-            // Use custom property name if defined
+            // Use custom property name if defined (includes convention-applied names)
             $serializedName = $metadata->getSerializedName($phpName);
             $result[$serializedName] = $serializedValue;
         }
