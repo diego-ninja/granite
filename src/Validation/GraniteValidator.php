@@ -4,6 +4,8 @@ namespace Ninja\Granite\Validation;
 
 use InvalidArgumentException;
 use Ninja\Granite\Exceptions\ValidationException;
+use Ninja\Granite\Monads\Contracts\Either as EitherContract;
+use Ninja\Granite\Monads\Factories\Either;
 
 final class GraniteValidator
 {
@@ -80,17 +82,13 @@ final class GraniteValidator
      * Validate data against all rule collections.
      *
      * @param array $data Data to validate
-     * @param string $objectName Object name for error messages
-     * @throws ValidationException If validation fails
      */
-    public function validate(array $data, string $objectName = 'Object'): void
+    public function validate(array $data): EitherContract
     {
         $errors = [];
 
         foreach ($this->collections as $property => $collection) {
-            // Check if property exists in data
             if (!array_key_exists($property, $data)) {
-                // Look for required rule
                 foreach ($collection->getRules() as $rule) {
                     if ($rule instanceof Rules\Required) {
                         $errors[$property][] = $rule->message($property);
@@ -108,12 +106,10 @@ final class GraniteValidator
             }
         }
 
-        // Throw exception with validation errors if any
-        if (!empty($errors)) {
-            throw new ValidationException($objectName, $errors);
-        }
+        return empty($errors)
+            ? Either::right($data)
+            : Either::left($errors);
     }
-
     /**
      * Create a validator from an array of rule definitions.
      * Supports both array format and string format rules.

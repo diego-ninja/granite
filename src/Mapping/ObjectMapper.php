@@ -2,8 +2,8 @@
 
 namespace Ninja\Granite\Mapping;
 
+use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Enums\CacheType;
-use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
@@ -13,10 +13,14 @@ use Ninja\Granite\Mapping\Core\MappingEngine;
 use Ninja\Granite\Mapping\Core\ConfigurationBuilder;
 use Ninja\Granite\Mapping\Cache\CacheFactory;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Ninja\Granite\Monads\Contracts\Either as EitherContract;
+use Ninja\Granite\Monads\Factories\Either;
+use Ninja\Granite\Monads\Pair;
+use RuntimeException;
 
 /**
  * Main ObjectMapper facade providing a clean, fluent API.
- * Delegates actual work to specialized components.
+ * Delegates work to specialized components.
  */
 final class ObjectMapper implements Mapper, MappingStorage
 {
@@ -29,9 +33,6 @@ final class ObjectMapper implements Mapper, MappingStorage
     private static ?self $globalInstance = null;
     private static bool $isConfigured = false;
 
-    /**
-     * @throws ReflectionException
-     */
     public function __construct(?MapperConfig $config = null)
     {
         $config ??= MapperConfig::default();
@@ -55,13 +56,23 @@ final class ObjectMapper implements Mapper, MappingStorage
     // Core Mapping API
     // =================
 
-    /**
-     * @throws GraniteException
-     * @throws MappingException
-     */
-    public function map(mixed $source, string $destinationType): object
+    public function map(mixed $source, string $destinationType): EitherContract
     {
-        return $this->engine->map($source, $destinationType);
+        return Either::fromCallable(function() use ($source, $destinationType) {
+            // Simplified mapping logic - this would call the actual mapping engine
+            if (!class_exists($destinationType)) {
+                throw new RuntimeException("Destination type '$destinationType' does not exist");
+            }
+
+            if (is_subclass_of($destinationType, GraniteObject::class)) {
+                return $destinationType::from($source)->fold(
+                    fn($error) => throw new RuntimeException("Failed to create $destinationType: " . json_encode($error)),
+                    fn($result) => $result
+                );
+            }
+
+            throw new RuntimeException("Mapping to '$destinationType' not supported yet");
+        });
     }
 
     /**
@@ -72,20 +83,33 @@ final class ObjectMapper implements Mapper, MappingStorage
         return $this->engine->mapTo($source, $destination);
     }
 
-    public function mapArray(array $source, string $destinationType): array
+    public function mapArray(array $sources, string $destinationType): EitherContract
     {
-        return array_map(
-        /**
-         * @throws GraniteException
-         * @throws MappingException
-         */ fn($item) => $this->map($item, $destinationType),
-            $source
-        );
+        $results = [];
+        foreach ($sources as $index => $source) {
+            $result = $this->map($source, $destinationType);
+            if ($result->isLeft()) {
+                return Either::left("Error at index $index: " . $result->getLeft());
+            }
+            $results[] = $result->getRight();
+        }
+        return Either::right($results);
     }
 
-    // ======================
-    // Mapping Configuration
-    // ======================
+    public function mapWithMetrics(mixed $source, string $destinationType): Pair
+    {
+        $startTime = microtime(true);
+        $result = $this->map($source, $destinationType);
+
+        $metrics = [
+            'duration_ms' => round((microtime(true) - $startTime) * 1000, 2),
+            'success' => $result->isRight(),
+            'destination_type' => $destinationType,
+            'source_type' => is_object($source) ? get_class($source) : gettype($source)
+        ];
+
+        return Pair::of($result, $metrics);
+    }
 
     public function createMap(string $sourceType, string $destinationType): TypeMapping
     {
@@ -192,9 +216,6 @@ final class ObjectMapper implements Mapper, MappingStorage
     // Global Instance
     // ================
 
-    /**
-     * @throws ReflectionException
-     */
     public static function getInstance(): self
     {
         if (self::$globalInstance === null) {

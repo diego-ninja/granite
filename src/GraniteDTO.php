@@ -9,6 +9,9 @@ use DateTimeInterface;
 use Exception;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\SerializationException;
+use Ninja\Granite\Monads\Contracts\Either as EitherContract;
+use Ninja\Granite\Monads\Factories\Either;
+use Ninja\Granite\Monads\Reader;
 use Ninja\Granite\Serialization\MetadataCache;
 use Ninja\Granite\Support\ReflectionCache;
 use ReflectionException;
@@ -22,18 +25,16 @@ abstract readonly class GraniteDTO implements GraniteObject
 {
     /**
      * @param string|array|GraniteObject $data Source data
-     * @return static New instance
-     * @throws DateMalformedStringException
-     * @throws Exceptions\ReflectionException
+     * @return EitherContract New instance
      */
-    public static function from(string|array|GraniteObject $data): static
+    public static function from(string|array|GraniteObject $data): EitherContract
     {
-        $data = self::normalizeInputData($data);
-        $instance = self::createEmptyInstance();
-
-        return self::hydrateInstance($instance, $data);
+        return Either::fromCallable(function() use ($data) {
+            $normalizedData = self::normalizeInputData($data);
+            $instance = self::createEmptyInstance();
+            return self::hydrateInstance($instance, $normalizedData);
+        });
     }
-
     protected static function normalizeInputData(string|array|GraniteObject $data): array
     {
         if ($data instanceof GraniteObject) {
@@ -50,14 +51,12 @@ abstract readonly class GraniteDTO implements GraniteObject
     /**
      * @throws Exceptions\ReflectionException
      */
-    private static function createEmptyInstance(): object
+    private static function createEmptyInstance(): GraniteObject
     {
-        try {
-            $reflection = ReflectionCache::getClass(static::class);
-            return $reflection->newInstanceWithoutConstructor();
-        } catch (ReflectionException $e) {
-            throw Exceptions\ReflectionException::classNotFound(static::class);
-        }
+        return ReflectionCache::getClass(static::class)->fold(
+            fn($error) => throw new RuntimeException("Cannot create class instance: $error"),
+            fn($reflection) => $reflection->newInstanceWithoutConstructor()
+        );
     }
 
     /**
@@ -203,8 +202,8 @@ abstract readonly class GraniteDTO implements GraniteObject
     /**
      * @return array Serialized array
      * @throws RuntimeException If a property cannot be serialized
-     * @throws ReflectionException
      * @throws SerializationException
+     * @throws Exceptions\ReflectionException
      */
     public function array(): array
     {

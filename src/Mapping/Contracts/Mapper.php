@@ -2,6 +2,8 @@
 
 namespace Ninja\Granite\Mapping\Contracts;
 
+use Ninja\Granite\Monads\Contracts\Either;
+
 interface Mapper
 {
     /**
@@ -10,9 +12,8 @@ interface Mapper
      * @template T
      * @param mixed $source Source data
      * @param class-string<T> $destinationType Destination class
-     * @return T Mapped object
      */
-    public function map(mixed $source, string $destinationType): object;
+    public function map(mixed $source, string $destinationType): Either;
 
     /**
      * Map from source to an existing destination object.
@@ -27,9 +28,8 @@ interface Mapper
      * Map array of objects.
      *
      * @template T
-     * @param array $source Array of source objects
+     * @param array $sources Array of source objects
      * @param class-string<T> $destinationType Destination class
-     * @return T[] Array of mapped objects
      */
-    public function mapArray(array $source, string $destinationType): array;
+    public function mapArray(array $sources, string $destinationType): Either;
 }
