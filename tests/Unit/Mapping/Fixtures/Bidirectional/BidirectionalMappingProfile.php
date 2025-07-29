@@ -7,6 +7,7 @@ use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MapperConfig;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\ObjectMapper;
+use Ninja\Granite\Support\StringHelper;
 
 class BidirectionalMappingProfile extends MappingProfile
 {
@@ -19,7 +20,7 @@ class BidirectionalMappingProfile extends MappingProfile
         // UserEntity <-> UserDTO mapping
         $this->createMap(UserEntity::class, UserDTO::class)
             ->forMember('fullName', function ($mapping): void {
-                $mapping->using(fn($value, $source) => trim(($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? '')));
+                $mapping->using(fn($value, $source) => StringHelper::mbTrim(($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? '')));
             })
             ->forMember('email', function ($mapping): void {
                 $mapping->mapFrom('emailAddress');
@@ -82,7 +83,7 @@ class BidirectionalMappingProfile extends MappingProfile
                     if ( ! $customer) {
                         return '';
                     }
-                    return trim(($customer->firstName ?? '') . ' ' . ($customer->lastName ?? ''));
+                    return StringHelper::mbTrim(($customer->firstName ?? '') . ' ' . ($customer->lastName ?? ''));
                 });
             })
             ->forMember('items', function ($mapping): void {

@@ -3,6 +3,7 @@
 namespace Ninja\Granite\Mapping\Conventions;
 
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
+use Ninja\Granite\Support\StringHelper;
 
 /**
  * Implementation of PascalCase naming convention (e.g., FirstName, LastName, EmailAddress).
@@ -37,8 +38,8 @@ class PascalCaseConvention extends AbstractNamingConvention implements NamingCon
         $result = '';
 
         foreach ($words as $word) {
-            if ('' !== trim($word)) {
-                $result .= ucfirst(mb_strtolower(trim($word)));
+            if ('' !== StringHelper::mbTrim($word)) {
+                $result .= ucfirst(mb_strtolower(StringHelper::mbTrim($word)));
             }
         }
 

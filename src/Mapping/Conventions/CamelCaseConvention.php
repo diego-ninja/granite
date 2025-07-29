@@ -3,6 +3,7 @@
 namespace Ninja\Granite\Mapping\Conventions;
 
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
+use Ninja\Granite\Support\StringHelper;
 
 /**
  * Implementation of camelCase naming convention (e.g., firstName, lastName, emailAddress).
@@ -37,8 +38,8 @@ class CamelCaseConvention extends AbstractNamingConvention implements NamingConv
         $result = mb_strtolower($words[0]);
 
         for ($i = 1; $i < count($words); $i++) {
-            if ('' !== trim($words[$i])) {
-                $result .= ucfirst(mb_strtolower(trim($words[$i])));
+            if ('' !== StringHelper::mbTrim($words[$i])) {
+                $result .= ucfirst(mb_strtolower(StringHelper::mbTrim($words[$i])));
             }
         }
 

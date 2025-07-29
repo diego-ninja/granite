@@ -3,6 +3,7 @@
 namespace Ninja\Granite\Mapping\Conventions;
 
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
+use Ninja\Granite\Support\StringHelper;
 
 /**
  * Implementation of snake_case naming convention (e.g., first_name, last_name, email_address).
@@ -35,11 +36,11 @@ class SnakeCaseConvention extends AbstractNamingConvention implements NamingConv
         $result = '';
 
         foreach ($words as $i => $word) {
-            if ('' !== trim($word)) {
+            if ('' !== StringHelper::mbTrim($word)) {
                 if ($i > 0) {
                     $result .= '_';
                 }
-                $result .= mb_strtolower(trim($word));
+                $result .= mb_strtolower(StringHelper::mbTrim($word));
             }
         }
 

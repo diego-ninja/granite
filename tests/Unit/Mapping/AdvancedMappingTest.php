@@ -14,6 +14,7 @@ use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Mapping\MapperConfig;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\ObjectMapper;
+use Ninja\Granite\Support\StringHelper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -365,7 +366,7 @@ class AdvancedMappingTest extends TestCase
                 // Entity to DTO
                 $this->createMap('array', UserDTO::class)
                     ->forMember('fullName', function ($mapping): void {
-                        $mapping->using(fn($value, $source) => trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
+                        $mapping->using(fn($value, $source) => StringHelper::mbTrim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
                     })
                     ->forMember('email', function ($mapping): void {
                         $mapping->mapFrom('email_address');
@@ -814,7 +815,7 @@ class BidirectionalMappingProfile extends MappingProfile
         // Entity to DTO
         $this->createMap('array', UserDTO::class)
             ->forMember('fullName', function ($mapping): void {
-                $mapping->using(fn($value, $source) => trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
+                $mapping->using(fn($value, $source) => StringHelper::mbTrim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
             })
             ->forMember('email', function ($mapping): void {
                 $mapping->mapFrom('email_address');
@@ -827,7 +828,7 @@ class BidirectionalMappingProfile extends MappingProfile
                     if (empty($source->fullName)) {
                         return '';
                     }
-                    $parts = explode(' ', trim($source->fullName), 2);
+                    $parts = explode(' ', StringHelper::mbTrim($source->fullName), 2);
                     return $parts[0];
                 });
             })
@@ -836,7 +837,7 @@ class BidirectionalMappingProfile extends MappingProfile
                     if (empty($source->fullName)) {
                         return '';
                     }
-                    $parts = explode(' ', trim($source->fullName), 2);
+                    $parts = explode(' ', StringHelper::mbTrim($source->fullName), 2);
                     return $parts[1] ?? '';
                 });
             })

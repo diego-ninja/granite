@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Validation\Rules;
 
 use Exception;
+use Ninja\Granite\Support\StringHelper;
 use Ninja\Granite\Validation\Rules\Callback;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
@@ -263,7 +264,7 @@ class CallbackTest extends TestCase
             }
 
             // Simulate some processing
-            $processed = mb_strtolower(trim($value));
+            $processed = mb_strtolower(StringHelper::mbTrim($value));
             $words = explode(' ', $processed);
 
             return count($words) >= 2 && count($words) <= 10 &&
