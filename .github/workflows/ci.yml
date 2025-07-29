@@ -48,17 +48,12 @@ jobs:
       if: matrix.php-version == '8.4'
       run: composer run test:coverage-clover
 
-    - name: Upload coverage reports to Codecov
-      if: matrix.php-version == '8.4' && env.CODECOV_TOKEN != ''
-      uses: codecov/codecov-action@v4
+    - name: Upload coverage reports to Coveralls
+      if: matrix.php-version == '8.4'
+      uses: coverallsapp/github-action@v2
       with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         file: ./coverage/clover.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   static-analysis:
     name: Static Analysis

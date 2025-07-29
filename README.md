@@ -9,7 +9,7 @@
 [![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
 
 [![PHPStan Level](https://img.shields.io/badge/PHPStan-max%20level-green.svg?style=flat)](https://phpstan.org/)
-[![Coverage](https://img.shields.io/codecov/c/github/diego-ninja/granite?style=flat)](https://codecov.io/gh/diego-ninja/granite)
+[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat)](https://coveralls.io/github/diego-ninja/granite)
 [![PHPUnit](https://img.shields.io/badge/PHPUnit-✓%20passing-green.svg?style=flat)](https://phpunit.de/)
 [![Tests](https://img.shields.io/badge/tests-1078%20passed-green.svg?style=flat)](https://phpunit.de/)
 
