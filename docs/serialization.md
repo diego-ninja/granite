@@ -6,6 +6,7 @@ Granite provides powerful serialization capabilities that allow you to control h
 
 - [Basic Serialization](#basic-serialization)
 - [Property Name Mapping](#property-name-mapping)
+- [Class-Level Naming Conventions](#class-level-naming-conventions)
 - [Hiding Properties](#hiding-properties)
 - [Method-based Configuration](#method-based-configuration)
 - [Custom Serialization](#custom-serialization)
@@ -112,6 +113,152 @@ $user2 = ApiUser::from([
     'full_name' => 'John Doe',  // Serialized name
     'email_address' => 'john@example.com'
 ]);
+```
+
+## Class-Level Naming Conventions
+
+The `#[SerializationConvention]` attribute allows you to apply a naming convention to all properties in a class during serialization. This is particularly useful when you need consistent naming across all properties without having to specify `#[SerializedName]` for each one:
+
+```php
+<?php
+
+use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
+use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
+use Ninja\Granite\Mapping\Conventions\CamelCaseConvention;
+use Ninja\Granite\Mapping\Conventions\PascalCaseConvention;
+
+#[SerializationConvention(SnakeCaseConvention::class)]
+final readonly class UserProfile extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $firstName,      // serialized as "first_name"
+        public string $lastName,       // serialized as "last_name"
+        public string $emailAddress,   // serialized as "email_address"
+        public DateTime $createdAt,    // serialized as "created_at"
+        public DateTime $lastLoginAt,  // serialized as "last_login_at"
+        
+        // Explicit SerializedName takes precedence over convention
+        #[SerializedName('user_id')]
+        public int $userId
+    ) {}
+}
+
+$profile = UserProfile::from([
+    'id' => 1,
+    'first_name' => 'John',
+    'last_name' => 'Doe',
+    'email_address' => 'john@example.com',
+    'created_at' => '2023-01-15T10:30:00Z',
+    'last_login_at' => '2023-01-20T15:45:00Z',
+    'user_id' => 123
+]);
+
+$array = $profile->array();
+// Result: {
+//   'id' => 1,
+//   'first_name' => 'John',
+//   'last_name' => 'Doe',
+//   'email_address' => 'john@example.com',
+//   'created_at' => '2023-01-15T10:30:00+00:00',
+//   'last_login_at' => '2023-01-20T15:45:00+00:00',
+//   'user_id' => 123
+// }
+```
+
+### Available Naming Conventions
+
+Granite provides several built-in naming conventions:
+
+```php
+// Snake case: camelCase -> snake_case
+#[SerializationConvention(SnakeCaseConvention::class)]
+
+// Camel case: snake_case -> camelCase
+#[SerializationConvention(CamelCaseConvention::class)]
+
+// Pascal case: camelCase -> PascalCase
+#[SerializationConvention(PascalCaseConvention::class)]
+```
+
+### Bidirectional Conventions
+
+By default, conventions are applied bidirectionally (both serialization and deserialization). You can control this behavior:
+
+```php
+#[SerializationConvention(
+    convention: SnakeCaseConvention::class,
+    bidirectional: true  // Default: applies to both directions
+)]
+final readonly class ApiResponse extends GraniteDTO
+{
+    public function __construct(
+        public string $userId,        // accepts both "userId" and "user_id"
+        public string $displayName    // accepts both "displayName" and "display_name"
+    ) {}
+}
+
+// Both of these work during deserialization:
+$response1 = ApiResponse::from([
+    'userId' => '123',
+    'displayName' => 'John Doe'
+]);
+
+$response2 = ApiResponse::from([
+    'user_id' => '123',
+    'display_name' => 'John Doe'
+]);
+
+// But serialization always uses the convention:
+$array = $response1->array();
+// Result: { 'user_id' => '123', 'display_name' => 'John Doe' }
+```
+
+### Using Convention Instances
+
+You can also pass a convention instance instead of a class string:
+
+```php
+use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
+
+#[SerializationConvention(new SnakeCaseConvention())]
+final readonly class ConfiguredClass extends GraniteDTO
+{
+    // ...
+}
+```
+
+### Precedence Rules
+
+When multiple serialization configurations are present, they follow this precedence order:
+
+1. **`#[SerializedName]` attribute** - Always takes highest precedence
+2. **`#[SerializationConvention]` attribute** - Applied to properties without explicit names
+3. **Method-based configuration** - Lowest precedence
+
+```php
+#[SerializationConvention(SnakeCaseConvention::class)]
+final readonly class MixedConfig extends GraniteDTO
+{
+    public function __construct(
+        public string $firstName,           // uses convention: "first_name"
+        
+        #[SerializedName('custom_name')]    // explicit name wins
+        public string $lastName,
+        
+        public string $emailAddress         // uses convention: "email_address"
+    ) {}
+    
+    protected static function serializedNames(): array
+    {
+        return [
+            'firstName' => 'method_name',   // ignored due to convention
+            'emailAddress' => 'method_email' // ignored due to convention
+        ];
+    }
+}
 ```
 
 ## Hiding Properties
@@ -447,29 +594,29 @@ Create DTOs specifically designed for API responses:
 
 use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Attributes\Hidden;
+use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
 
+#[SerializationConvention(SnakeCaseConvention::class)]
 final readonly class UserProfileResponse extends GraniteDTO
 {
     public function __construct(
-        public int $id,
+        public int $id,                        // convention: "id" (no change)
         
-        #[SerializedName('display_name')]
+        #[SerializedName('display_name')]       // explicit name overrides convention
         public string $name,
         
-        public string $email,
+        public string $email,                   // convention: "email" (no change)
         
-        #[SerializedName('avatar_url')]
-        public ?string $avatarUrl,
+        public ?string $avatarUrl,              // convention: "avatar_url"
         
-        #[SerializedName('member_since')]
+        #[SerializedName('member_since')]       // explicit name overrides convention
         public DateTime $createdAt,
         
-        #[SerializedName('last_seen')]
-        public ?DateTime $lastLoginAt,
+        public ?DateTime $lastLoginAt,          // convention: "last_login_at"
         
-        #[SerializedName('profile_complete')]
-        public bool $isProfileComplete,
+        public bool $isProfileComplete,         // convention: "is_profile_complete"
         
         // Internal fields - hidden from API
         #[Hidden]
@@ -506,12 +653,12 @@ $response = UserProfileResponse::fromUser($user);
 $apiData = $response->array();
 // {
 //   "id": 123,
-//   "display_name": "John Doe",
-//   "email": "john@example.com",
-//   "avatar_url": "https://example.com/avatars/123.jpg",
-//   "member_since": "2023-01-15T10:30:00+00:00",
-//   "last_seen": "2024-01-10T15:45:00+00:00",
-//   "profile_complete": true
+//   "display_name": "John Doe",           // explicit SerializedName
+//   "email": "john@example.com",           // no change needed
+//   "avatar_url": "https://example.com/avatars/123.jpg",  // convention applied
+//   "member_since": "2023-01-15T10:30:00+00:00",         // explicit SerializedName
+//   "last_login_at": "2024-01-10T15:45:00+00:00",        // convention applied
+//   "is_profile_complete": true                           // convention applied
 // }
 ```
 
