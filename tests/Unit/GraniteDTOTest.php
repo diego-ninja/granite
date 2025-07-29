@@ -1,27 +1,49 @@
 <?php
+
 // tests/Unit/GraniteDTOTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use Ninja\Granite\GraniteDTO;
+use DateMalformedStringException;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Error;
+use InvalidArgumentException;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\SerializationException;
+use Ninja\Granite\GraniteDTO;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Helpers\TestCase;
-use Tests\Fixtures\DTOs\SimpleDTO;
-use Tests\Fixtures\DTOs\SerializableDTO;
+use ReflectionClass;
 use Tests\Fixtures\DTOs\ComplexDTO;
 use Tests\Fixtures\DTOs\NestedDTO;
+use Tests\Fixtures\DTOs\SerializableDTO;
+use Tests\Fixtures\DTOs\SimpleDTO;
 use Tests\Fixtures\DTOs\UserDTO;
 use Tests\Fixtures\Enums\UserStatus;
 use Tests\Fixtures\VOs\Address;
+use Tests\Helpers\TestCase;
 
 #[CoversClass(GraniteDTO::class)]
 class GraniteDTOTest extends TestCase
 {
+    public static function serializedNamesMappingProvider(): array
+    {
+        return [
+            'firstName to first_name' => [
+                ['firstName' => 'John', 'lastName' => 'Doe', 'email' => 'john@example.com', 'password' => 'secret'],
+                'firstName',
+                'first_name',
+            ],
+            'lastName to last_name' => [
+                ['firstName' => 'John', 'lastName' => 'Doe', 'email' => 'john@example.com', 'password' => 'secret'],
+                'lastName',
+                'last_name',
+            ],
+        ];
+    }
     public function test_implements_granite_object_interface(): void
     {
         $dto = SimpleDTO::from(['id' => 1, 'name' => 'Test', 'email' => 'test@example.com']);
@@ -35,7 +57,7 @@ class GraniteDTOTest extends TestCase
             'id' => 42,
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ];
 
         $dto = SimpleDTO::from($data);
@@ -63,7 +85,7 @@ class GraniteDTOTest extends TestCase
         $original = SimpleDTO::from([
             'id' => 1,
             'name' => 'Original',
-            'email' => 'original@example.com'
+            'email' => 'original@example.com',
         ]);
 
         $copy = SimpleDTO::from($original);
@@ -78,7 +100,7 @@ class GraniteDTOTest extends TestCase
     {
         $data = [
             'id' => 1,
-            'name' => 'Test'
+            'name' => 'Test',
             // Missing email and age
         ];
 
@@ -96,7 +118,7 @@ class GraniteDTOTest extends TestCase
             'name' => 'Test',
             'email' => 'test@example.com',
             'age' => 30,
-            'extra_property' => 'ignored'
+            'extra_property' => 'ignored',
         ];
 
         $dto = SimpleDTO::from($data);
@@ -113,12 +135,12 @@ class GraniteDTOTest extends TestCase
         $data = [
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => '2024-01-01T10:00:00Z'
+            'createdAt' => '2024-01-01T10:00:00Z',
         ];
 
         $dto = ComplexDTO::from($data);
 
-        $this->assertInstanceOf(\DateTimeInterface::class, $dto->createdAt);
+        $this->assertInstanceOf(DateTimeInterface::class, $dto->createdAt);
         $this->assertEquals('2024-01-01T10:00:00+00:00', $dto->createdAt->format('c'));
     }
 
@@ -127,7 +149,7 @@ class GraniteDTOTest extends TestCase
         $data = [
             'id' => 1,
             'name' => 'Test',
-            'status' => 'active'
+            'status' => 'active',
         ];
 
         $dto = ComplexDTO::from($data);
@@ -146,8 +168,8 @@ class GraniteDTOTest extends TestCase
                 'street' => '123 Main St',
                 'city' => 'New York',
                 'country' => 'USA',
-                'zipCode' => '10001'
-            ]
+                'zipCode' => '10001',
+            ],
         ];
 
         $dto = UserDTO::from($data);
@@ -164,7 +186,7 @@ class GraniteDTOTest extends TestCase
             'id' => 1,
             'name' => 'Test',
             'email' => 'test@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $array = $dto->array();
@@ -173,7 +195,7 @@ class GraniteDTOTest extends TestCase
             'id' => 1,
             'name' => 'Test',
             'email' => 'test@example.com',
-            'age' => 30
+            'age' => 30,
         ], $array);
     }
 
@@ -182,7 +204,7 @@ class GraniteDTOTest extends TestCase
         $dto = SimpleDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'email' => 'test@example.com'
+            'email' => 'test@example.com',
         ]);
 
         $json = $dto->json();
@@ -200,7 +222,7 @@ class GraniteDTOTest extends TestCase
             'firstName' => 'John',
             'lastName' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'secret'
+            'password' => 'secret',
         ]);
 
         $array = $dto->array();
@@ -218,7 +240,7 @@ class GraniteDTOTest extends TestCase
             'lastName' => 'Doe',
             'email' => 'john@example.com',
             'password' => 'secret123',
-            'apiToken' => 'token123'
+            'apiToken' => 'token123',
         ]);
 
         $array = $dto->array();
@@ -230,12 +252,12 @@ class GraniteDTOTest extends TestCase
 
     public function test_serializes_datetime_objects(): void
     {
-        $dateTime = new \DateTimeImmutable('2024-01-01T10:00:00Z');
+        $dateTime = new DateTimeImmutable('2024-01-01T10:00:00Z');
 
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => $dateTime->format('c')
+            'createdAt' => $dateTime->format('c'),
         ]);
 
         $array = $dto->array();
@@ -250,7 +272,7 @@ class GraniteDTOTest extends TestCase
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'status' => UserStatus::ACTIVE
+            'status' => UserStatus::ACTIVE,
         ]);
 
         $array = $dto->array();
@@ -269,8 +291,8 @@ class GraniteDTOTest extends TestCase
                 'street' => '123 Main St',
                 'city' => 'New York',
                 'country' => 'USA',
-                'zipCode' => '10001'
-            ]
+                'zipCode' => '10001',
+            ],
         ]);
 
         $array = $dto->array();
@@ -287,7 +309,7 @@ class GraniteDTOTest extends TestCase
             'id' => 1,
             'name' => 'Test',
             'createdAt' => null,
-            'status' => null
+            'status' => null,
         ]);
 
         $array = $dto->array();
@@ -301,10 +323,11 @@ class GraniteDTOTest extends TestCase
     public function test_throws_exception_for_unsupported_serialization_types(): void
     {
         // Create a DTO with an unsupported type (resource)
-        $dto = new readonly class extends GraniteDTO {
+        $dto = new readonly class () extends GraniteDTO {
             public mixed $resource;
 
-            public function __construct() {
+            public function __construct()
+            {
                 $this->resource = fopen('php://memory', 'r');
             }
         };
@@ -317,26 +340,26 @@ class GraniteDTOTest extends TestCase
 
     public function test_handles_malformed_json_input(): void
     {
-        $this->expectException(\TypeError::class);
+        $this->expectException(InvalidArgumentException::class);
 
         SimpleDTO::from('{"invalid": json}');
     }
 
     public function test_handles_invalid_datetime_strings(): void
     {
-        $this->expectException(\DateMalformedStringException::class);
+        $this->expectException(DateMalformedStringException::class);
 
         ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => 'invalid-date-string'
+            'createdAt' => 'invalid-date-string',
         ]);
     }
 
     public function test_skips_uninitialized_properties_in_serialization(): void
     {
         // Create a DTO where some properties might not be initialized
-        $reflection = new \ReflectionClass(SimpleDTO::class);
+        $reflection = new ReflectionClass(SimpleDTO::class);
         $instance = $reflection->newInstanceWithoutConstructor();
 
         // Only set some properties
@@ -364,29 +387,13 @@ class GraniteDTOTest extends TestCase
         $this->assertEquals($inputData[$phpProperty] ?? $inputData[$serializedName], $array[$serializedName]);
     }
 
-    public static function serializedNamesMappingProvider(): array
-    {
-        return [
-            'firstName to first_name' => [
-                ['firstName' => 'John', 'lastName' => 'Doe', 'email' => 'john@example.com', 'password' => 'secret'],
-                'firstName',
-                'first_name'
-            ],
-            'lastName to last_name' => [
-                ['firstName' => 'John', 'lastName' => 'Doe', 'email' => 'john@example.com', 'password' => 'secret'],
-                'lastName',
-                'last_name'
-            ],
-        ];
-    }
-
     public function test_roundtrip_conversion(): void
     {
         $originalData = [
             'id' => 42,
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'age' => 30
+            'age' => 30,
         ];
 
         $dto = SimpleDTO::from($originalData);
@@ -403,7 +410,7 @@ class GraniteDTOTest extends TestCase
     {
         $largeData = [];
         for ($i = 0; $i < 100; $i++) {
-            $largeData["property_$i"] = "value_$i";
+            $largeData["property_{$i}"] = "value_{$i}";
         }
         $largeData['id'] = 1;
         $largeData['name'] = 'Test';
@@ -427,11 +434,11 @@ class GraniteDTOTest extends TestCase
         $dto = SimpleDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'email' => 'test@example.com'
+            'email' => 'test@example.com',
         ]);
 
         // Properties should be readonly - attempting to modify should fail
-        $this->expectException(\Error::class);
+        $this->expectException(Error::class);
         $dto->name = 'Modified'; // This should fail
     }
 
@@ -448,10 +455,10 @@ class GraniteDTOTest extends TestCase
                     'street' => '123 Author St',
                     'city' => 'Author City',
                     'country' => 'Author Country',
-                    'zipCode' => '12345'
-                ]
+                    'zipCode' => '12345',
+                ],
             ],
-            'tags' => ['php', 'testing', 'granite']
+            'tags' => ['php', 'testing', 'granite'],
         ];
 
         $dto = NestedDTO::from($complexData);
@@ -468,12 +475,12 @@ class GraniteDTOTest extends TestCase
     {
         // Test with union types if they exist in test fixtures
         $data = [
-            'flexibleDate' => '2024-01-01T10:00:00Z'
+            'flexibleDate' => '2024-01-01T10:00:00Z',
         ];
 
         $dto = \Tests\Fixtures\DTOs\DateDTO::from($data);
 
-        $this->assertInstanceOf(\DateTimeInterface::class, $dto->flexibleDate);
+        $this->assertInstanceOf(DateTimeInterface::class, $dto->flexibleDate);
     }
 
     public function test_is_immutable(): void
@@ -481,11 +488,11 @@ class GraniteDTOTest extends TestCase
         $dto = SimpleDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'email' => 'test@example.com'
+            'email' => 'test@example.com',
         ]);
 
         // DTO should be readonly
-        $reflection = new \ReflectionClass($dto);
+        $reflection = new ReflectionClass($dto);
         $this->assertTrue($reflection->isReadonly());
     }
 

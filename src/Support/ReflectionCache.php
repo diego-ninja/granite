@@ -32,10 +32,14 @@ final class ReflectionCache
      * @return ReflectionClass Reflection instance
      * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
+    /**
+     * @param class-string $class
+     */
     public static function getClass(string $class): ReflectionClass
     {
         try {
-            if (!isset(self::$classCache[$class])) {
+            if ( ! isset(self::$classCache[$class])) {
+                /** @phpstan-ignore-next-line ReflectionClass can throw ReflectionException */
                 self::$classCache[$class] = new ReflectionClass($class);
             }
 
@@ -48,13 +52,13 @@ final class ReflectionCache
     /**
      * Get cached public properties for a class.
      *
-     * @param string $class Class name
+     * @param class-string $class Class name
      * @return ReflectionProperty[] Array of reflection properties
      * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
     public static function getPublicProperties(string $class): array
     {
-        if (!isset(self::$propertiesCache[$class])) {
+        if ( ! isset(self::$propertiesCache[$class])) {
             $reflection = self::getClass($class);
             self::$propertiesCache[$class] = $reflection->getProperties(ReflectionProperty::IS_PUBLIC);
         }

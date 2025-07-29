@@ -2,6 +2,7 @@
 
 namespace Ninja\Granite\Mapping\Cache;
 
+use Exception;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
 use ReflectionClass;
 
@@ -91,38 +92,6 @@ class PersistentMappingCache implements MappingCache
     }
 
     /**
-     * Load cache from file.
-     *
-     * @return void
-     */
-    private function loadCache(): void
-    {
-        if (!file_exists($this->cachePath)) {
-            return;
-        }
-
-        try {
-            $cacheData = file_get_contents($this->cachePath);
-            if ($cacheData === false) {
-                return;
-            }
-
-            $data = unserialize($cacheData);
-            if (!is_array($data)) {
-                return;
-            }
-
-            foreach ($data as $key => $config) {
-                list($sourceType, $destinationType) = explode('->', $key);
-                $this->memoryCache->put($sourceType, $destinationType, $config);
-            }
-        } catch (\Exception $e) {
-            // If loading fails, just start with an empty cache
-            $this->memoryCache->clear();
-        }
-    }
-
-    /**
      * Save cache to file.
      *
      * @return bool Whether the save was successful
@@ -131,19 +100,19 @@ class PersistentMappingCache implements MappingCache
     {
         try {
             $cacheDir = dirname($this->cachePath);
-            if (!is_dir($cacheDir)) {
+            if ( ! is_dir($cacheDir)) {
                 mkdir($cacheDir, 0755, true);
             }
 
             $tmpFile = $this->cachePath . '.tmp';
             $result = file_put_contents($tmpFile, serialize($this->extractCacheData()), LOCK_EX);
 
-            if ($result !== false) {
+            if (false !== $result) {
                 rename($tmpFile, $this->cachePath);
                 $this->isDirty = false;
                 return true;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Ignore errors, just return false
         }
 
@@ -163,6 +132,43 @@ class PersistentMappingCache implements MappingCache
     }
 
     /**
+     * Load cache from file.
+     *
+     * @return void
+     */
+    private function loadCache(): void
+    {
+        if ( ! file_exists($this->cachePath)) {
+            return;
+        }
+
+        try {
+            $cacheData = file_get_contents($this->cachePath);
+            if (false === $cacheData) {
+                return;
+            }
+
+            $data = unserialize($cacheData);
+            if ( ! is_array($data)) {
+                return;
+            }
+
+            foreach ($data as $key => $config) {
+                if (is_string($key) && is_array($config)) {
+                    $parts = explode('->', $key, 2);
+                    if (2 === count($parts)) {
+                        [$sourceType, $destinationType] = $parts;
+                        $this->memoryCache->put($sourceType, $destinationType, $config);
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            // If loading fails, just start with an empty cache
+            $this->memoryCache->clear();
+        }
+    }
+
+    /**
      * Extract cache data from memory cache.
      *
      * @return array Cache data
@@ -173,6 +179,8 @@ class PersistentMappingCache implements MappingCache
         $cacheProperty = $reflection->getProperty('cache');
         $cacheProperty->setAccessible(true);
 
-        return $cacheProperty->getValue($this->memoryCache);
+        $cacheData = $cacheProperty->getValue($this->memoryCache);
+
+        return is_array($cacheData) ? $cacheData : [];
     }
 }

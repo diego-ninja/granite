@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/EmailTest.php
 
 declare(strict_types=1);
@@ -7,6 +8,7 @@ namespace Tests\Unit\Validation\Rules;
 
 use Ninja\Granite\Validation\Rules\Email;
 use PHPUnit\Framework\Attributes\CoversClass;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Email::class)] class EmailTest extends TestCase
@@ -36,7 +38,7 @@ use Tests\Helpers\TestCase;
         ];
 
         foreach ($validEmails as $email) {
-            $this->assertTrue($this->rule->validate($email), "Failed to validate: $email");
+            $this->assertTrue($this->rule->validate($email), "Failed to validate: {$email}");
         }
     }
 
@@ -62,7 +64,7 @@ use Tests\Helpers\TestCase;
         ];
 
         foreach ($invalidEmails as $email) {
-            $this->assertFalse($this->rule->validate($email), "Incorrectly validated: $email");
+            $this->assertFalse($this->rule->validate($email), "Incorrectly validated: {$email}");
         }
     }
 
@@ -76,7 +78,7 @@ use Tests\Helpers\TestCase;
         $this->assertFalse($this->rule->validate(123));
         $this->assertFalse($this->rule->validate(true));
         $this->assertFalse($this->rule->validate([]));
-        $this->assertFalse($this->rule->validate(new \stdClass()));
+        $this->assertFalse($this->rule->validate(new stdClass()));
     }
 
     public function test_returns_default_message(): void

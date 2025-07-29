@@ -9,6 +9,6 @@ final readonly class SimpleUserDTO extends GraniteDTO
     public function __construct(
         public int $id,
         public ?string $name,
-        public ?string $email
+        public ?string $email,
     ) {}
 }

@@ -6,6 +6,6 @@ class TeamNestedDTO
 {
     public function __construct(
         public string $name,
-        public array $members = []
+        public array $members = [],
     ) {}
 }

@@ -13,7 +13,7 @@ class Required extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        return $value !== null;
+        return null !== $value;
     }
 
     /**

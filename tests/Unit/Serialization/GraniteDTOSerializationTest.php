@@ -1,17 +1,20 @@
 <?php
+
 // tests/Unit/Serialization/GraniteDTOSerializationTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Serialization;
 
-use Ninja\Granite\GraniteDTO;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Ninja\Granite\Exceptions\SerializationException;
+use Ninja\Granite\GraniteDTO;
 use PHPUnit\Framework\Attributes\CoversClass;
-use Tests\Helpers\TestCase;
-use Tests\Fixtures\DTOs\SerializableDTO;
 use Tests\Fixtures\DTOs\ComplexDTO;
+use Tests\Fixtures\DTOs\SerializableDTO;
 use Tests\Fixtures\Enums\UserStatus;
+use Tests\Helpers\TestCase;
 
 /**
  * @group serialization
@@ -24,7 +27,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'firstName' => 'John',
             'lastName' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ]);
 
         $array = $dto->array();
@@ -49,7 +52,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'firstName' => 'John',
             'lastName' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ]);
 
         $json = $dto->json();
@@ -70,7 +73,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'lastName' => 'Doe',
             'email' => 'john@example.com',
             'password' => 'secret123',
-            'apiToken' => null
+            'apiToken' => null,
         ]);
 
         $array = $dto->array();
@@ -81,12 +84,12 @@ use Tests\Fixtures\Enums\UserStatus;
 
     public function test_serializes_datetime_objects(): void
     {
-        $dateTime = new \DateTimeImmutable('2024-01-01T10:00:00Z');
+        $dateTime = new DateTimeImmutable('2024-01-01T10:00:00Z');
 
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => $dateTime->format('c')
+            'createdAt' => $dateTime->format('c'),
         ]);
 
         $array = $dto->array();
@@ -101,7 +104,7 @@ use Tests\Fixtures\Enums\UserStatus;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'status' => UserStatus::ACTIVE
+            'status' => UserStatus::ACTIVE,
         ]);
 
         $array = $dto->array();
@@ -114,13 +117,13 @@ use Tests\Fixtures\Enums\UserStatus;
     {
         $metadata = [
             'tags' => ['php', 'testing'],
-            'settings' => ['debug' => true, 'timeout' => 30]
+            'settings' => ['debug' => true, 'timeout' => 30],
         ];
 
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'metadata' => $metadata
+            'metadata' => $metadata,
         ]);
 
         $array = $dto->array();
@@ -159,7 +162,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $dto = SerializableDTO::from($data);
@@ -176,7 +179,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'firstName' => 'John',
             'lastName' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $dto = SerializableDTO::from($data);
@@ -194,7 +197,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'first_name' => 'John',    // Serialized name
             'lastName' => 'Smith',     // PHP name only
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $dto = SerializableDTO::from($data);
@@ -202,8 +205,8 @@ use Tests\Fixtures\Enums\UserStatus;
         // Check which name actually wins based on implementation behavior
         // The actual behavior depends on the order of processing in GraniteDTO
         $this->assertTrue(
-            $dto->firstName === 'John' || $dto->firstName === 'Jane',
-            "firstName should be either 'John' (serialized name wins) or 'Jane' (PHP name wins), got: " . $dto->firstName
+            'John' === $dto->firstName || 'Jane' === $dto->firstName,
+            "firstName should be either 'John' (serialized name wins) or 'Jane' (PHP name wins), got: " . $dto->firstName,
         );
 
         $this->assertEquals('Smith', $dto->lastName); // Uses PHP name (no conflict)
@@ -216,7 +219,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'first_name' => 'John',    // Only serialized name provided
             'last_name' => 'Doe',      // Only serialized name provided
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $dto = SerializableDTO::from($data);
@@ -232,7 +235,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'firstName' => 'John',     // Only PHP name provided
             'lastName' => 'Doe',       // Only PHP name provided
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $dto = SerializableDTO::from($data);
@@ -247,10 +250,10 @@ use Tests\Fixtures\Enums\UserStatus;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'createdAt' => '2024-01-01T10:00:00Z'
+            'createdAt' => '2024-01-01T10:00:00Z',
         ]);
 
-        $this->assertInstanceOf(\DateTimeInterface::class, $dto->createdAt);
+        $this->assertInstanceOf(DateTimeInterface::class, $dto->createdAt);
         $this->assertEquals('2024-01-01T10:00:00+00:00', $dto->createdAt->format('c'));
     }
 
@@ -259,7 +262,7 @@ use Tests\Fixtures\Enums\UserStatus;
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->assertInstanceOf(UserStatus::class, $dto->status);
@@ -272,7 +275,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'firstName' => 'John',
             'lastName' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ];
 
         $dto = SerializableDTO::from($originalData);
@@ -305,7 +308,7 @@ use Tests\Fixtures\Enums\UserStatus;
             'firstName' => 'John',
             'lastName' => 'Doe',
             'email' => 'john@example.com',
-            'password' => 'secret123'
+            'password' => 'secret123',
         ]);
 
         // Warm up

@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/RuleParserTest.php
 
 declare(strict_types=1);
@@ -6,25 +7,81 @@ declare(strict_types=1);
 namespace Tests\Unit\Validation;
 
 use Ninja\Granite\Validation\RuleParser;
+use Ninja\Granite\Validation\Rules\ArrayType;
+use Ninja\Granite\Validation\Rules\BooleanType;
+use Ninja\Granite\Validation\Rules\Email;
+use Ninja\Granite\Validation\Rules\In;
+use Ninja\Granite\Validation\Rules\IntegerType;
+use Ninja\Granite\Validation\Rules\IpAddress;
+use Ninja\Granite\Validation\Rules\Max;
+use Ninja\Granite\Validation\Rules\Min;
+use Ninja\Granite\Validation\Rules\NumberType;
+use Ninja\Granite\Validation\Rules\Regex;
 use Ninja\Granite\Validation\Rules\Required;
 use Ninja\Granite\Validation\Rules\StringType;
-use Ninja\Granite\Validation\Rules\IntegerType;
-use Ninja\Granite\Validation\Rules\NumberType;
-use Ninja\Granite\Validation\Rules\BooleanType;
-use Ninja\Granite\Validation\Rules\ArrayType;
-use Ninja\Granite\Validation\Rules\Min;
-use Ninja\Granite\Validation\Rules\Max;
-use Ninja\Granite\Validation\Rules\In;
-use Ninja\Granite\Validation\Rules\Regex;
-use Ninja\Granite\Validation\Rules\Email;
 use Ninja\Granite\Validation\Rules\Url;
-use Ninja\Granite\Validation\Rules\IpAddress;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use ReflectionMethod;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(RuleParser::class)] class RuleParserTest extends TestCase
 {
+    public static function complexRuleStringProvider(): array
+    {
+        return [
+            'user validation' => [
+                'required|string|min:3|max:50',
+                4,
+                [Required::class, StringType::class, Min::class, Max::class],
+            ],
+            'numeric validation' => [
+                'required|integer|min:1|max:100',
+                4,
+                [Required::class, IntegerType::class, Min::class, Max::class],
+            ],
+            'email validation' => [
+                'required|email',
+                2,
+                [Required::class, Email::class],
+            ],
+            'status validation' => [
+                'required|in:active,inactive,pending',
+                2,
+                [Required::class, In::class],
+            ],
+            'pattern validation' => [
+                'required|string|regex:/^[A-Z0-9]{10}$/',
+                3,
+                [Required::class, StringType::class, Regex::class],
+            ],
+            'array validation' => [
+                'required|array|min:1',
+                3,
+                [Required::class, ArrayType::class, Min::class],
+            ],
+            'optional field' => [
+                'string|max:255',
+                2,
+                [StringType::class, Max::class],
+            ],
+            'boolean field' => [
+                'required|boolean',
+                2,
+                [Required::class, BooleanType::class],
+            ],
+            'url field' => [
+                'url',
+                1,
+                [Url::class],
+            ],
+            'ip field' => [
+                'required|ip',
+                2,
+                [Required::class, IpAddress::class],
+            ],
+        ];
+    }
     public function test_parses_simple_rules(): void
     {
         $rules = RuleParser::parse('required|string');
@@ -86,7 +143,7 @@ use Tests\Helpers\TestCase;
         foreach ($testCases as $ruleString => $expectedClass) {
             $rules = RuleParser::parse($ruleString);
             $this->assertCount(1, $rules);
-            $this->assertInstanceOf($expectedClass, $rules[0], "Failed for rule: $ruleString");
+            $this->assertInstanceOf($expectedClass, $rules[0], "Failed for rule: {$ruleString}");
         }
     }
 
@@ -101,7 +158,7 @@ use Tests\Helpers\TestCase;
         foreach ($testCases as $ruleString => $expectedClass) {
             $rules = RuleParser::parse($ruleString);
             $this->assertCount(1, $rules);
-            $this->assertInstanceOf($expectedClass, $rules[0], "Failed for rule: $ruleString");
+            $this->assertInstanceOf($expectedClass, $rules[0], "Failed for rule: {$ruleString}");
         }
     }
 
@@ -179,65 +236,12 @@ use Tests\Helpers\TestCase;
         $this->assertCount($expectedCount, $rules);
 
         foreach ($expectedTypes as $index => $expectedType) {
-            $this->assertInstanceOf($expectedType, $rules[$index],
-                "Rule at index $index should be $expectedType for rule string: $ruleString");
+            $this->assertInstanceOf(
+                $expectedType,
+                $rules[$index],
+                "Rule at index {$index} should be {$expectedType} for rule string: {$ruleString}",
+            );
         }
-    }
-
-    public static function complexRuleStringProvider(): array
-    {
-        return [
-            'user validation' => [
-                'required|string|min:3|max:50',
-                4,
-                [Required::class, StringType::class, Min::class, Max::class]
-            ],
-            'numeric validation' => [
-                'required|integer|min:1|max:100',
-                4,
-                [Required::class, IntegerType::class, Min::class, Max::class]
-            ],
-            'email validation' => [
-                'required|email',
-                2,
-                [Required::class, Email::class]
-            ],
-            'status validation' => [
-                'required|in:active,inactive,pending',
-                2,
-                [Required::class, In::class]
-            ],
-            'pattern validation' => [
-                'required|string|regex:/^[A-Z0-9]{10}$/',
-                3,
-                [Required::class, StringType::class, Regex::class]
-            ],
-            'array validation' => [
-                'required|array|min:1',
-                3,
-                [Required::class, ArrayType::class, Min::class]
-            ],
-            'optional field' => [
-                'string|max:255',
-                2,
-                [StringType::class, Max::class]
-            ],
-            'boolean field' => [
-                'required|boolean',
-                2,
-                [Required::class, BooleanType::class]
-            ],
-            'url field' => [
-                'url',
-                1,
-                [Url::class]
-            ],
-            'ip field' => [
-                'required|ip',
-                2,
-                [Required::class, IpAddress::class]
-            ],
-        ];
     }
 
     public function test_handles_whitespace_in_rules(): void
@@ -284,7 +288,7 @@ use Tests\Helpers\TestCase;
         ];
 
         foreach ($specialPatterns as $pattern) {
-            $rules = RuleParser::parse("regex:$pattern");
+            $rules = RuleParser::parse("regex:{$pattern}");
             $this->assertCount(1, $rules);
             $this->assertInstanceOf(Regex::class, $rules[0]);
         }
@@ -295,7 +299,7 @@ use Tests\Helpers\TestCase;
         // Verify that parse is indeed a static method
         $this->assertTrue(method_exists(RuleParser::class, 'parse'));
 
-        $reflection = new \ReflectionMethod(RuleParser::class, 'parse');
+        $reflection = new ReflectionMethod(RuleParser::class, 'parse');
         $this->assertTrue($reflection->isStatic());
         $this->assertTrue($reflection->isPublic());
     }

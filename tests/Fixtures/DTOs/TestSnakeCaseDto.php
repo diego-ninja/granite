@@ -14,6 +14,6 @@ final readonly class TestSnakeCaseDto extends GraniteDTO
     public function __construct(
         public string $firstName,
         public string $lastName,
-        public string $emailAddress
+        public string $emailAddress,
     ) {}
 }

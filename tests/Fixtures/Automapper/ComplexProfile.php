@@ -13,8 +13,10 @@ class ComplexProfile extends MappingProfile
             ->forMember('email', fn($mapping) => $mapping->mapFrom('email_address'));
 
         $this->createMap('OrderEntity', 'OrderDTO')
-            ->forMember('total', fn($mapping) =>
-            $mapping->using(fn($value) => number_format($value, 2))
+            ->forMember(
+                'total',
+                fn($mapping) =>
+            $mapping->using(fn($value) => number_format($value, 2)),
             );
     }
 }

@@ -9,10 +9,8 @@ final readonly class UserResponseDTO extends GraniteDTO
 {
     public function __construct(
         public int $id,
-        
         #[MapFrom('name')]
         public string $displayName,
-        
-        public string $email
+        public string $email,
     ) {}
 }

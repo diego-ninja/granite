@@ -15,6 +15,6 @@ final readonly class TestBidirectionalSnakeDto extends GraniteDTO
         public string $firstName,
         public string $lastName,
         public string $emailAddress,
-        public ?string $phoneNumber = null
+        public ?string $phoneNumber = null,
     ) {}
 }

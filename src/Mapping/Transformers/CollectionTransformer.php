@@ -4,22 +4,23 @@ namespace Ninja\Granite\Mapping\Transformers;
 
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;
+use RuntimeException;
 
 final class CollectionTransformer implements Transformer
 {
     /**
+     * @param class-string $destinationType Target item type for collection elements
      * @param Mapper|null $mapper ObjectMapper instance
-     * @param string $destinationType Target item type for collection elements
      * @param bool $preserveKeys Whether to preserve array keys
      * @param bool $recursive Whether to recursively transform nested collections
      * @param mixed $itemTransformer Optional transformer for individual items
      */
     public function __construct(
-        private ?Mapper $mapper = null,
         private readonly string $destinationType,
+        private ?Mapper $mapper = null,
         private readonly bool   $preserveKeys = false,
         private readonly bool   $recursive = false,
-        private readonly mixed $itemTransformer = null
+        private readonly mixed $itemTransformer = null,
     ) {}
 
     public function setMapper(Mapper $mapper): self
@@ -33,11 +34,11 @@ final class CollectionTransformer implements Transformer
      */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
-        if ($value === null) {
+        if (null === $value) {
             return null;
         }
 
-        if (!is_array($value)) {
+        if ( ! is_array($value)) {
             return $value; // Return as is if not an array
         }
 
@@ -62,7 +63,7 @@ final class CollectionTransformer implements Transformer
     private function transformItem(mixed $item): mixed
     {
         // Apply item transformer if provided
-        if ($this->itemTransformer !== null) {
+        if (null !== $this->itemTransformer) {
             if (is_callable($this->itemTransformer)) {
                 return ($this->itemTransformer)($item);
             }
@@ -75,6 +76,9 @@ final class CollectionTransformer implements Transformer
         if (is_array($item) && $this->recursive) {
             // If the item is a simple associative array, map it
             if ($this->isAssociativeArray($item)) {
+                if (null === $this->mapper) {
+                    throw new RuntimeException('Mapper is required for object mapping');
+                }
                 return $this->mapper->map($item, $this->destinationType);
             }
 
@@ -93,6 +97,9 @@ final class CollectionTransformer implements Transformer
 
         // Standard mapping for non-collection items
         if (is_array($item) || is_object($item)) {
+            if (null === $this->mapper) {
+                throw new RuntimeException('Mapper is required for object mapping');
+            }
             return $this->mapper->map($item, $this->destinationType);
         }
 

@@ -9,7 +9,6 @@ class OrderEntity
         public string $orderNumber = '',
         public ?UserEntity $customer = null,
         public array $items = [],
-        public float $totalAmount = 0.0
-    ) {
-    }
+        public float $totalAmount = 0.0,
+    ) {}
 }

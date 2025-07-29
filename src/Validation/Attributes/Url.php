@@ -25,7 +25,7 @@ class Url
     {
         $rule = new Rules\Url();
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

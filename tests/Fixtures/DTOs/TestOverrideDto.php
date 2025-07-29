@@ -16,6 +16,6 @@ final readonly class TestOverrideDto extends GraniteDTO
         public string $firstName,
         #[SerializedName('custom_last')]
         public string $lastName,
-        public string $emailAddress
+        public string $emailAddress,
     ) {}
 }

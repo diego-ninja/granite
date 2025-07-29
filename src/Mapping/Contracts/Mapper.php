@@ -7,7 +7,7 @@ interface Mapper
     /**
      * Map from source object/array to destination type.
      *
-     * @template T
+     * @template T of object
      * @param mixed $source Source data
      * @param class-string<T> $destinationType Destination class
      * @return T Mapped object
@@ -26,7 +26,7 @@ interface Mapper
     /**
      * Map array of objects.
      *
-     * @template T
+     * @template T of object
      * @param array $source Array of source objects
      * @param class-string<T> $destinationType Destination class
      * @return T[] Array of mapped objects

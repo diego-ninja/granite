@@ -5,7 +5,6 @@ namespace Tests\Unit\Mapping\Attributes;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 use Ninja\Granite\Mapping\ObjectMapper;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Helpers\TestCase;
 
@@ -24,7 +23,7 @@ class MapFromTest extends TestCase
     public function it_maps_from_source_property(): void
     {
         $source = [
-            'source_property' => 'test value'
+            'source_property' => 'test value',
         ];
 
         $result = $this->mapper->map($source, MapFromDTO::class);
@@ -38,9 +37,9 @@ class MapFromTest extends TestCase
         $source = [
             'nested' => [
                 'deeply' => [
-                    'property' => 'nested value'
-                ]
-            ]
+                    'property' => 'nested value',
+                ],
+            ],
         ];
 
         $result = $this->mapper->map($source, NestedMapFromDTO::class);
@@ -52,7 +51,7 @@ class MapFromTest extends TestCase
     public function it_handles_missing_source_property(): void
     {
         $source = [
-            'different_property' => 'test value'
+            'different_property' => 'test value',
         ];
 
         $result = $this->mapper->map($source, MapFromDTO::class);
@@ -65,8 +64,8 @@ class MapFromTest extends TestCase
     {
         $source = [
             'nested' => [
-                'different' => 'test value'
-            ]
+                'different' => 'test value',
+            ],
         ];
 
         $result = $this->mapper->map($source, NestedMapFromDTO::class);
@@ -78,7 +77,7 @@ class MapFromTest extends TestCase
     public function it_maps_from_array_index(): void
     {
         $source = [
-            'items' => ['first', 'second', 'third']
+            'items' => ['first', 'second', 'third'],
         ];
 
         $result = $this->mapper->map($source, ArrayIndexMapFromDTO::class);
@@ -93,7 +92,7 @@ class MapFromTest extends TestCase
         $source = [
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ];
 
         $result = $this->mapper->map($source, MultipleMapFromDTO::class);
@@ -108,7 +107,7 @@ class MapFromTest extends TestCase
     {
         $source = [
             'name' => 'Should not map',
-            'source_name' => 'Should map'
+            'source_name' => 'Should map',
         ];
 
         $result = $this->mapper->map($source, PriorityMapFromDTO::class);
@@ -122,7 +121,7 @@ class MapFromTest extends TestCase
         $source = [
             'user_id' => 1,
             'first_name' => 'John',
-            'last_name' => 'Doe'
+            'last_name' => 'Doe',
         ];
 
         $result = $this->mapper->map($source, CamelCaseMapFromDTO::class);
@@ -138,18 +137,16 @@ class MapFromDTO
 {
     public function __construct(
         #[MapFrom('source_property')]
-        public ?string $destinationProperty = null
-    ) {
-    }
+        public ?string $destinationProperty = null,
+    ) {}
 }
 
 class NestedMapFromDTO
 {
     public function __construct(
         #[MapFrom('nested.deeply.property')]
-        public ?string $value = null
-    ) {
-    }
+        public ?string $value = null,
+    ) {}
 }
 
 class ArrayIndexMapFromDTO
@@ -157,11 +154,9 @@ class ArrayIndexMapFromDTO
     public function __construct(
         #[MapFrom('items.0')]
         public ?string $firstItem = null,
-
         #[MapFrom('items.1')]
-        public ?string $secondItem = null
-    ) {
-    }
+        public ?string $secondItem = null,
+    ) {}
 }
 
 class MultipleMapFromDTO
@@ -169,23 +164,19 @@ class MultipleMapFromDTO
     public function __construct(
         #[MapFrom('first_name')]
         public ?string $firstName = null,
-
         #[MapFrom('last_name')]
         public ?string $lastName = null,
-
         #[MapFrom('email')]
-        public ?string $email = null
-    ) {
-    }
+        public ?string $email = null,
+    ) {}
 }
 
 class PriorityMapFromDTO
 {
     public function __construct(
         #[MapFrom('source_name')]
-        public ?string $name = null
-    ) {
-    }
+        public ?string $name = null,
+    ) {}
 }
 
 class CamelCaseMapFromDTO
@@ -193,12 +184,9 @@ class CamelCaseMapFromDTO
     public function __construct(
         #[MapFrom('user_id')]
         public ?int $userId = null,
-
         #[MapFrom('first_name')]
         public ?string $firstName = null,
-
         #[MapFrom('last_name')]
-        public ?string $lastName = null
-    ) {
-    }
+        public ?string $lastName = null,
+    ) {}
 }

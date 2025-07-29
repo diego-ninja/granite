@@ -31,7 +31,7 @@ class Callback
     {
         $rule = new Rules\Callback($this->callback);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

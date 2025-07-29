@@ -4,14 +4,13 @@ namespace Tests\Unit\Mapping\Conventions;
 
 use Ninja\Granite\Mapping\ConventionMapper;
 use Ninja\Granite\Mapping\Conventions\CamelCaseConvention;
-use Ninja\Granite\Mapping\Conventions\ConventionRegistry;
 use Ninja\Granite\Mapping\Conventions\PascalCaseConvention;
 use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
 use Ninja\Granite\Mapping\TypeMapping;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\Helpers\TestCase;
 use Tests\Helpers\Storage\TestMappingStorage;
+use Tests\Helpers\TestCase;
 
 #[CoversClass(ConventionMapper::class)]
 class ConventionMapperTest extends TestCase
@@ -27,7 +26,7 @@ class ConventionMapperTest extends TestCase
     }
 
     #[Test]
-    public function it_detects_convention_for_class()
+    public function it_detects_convention_for_class(): void
     {
         $convention = $this->mapper->detectConvention(CamelCaseSource::class);
         $this->assertInstanceOf(CamelCaseConvention::class, $convention);
@@ -40,7 +39,7 @@ class ConventionMapperTest extends TestCase
     }
 
     #[Test]
-    public function it_calculates_confidence_between_different_conventions()
+    public function it_calculates_confidence_between_different_conventions(): void
     {
         $camelToSnake = $this->mapper->calculateConfidence('userName', 'user_name');
         $this->assertGreaterThan(0.7, $camelToSnake);
@@ -53,7 +52,7 @@ class ConventionMapperTest extends TestCase
     }
 
     #[Test]
-    public function it_calculates_low_confidence_for_different_names()
+    public function it_calculates_low_confidence_for_different_names(): void
     {
         $confidence = $this->mapper->calculateConfidence('firstName', 'lastName');
         $this->assertLessThan(0.75, $confidence);
@@ -63,77 +62,77 @@ class ConventionMapperTest extends TestCase
     }
 
     #[Test]
-    public function it_discovers_mappings_between_different_conventions()
+    public function it_discovers_mappings_between_different_conventions(): void
     {
         $mappings = $this->mapper->discoverMappings(CamelCaseSource::class, SnakeCaseDestination::class);
-        
+
         $this->assertArrayHasKey('first_name', $mappings);
         $this->assertEquals('firstName', $mappings['first_name']);
-        
+
         $this->assertArrayHasKey('last_name', $mappings);
         $this->assertEquals('lastName', $mappings['last_name']);
-        
+
         $this->assertArrayHasKey('email_address', $mappings);
         $this->assertEquals('emailAddress', $mappings['email_address']);
     }
 
     #[Test]
-    public function it_applies_conventions_to_type_mapping()
+    public function it_applies_conventions_to_type_mapping(): void
     {
         // Usar TestMappingStorage para crear un TypeMapping
         $typeMapping = new TypeMapping($this->storage, CamelCaseSource::class, SnakeCaseDestination::class);
-        
+
         $mappings = $this->mapper->applyConventions(
             CamelCaseSource::class,
             SnakeCaseDestination::class,
-            $typeMapping
+            $typeMapping,
         );
-        
+
         $this->assertArrayHasKey('first_name', $mappings);
         $this->assertEquals('firstName', $mappings['first_name']);
     }
 
     #[Test]
-    public function it_handles_setting_confidence_threshold()
+    public function it_handles_setting_confidence_threshold(): void
     {
         // Guardar el umbral original
         $originalThreshold = 0.8;
-        
+
         // Configurar un umbral alto
         $this->mapper->setConfidenceThreshold(0.99);
-        
+
         // Intentar descubrir mapeos
         $highThresholdMappings = $this->mapper->discoverMappings(
-            CamelCaseSource::class, 
-            SnakeCaseDestination::class
+            CamelCaseSource::class,
+            SnakeCaseDestination::class,
         );
-        
+
         // Con un umbral tan alto, no debería encontrar mapeos
         // O al menos debería encontrar menos mapeos que con el umbral normal
-        
+
         // Restaurar umbral normal
         $this->mapper->setConfidenceThreshold($originalThreshold);
-        
+
         // Descubrir mapeos con umbral normal
         $normalThresholdMappings = $this->mapper->discoverMappings(
-            CamelCaseSource::class, 
-            SnakeCaseDestination::class
+            CamelCaseSource::class,
+            SnakeCaseDestination::class,
         );
-        
+
         // Debería encontrar más mapeos con el umbral normal
         $this->assertGreaterThanOrEqual(
-            count($highThresholdMappings), 
-            count($normalThresholdMappings)
+            count($highThresholdMappings),
+            count($normalThresholdMappings),
         );
     }
 
     #[Test]
-    public function it_handles_array_source_types_gracefully()
+    public function it_handles_array_source_types_gracefully(): void
     {
         // No debería lanzar excepciones
         $mappings = $this->mapper->discoverMappings('array', SnakeCaseDestination::class);
         $this->assertEmpty($mappings);
-        
+
         $mappings = $this->mapper->applyConventions('array', SnakeCaseDestination::class);
         $this->assertEmpty($mappings);
     }

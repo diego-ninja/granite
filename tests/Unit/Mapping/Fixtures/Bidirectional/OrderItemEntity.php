@@ -8,7 +8,6 @@ class OrderItemEntity
         public int $id = 0,
         public string $productName = '',
         public int $quantity = 0,
-        public float $unitPrice = 0.0
-    ) {
-    }
+        public float $unitPrice = 0.0,
+    ) {}
 }

@@ -20,7 +20,7 @@ class RuleCollection
      * Constructor.
      *
      * @param string $property The property name
-     * @param ValidationRule|ValidationRule[] $rules Initial rules (optional)
+     * @param ValidationRule|array<mixed> $rules Initial rules (optional) - array may contain mixed elements that will be filtered
      */
     public function __construct(string $property, ValidationRule|array $rules = [])
     {
@@ -61,7 +61,7 @@ class RuleCollection
         $errors = [];
 
         foreach ($this->rules as $rule) {
-            if (!$rule->validate($value, $allData)) {
+            if ( ! $rule->validate($value, $allData)) {
                 $errors[] = $rule->message($this->property);
             }
         }

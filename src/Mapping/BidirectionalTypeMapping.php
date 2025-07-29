@@ -23,11 +23,15 @@ final class BidirectionalTypeMapping
 
     /**
      * Forward member mappings.
+     *
+     * @var array<string, string>
      */
     private array $forwardMemberMappings = [];
 
     /**
      * Reverse member mappings.
+     *
+     * @var array<string, string>
      */
     private array $reverseMemberMappings = [];
 
@@ -40,13 +44,13 @@ final class BidirectionalTypeMapping
      * Constructor.
      *
      * @param MappingStorage $storage Mapping storage
-     * @param string $typeA First type name
-     * @param string $typeB Second type name
+     * @param class-string $typeA First type name
+     * @param class-string $typeB Second type name
      */
     public function __construct(
         private readonly MappingStorage $storage,
         private readonly string $typeA,
-        private readonly string $typeB
+        private readonly string $typeB,
     ) {
         // Create basic mappings in both directions
         $this->forwardMapping = new TypeMapping($storage, $typeA, $typeB);
@@ -77,7 +81,7 @@ final class BidirectionalTypeMapping
     /**
      * Configure multiple property pairs at once.
      *
-     * @param array $propertyPairs Associative array of propertyA => propertyB pairs
+     * @param array<string, string> $propertyPairs Associative array of propertyA => propertyB pairs
      * @return $this For method chaining
      * @throws RuntimeException If the mapping is already sealed
      */
@@ -101,7 +105,7 @@ final class BidirectionalTypeMapping
      * @param string $propertyB Destination property in typeB
      * @param callable $configuration Mapping configuration function
      * @return $this For method chaining
-     * @throws RuntimeException|\Ninja\Granite\Mapping\Exceptions\MappingException If the mapping is already sealed
+     * @throws RuntimeException|MappingException If the mapping is already sealed
      */
     public function forForwardMember(string $propertyB, callable $configuration): self
     {
@@ -121,7 +125,7 @@ final class BidirectionalTypeMapping
      * @param string $propertyA Destination property in typeA
      * @param callable $configuration Mapping configuration function
      * @return $this For method chaining
-     * @throws RuntimeException|\Ninja\Granite\Mapping\Exceptions\MappingException If the mapping is already sealed
+     * @throws RuntimeException|MappingException If the mapping is already sealed
      */
     public function forReverseMember(string $propertyA, callable $configuration): self
     {
@@ -180,5 +184,45 @@ final class BidirectionalTypeMapping
     public function getReverseMapping(): TypeMapping
     {
         return $this->reverseMapping;
+    }
+
+    /**
+     * Get reverse member mappings.
+     *
+     * @return array<string, string> Reverse member mappings
+     */
+    public function getReverseMemberMappings(): array
+    {
+        return $this->reverseMemberMappings;
+    }
+
+    /**
+     * Get mapping storage.
+     *
+     * @return MappingStorage Mapping storage
+     */
+    public function getStorage(): MappingStorage
+    {
+        return $this->storage;
+    }
+
+    /**
+     * Get type A.
+     *
+     * @return string Type A name
+     */
+    public function getTypeA(): string
+    {
+        return $this->typeA;
+    }
+
+    /**
+     * Get type B.
+     *
+     * @return string Type B name
+     */
+    public function getTypeB(): string
+    {
+        return $this->typeB;
     }
 }

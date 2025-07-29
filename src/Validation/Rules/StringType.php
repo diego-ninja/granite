@@ -13,7 +13,7 @@ class StringType extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        return $value === null || is_string($value);
+        return null === $value || is_string($value);
     }
 
     /**

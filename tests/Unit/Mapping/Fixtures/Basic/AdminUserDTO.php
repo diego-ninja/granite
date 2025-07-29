@@ -8,7 +8,7 @@ final readonly class AdminUserDTO extends BaseUserDTO
         int $id,
         string $name,
         string $email,
-        public array $permissions = []
+        public array $permissions = [],
     ) {
         parent::__construct($id, $name, $email);
     }

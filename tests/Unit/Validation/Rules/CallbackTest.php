@@ -1,10 +1,12 @@
 <?php
+
 // tests/Unit/Validation/Rules/CallbackTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Validation\Rules;
 
+use Exception;
 use Ninja\Granite\Validation\Rules\Callback;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
@@ -12,9 +14,13 @@ use Tests\Helpers\TestCase;
 #[CoversClass(Callback::class)]
 class CallbackTest extends TestCase
 {
+    public static function staticValidationMethod($value): bool
+    {
+        return is_string($value) && 'VALID' === mb_strtoupper($value);
+    }
     public function test_validates_with_simple_closure(): void
     {
-        $rule = new Callback(fn($value) => $value === 'valid');
+        $rule = new Callback(fn($value) => 'valid' === $value);
 
         $this->assertTrue($rule->validate('valid'));
         $this->assertFalse($rule->validate('invalid'));
@@ -24,7 +30,7 @@ class CallbackTest extends TestCase
 
     public function test_validates_with_closure_using_type_checking(): void
     {
-        $rule = new Callback(fn($value) => is_string($value) && strlen($value) >= 3);
+        $rule = new Callback(fn($value) => is_string($value) && mb_strlen($value) >= 3);
 
         $this->assertTrue($rule->validate('hello'));
         $this->assertTrue($rule->validate('abc'));
@@ -38,9 +44,7 @@ class CallbackTest extends TestCase
 
     public function test_validates_with_numeric_callback(): void
     {
-        $rule = new Callback(function($value) {
-            return is_numeric($value) && $value > 0 && $value <= 100;
-        });
+        $rule = new Callback(fn($value) => is_numeric($value) && $value > 0 && $value <= 100);
 
         $this->assertTrue($rule->validate(50));
         $this->assertTrue($rule->validate(1));
@@ -57,9 +61,7 @@ class CallbackTest extends TestCase
 
     public function test_validates_with_array_callback(): void
     {
-        $rule = new Callback(function($value) {
-            return is_array($value) && count($value) >= 2 && count($value) <= 5;
-        });
+        $rule = new Callback(fn($value) => is_array($value) && count($value) >= 2 && count($value) <= 5);
 
         $this->assertTrue($rule->validate(['a', 'b']));
         $this->assertTrue($rule->validate([1, 2, 3]));
@@ -76,12 +78,12 @@ class CallbackTest extends TestCase
         // Simulate a business rule: email must be from allowed domains
         $allowedDomains = ['company.com', 'partner.org'];
 
-        $rule = new Callback(function($value) use ($allowedDomains) {
-            if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        $rule = new Callback(function ($value) use ($allowedDomains) {
+            if ( ! is_string($value) || ! filter_var($value, FILTER_VALIDATE_EMAIL)) {
                 return false;
             }
 
-            $domain = substr($value, strpos($value, '@') + 1);
+            $domain = mb_substr($value, mb_strpos($value, '@') + 1);
             return in_array($domain, $allowedDomains);
         });
 
@@ -101,11 +103,6 @@ class CallbackTest extends TestCase
         $this->assertTrue($rule->validate('VALID'));
         $this->assertFalse($rule->validate('invalid'));
         $this->assertFalse($rule->validate(123));
-    }
-
-    public static function staticValidationMethod($value): bool
-    {
-        return is_string($value) && strtoupper($value) === 'VALID';
     }
 
     public function test_validates_with_object_method_callback(): void
@@ -130,7 +127,7 @@ class CallbackTest extends TestCase
 
     public function test_validates_null_as_valid(): void
     {
-        $rule = new Callback(fn($value) => $value === 'test');
+        $rule = new Callback(fn($value) => 'test' === $value);
         $this->assertTrue($rule->validate(null));
     }
 
@@ -138,7 +135,7 @@ class CallbackTest extends TestCase
     {
         $receivedValue = null;
 
-        $rule = new Callback(function($value) use (&$receivedValue) {
+        $rule = new Callback(function ($value) use (&$receivedValue) {
             $receivedValue = $value;
             return true;
         });
@@ -172,11 +169,19 @@ class CallbackTest extends TestCase
     public function test_callback_with_truthy_falsy_values(): void
     {
         // Callback that returns truthy/falsy values (not strict boolean)
-        $rule = new Callback(function($value) {
-            if ($value === 'empty') return '';
-            if ($value === 'zero') return 0;
-            if ($value === 'one') return 1;
-            if ($value === 'string') return 'non-empty';
+        $rule = new Callback(function ($value) {
+            if ('empty' === $value) {
+                return '';
+            }
+            if ('zero' === $value) {
+                return 0;
+            }
+            if ('one' === $value) {
+                return 1;
+            }
+            if ('string' === $value) {
+                return 'non-empty';
+            }
             return false;
         });
 
@@ -228,11 +233,11 @@ class CallbackTest extends TestCase
     public function test_callback_with_exception_handling(): void
     {
         // Callback that might throw an exception should be handled gracefully
-        $rule = new Callback(function($value) {
-            if ($value === 'throw') {
-                throw new \Exception('Test exception');
+        $rule = new Callback(function ($value) {
+            if ('throw' === $value) {
+                throw new Exception('Test exception');
             }
-            return $value === 'valid';
+            return 'valid' === $value;
         });
 
         $this->assertTrue($rule->validate('valid'));
@@ -243,7 +248,7 @@ class CallbackTest extends TestCase
             $result = $rule->validate('throw');
             // If no exception is thrown, the result should be false
             $this->assertFalse($result);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // If exception bubbles up, that's also acceptable behavior
             $this->assertEquals('Test exception', $e->getMessage());
         }
@@ -252,15 +257,17 @@ class CallbackTest extends TestCase
     public function test_performance_with_complex_callback(): void
     {
         // Test performance with a more complex callback
-        $rule = new Callback(function($value) {
-            if (!is_string($value)) return false;
+        $rule = new Callback(function ($value) {
+            if ( ! is_string($value)) {
+                return false;
+            }
 
             // Simulate some processing
-            $processed = strtolower(trim($value));
+            $processed = mb_strtolower(mb_trim($value));
             $words = explode(' ', $processed);
 
             return count($words) >= 2 && count($words) <= 10 &&
-                array_reduce($words, fn($carry, $word) => $carry && strlen($word) >= 2, true);
+                array_reduce($words, fn($carry, $word) => $carry && mb_strlen($word) >= 2, true);
         });
 
         $start = microtime(true);
@@ -289,13 +296,11 @@ class CallbackTest extends TestCase
 
     public function test_callback_with_multiple_conditions(): void
     {
-        $rule = new Callback(function($value) {
-            return is_string($value) &&
-                strlen($value) >= 5 &&
-                strlen($value) <= 20 &&
+        $rule = new Callback(fn($value) => is_string($value) &&
+                mb_strlen($value) >= 5 &&
+                mb_strlen($value) <= 20 &&
                 preg_match('/^[a-zA-Z0-9_]+$/', $value) &&
-                !is_numeric($value[0]);
-        });
+                ! is_numeric($value[0]));
 
         $this->assertTrue($rule->validate('valid_username'));
         $this->assertTrue($rule->validate('user123'));
@@ -322,6 +327,6 @@ class InvokableValidator
 {
     public function __invoke($value): bool
     {
-        return is_int($value) && $value === 42;
+        return is_int($value) && 42 === $value;
     }
 }

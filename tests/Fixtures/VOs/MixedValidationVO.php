@@ -16,10 +16,9 @@ final readonly class MixedValidationVO extends GraniteVO
         #[Required]  // Attribute validation
         #[StringType]
         public string $title,
-
         public string $content,  // Method validation
         public array $tags,      // Method validation
-        public string $status    // Method validation
+        public string $status,    // Method validation
     ) {}
 
     protected static function rules(): array
@@ -28,7 +27,7 @@ final readonly class MixedValidationVO extends GraniteVO
             // Method-based rules (should override attributes if both exist)
             'content' => 'required|string|min:10',
             'tags' => 'array|max:5',
-            'status' => 'required|in:draft,published,archived'
+            'status' => 'required|in:draft,published,archived',
         ];
     }
 }

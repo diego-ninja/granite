@@ -15,6 +15,6 @@ final readonly class TestBidirectionalKebabDto extends GraniteDTO
         public string $productName,
         public float $unitPrice,
         public bool $isAvailable,
-        public int $stockCount
+        public int $stockCount,
     ) {}
 }

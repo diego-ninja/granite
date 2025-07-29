@@ -17,6 +17,6 @@ final readonly class ComplexDTO extends GraniteDTO
         public string             $name,
         public ?DateTimeInterface $createdAt = null,
         public ?UserStatus        $status = null,
-        public array              $metadata = []
+        public array              $metadata = [],
     ) {}
 }

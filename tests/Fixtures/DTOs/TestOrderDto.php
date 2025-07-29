@@ -14,6 +14,6 @@ final readonly class TestOrderDto extends GraniteDTO
     public function __construct(
         public string $orderNumber,
         public TestSnakeCaseDto $customerInfo,
-        public float $totalAmount
+        public float $totalAmount,
     ) {}
 }

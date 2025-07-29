@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/StringTypeTest.php
 
 declare(strict_types=1);
@@ -8,6 +9,7 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\StringType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(StringType::class)] class StringTypeTest extends TestCase
@@ -18,6 +20,41 @@ use Tests\Helpers\TestCase;
     {
         $this->rule = new StringType();
         parent::setUp();
+    }
+
+    public static function validStringValuesProvider(): array
+    {
+        return [
+            'empty string' => [''],
+            'single character' => ['a'],
+            'numeric string' => ['123'],
+            'float string' => ['3.14'],
+            'multiline string' => ["line1\nline2"],
+            'unicode string' => ['こんにちは'],
+            'emoji string' => ['🚀 🎯 ✅'],
+            'json string' => ['{"key": "value"}'],
+            'xml string' => ['<tag>content</tag>'],
+            'whitespace only' => ['   '],
+            'tab and newlines' => ["\t\n\r"],
+        ];
+    }
+
+    public static function invalidNonStringValuesProvider(): array
+    {
+        return [
+            'integer zero' => [0],
+            'positive integer' => [42],
+            'negative integer' => [-10],
+            'float zero' => [0.0],
+            'positive float' => [3.14],
+            'negative float' => [-2.71],
+            'true boolean' => [true],
+            'false boolean' => [false],
+            'empty array' => [[]],
+            'filled array' => [['a', 'b']],
+            'stdClass object' => [new stdClass()],
+            'anonymous object' => [(object) ['prop' => 'value']],
+        ];
     }
 
     public function test_validates_string_values(): void
@@ -64,7 +101,7 @@ use Tests\Helpers\TestCase;
 
     public function test_rejects_object_values(): void
     {
-        $this->assertFalse($this->rule->validate(new \stdClass()));
+        $this->assertFalse($this->rule->validate(new stdClass()));
         $this->assertFalse($this->rule->validate((object) ['key' => 'value']));
     }
 
@@ -117,44 +154,9 @@ use Tests\Helpers\TestCase;
         $this->assertTrue($this->rule->validate($value));
     }
 
-    public static function validStringValuesProvider(): array
-    {
-        return [
-            'empty string' => [''],
-            'single character' => ['a'],
-            'numeric string' => ['123'],
-            'float string' => ['3.14'],
-            'multiline string' => ["line1\nline2"],
-            'unicode string' => ['こんにちは'],
-            'emoji string' => ['🚀 🎯 ✅'],
-            'json string' => ['{"key": "value"}'],
-            'xml string' => ['<tag>content</tag>'],
-            'whitespace only' => ['   '],
-            'tab and newlines' => ["\t\n\r"],
-        ];
-    }
-
     #[DataProvider('invalidNonStringValuesProvider')] public function test_rejects_non_string_values(mixed $value): void
     {
         $this->assertFalse($this->rule->validate($value));
-    }
-
-    public static function invalidNonStringValuesProvider(): array
-    {
-        return [
-            'integer zero' => [0],
-            'positive integer' => [42],
-            'negative integer' => [-10],
-            'float zero' => [0.0],
-            'positive float' => [3.14],
-            'negative float' => [-2.71],
-            'true boolean' => [true],
-            'false boolean' => [false],
-            'empty array' => [[]],
-            'filled array' => [['a', 'b']],
-            'stdClass object' => [new \stdClass()],
-            'anonymous object' => [(object) ['prop' => 'value']],
-        ];
     }
 
     public function test_rule_implements_validation_rule_interface(): void

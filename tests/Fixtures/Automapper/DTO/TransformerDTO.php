@@ -16,6 +16,6 @@ final readonly class TransformerDTO extends GraniteDTO
 
     public static function uppercaseTransformer($value): string
     {
-        return strtoupper($value);
+        return mb_strtoupper($value);
     }
 }

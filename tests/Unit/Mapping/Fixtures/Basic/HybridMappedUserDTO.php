@@ -13,11 +13,11 @@ final readonly class HybridMappedUserDTO extends GraniteDTO
 
         #[MapFrom('user_type')]
         #[MapWith([self::class, 'uppercaseTransformer'])]
-        public ?string $type = null // From attribute
+        public ?string $type = null, // From attribute
     ) {}
 
     public static function uppercaseTransformer(string $value): string
     {
-        return strtoupper($value);
+        return mb_strtoupper($value);
     }
 }

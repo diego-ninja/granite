@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/EachTest.php
 
 declare(strict_types=1);
@@ -6,10 +7,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Validation\Rules;
 
 use Ninja\Granite\Validation\Rules\Each;
-use Ninja\Granite\Validation\Rules\StringType;
+use Ninja\Granite\Validation\Rules\Email;
 use Ninja\Granite\Validation\Rules\Min;
 use Ninja\Granite\Validation\Rules\Required;
-use Ninja\Granite\Validation\Rules\Email;
+use Ninja\Granite\Validation\Rules\StringType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
 

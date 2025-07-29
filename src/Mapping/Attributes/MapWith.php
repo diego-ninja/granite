@@ -11,6 +11,6 @@ use Attribute;
 readonly class MapWith
 {
     public function __construct(
-        public mixed $transformer
+        public mixed $transformer,
     ) {}
 }

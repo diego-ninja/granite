@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/RegexTest.php
 
 declare(strict_types=1);
@@ -8,11 +9,27 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\Regex;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Regex::class)]
 class RegexTest extends TestCase
 {
+    public static function commonPatternProvider(): array
+    {
+        return [
+            'letters only' => ['/^[a-zA-Z]+$/', 'hello', 'hello123'],
+            'digits only' => ['/^\d+$/', '123', '12a'],
+            'alphanumeric' => ['/^[a-zA-Z0-9]+$/', 'test123', 'test-123'],
+            'email basic' => ['/^[^@]+@[^@]+\.[^@]+$/', 'test@example.com', 'invalid-email'],
+            'phone US' => ['/^\d{3}-\d{3}-\d{4}$/', '123-456-7890', '123-45-6789'],
+            'hex color' => ['/^#[0-9a-fA-F]{6}$/', '#FF5733', '#GG5733'],
+            'postal code' => ['/^\d{5}(-\d{4})?$/', '12345', '1234'],
+            'slug' => ['/^[a-z0-9-]+$/', 'my-blog-post', 'My Blog Post'],
+            'version' => ['/^\d+\.\d+\.\d+$/', '1.2.3', '1.2'],
+            'url path' => ['/^\/[a-zA-Z0-9\/_-]*$/', '/api/users/123', 'api/users'],
+        ];
+    }
     public function test_validates_simple_pattern_match(): void
     {
         $rule = new Regex('/^[a-z]+$/');
@@ -151,7 +168,7 @@ class RegexTest extends TestCase
         $this->assertFalse($rule->validate(123));
         $this->assertFalse($rule->validate(true));
         $this->assertFalse($rule->validate([]));
-        $this->assertFalse($rule->validate(new \stdClass()));
+        $this->assertFalse($rule->validate(new stdClass()));
         $this->assertFalse($rule->validate(3.14));
     }
 
@@ -194,7 +211,7 @@ class RegexTest extends TestCase
         $rule = new Regex($pattern);
         $message = $rule->message('username');
 
-        $this->assertEquals("username must match the pattern $pattern", $message);
+        $this->assertEquals("username must match the pattern {$pattern}", $message);
     }
 
     public function test_returns_default_message_with_complex_pattern(): void
@@ -203,7 +220,7 @@ class RegexTest extends TestCase
         $rule = new Regex($pattern);
         $message = $rule->message('password');
 
-        $this->assertEquals("password must match the pattern $pattern", $message);
+        $this->assertEquals("password must match the pattern {$pattern}", $message);
     }
 
     public function test_returns_custom_message_when_set(): void
@@ -229,24 +246,8 @@ class RegexTest extends TestCase
     {
         $rule = new Regex($pattern);
 
-        $this->assertTrue($rule->validate($validValue), "Valid value '$validValue' should pass pattern '$pattern'");
-        $this->assertFalse($rule->validate($invalidValue), "Invalid value '$invalidValue' should fail pattern '$pattern'");
-    }
-
-    public static function commonPatternProvider(): array
-    {
-        return [
-            'letters only' => ['/^[a-zA-Z]+$/', 'hello', 'hello123'],
-            'digits only' => ['/^\d+$/', '123', '12a'],
-            'alphanumeric' => ['/^[a-zA-Z0-9]+$/', 'test123', 'test-123'],
-            'email basic' => ['/^[^@]+@[^@]+\.[^@]+$/', 'test@example.com', 'invalid-email'],
-            'phone US' => ['/^\d{3}-\d{3}-\d{4}$/', '123-456-7890', '123-45-6789'],
-            'hex color' => ['/^#[0-9a-fA-F]{6}$/', '#FF5733', '#GG5733'],
-            'postal code' => ['/^\d{5}(-\d{4})?$/', '12345', '1234'],
-            'slug' => ['/^[a-z0-9-]+$/', 'my-blog-post', 'My Blog Post'],
-            'version' => ['/^\d+\.\d+\.\d+$/', '1.2.3', '1.2'],
-            'url path' => ['/^\/[a-zA-Z0-9\/_-]*$/', '/api/users/123', 'api/users'],
-        ];
+        $this->assertTrue($rule->validate($validValue), "Valid value '{$validValue}' should pass pattern '{$pattern}'");
+        $this->assertFalse($rule->validate($invalidValue), "Invalid value '{$invalidValue}' should fail pattern '{$pattern}'");
     }
 
     public function test_rule_implements_validation_rule_interface(): void

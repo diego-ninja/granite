@@ -34,7 +34,7 @@ readonly class ArrayType
     public function asRule(): Rules\ArrayType
     {
         $rule = new Rules\ArrayType();
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

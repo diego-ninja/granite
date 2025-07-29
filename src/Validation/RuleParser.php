@@ -2,19 +2,19 @@
 
 namespace Ninja\Granite\Validation;
 
+use Ninja\Granite\Validation\Rules\ArrayType;
+use Ninja\Granite\Validation\Rules\BooleanType;
+use Ninja\Granite\Validation\Rules\Email;
+use Ninja\Granite\Validation\Rules\In;
+use Ninja\Granite\Validation\Rules\IntegerType;
+use Ninja\Granite\Validation\Rules\IpAddress;
+use Ninja\Granite\Validation\Rules\Max;
+use Ninja\Granite\Validation\Rules\Min;
+use Ninja\Granite\Validation\Rules\NumberType;
+use Ninja\Granite\Validation\Rules\Regex;
 use Ninja\Granite\Validation\Rules\Required;
 use Ninja\Granite\Validation\Rules\StringType;
-use Ninja\Granite\Validation\Rules\IntegerType;
-use Ninja\Granite\Validation\Rules\NumberType;
-use Ninja\Granite\Validation\Rules\BooleanType;
-use Ninja\Granite\Validation\Rules\ArrayType;
-use Ninja\Granite\Validation\Rules\Min;
-use Ninja\Granite\Validation\Rules\Max;
-use Ninja\Granite\Validation\Rules\In;
-use Ninja\Granite\Validation\Rules\Regex;
-use Ninja\Granite\Validation\Rules\Email;
 use Ninja\Granite\Validation\Rules\Url;
-use Ninja\Granite\Validation\Rules\IpAddress;
 
 /**
  * Parser for string-based validation rules.
@@ -46,7 +46,7 @@ class RuleParser
                 $rule = self::createSimpleRule($rulePart);
             }
 
-            if ($rule !== null) {
+            if (null !== $rule) {
                 $rules[] = $rule;
             }
         }
@@ -89,10 +89,10 @@ class RuleParser
         $params = str_contains($parameters, ',') ? explode(',', $parameters) : [$parameters];
 
         return match ($ruleName) {
-            'min' => isset($params[0]) ? new Min((int) $params[0]) : null,
-            'max' => isset($params[0]) ? new Max((int) $params[0]) : null,
-            'in' => !empty($params) ? new In($params) : null,
-            'regex' => isset($params[0]) ? new Regex($params[0]) : null,
+            'min' => new Min((int) $params[0]),
+            'max' => new Max((int) $params[0]),
+            'in' => new In($params),
+            'regex' => new Regex($params[0]),
             default => null,
         };
     }

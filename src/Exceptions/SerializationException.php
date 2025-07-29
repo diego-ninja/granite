@@ -19,7 +19,7 @@ class SerializationException extends GraniteException
         string $message = "",
         ?string $propertyName = null,
         int $code = 0,
-        ?Exception $previous = null
+        ?Exception $previous = null,
     ) {
         $this->objectType = $objectType;
         $this->operation = $operation;
@@ -30,17 +30,45 @@ class SerializationException extends GraniteException
                 'Serialization failed during %s for %s%s',
                 $operation,
                 $objectType,
-                $propertyName ? " (property: {$propertyName})" : ''
+                $propertyName ? " (property: {$propertyName})" : '',
             );
         }
 
         $context = [
             'object_type' => $objectType,
             'operation' => $operation,
-            'property_name' => $propertyName
+            'property_name' => $propertyName,
         ];
 
         parent::__construct($message, $code, $previous, $context);
+    }
+
+    /**
+     * Create exception for unsupported type during serialization.
+     */
+    public static function unsupportedType(string $objectType, string $propertyName, string $valueType): self
+    {
+        return new self(
+            $objectType,
+            'serialization',
+            sprintf('Cannot serialize property "%s" of type "%s"', $propertyName, $valueType),
+            $propertyName,
+        );
+    }
+
+    /**
+     * Create exception for deserialization errors.
+     */
+    public static function deserializationFailed(string $objectType, string $reason, ?Exception $previous = null): self
+    {
+        return new self(
+            $objectType,
+            'deserialization',
+            sprintf('Failed to deserialize %s: %s', $objectType, $reason),
+            null,
+            0,
+            $previous,
+        );
     }
 
     public function getObjectType(): string
@@ -56,33 +84,5 @@ class SerializationException extends GraniteException
     public function getPropertyName(): ?string
     {
         return $this->propertyName;
-    }
-
-    /**
-     * Create exception for unsupported type during serialization.
-     */
-    public static function unsupportedType(string $objectType, string $propertyName, string $valueType): static
-    {
-        return new static(
-            $objectType,
-            'serialization',
-            sprintf('Cannot serialize property "%s" of type "%s"', $propertyName, $valueType),
-            $propertyName
-        );
-    }
-
-    /**
-     * Create exception for deserialization errors.
-     */
-    public static function deserializationFailed(string $objectType, string $reason, ?Exception $previous = null): static
-    {
-        return new static(
-            $objectType,
-            'deserialization',
-            sprintf('Failed to deserialize %s: %s', $objectType, $reason),
-            null,
-            0,
-            $previous
-        );
     }
 }

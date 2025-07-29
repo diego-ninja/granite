@@ -14,7 +14,7 @@ final readonly class MapperConfig
         public bool $useConventions = false,
         public float $conventionThreshold = 0.8,
         public array $profiles = [],
-        public array $conventions = []
+        public array $conventions = [],
     ) {}
 
     public static function default(): self
@@ -25,127 +25,6 @@ final readonly class MapperConfig
     public static function create(): self
     {
         return new self();
-    }
-
-    // =================
-    // Cache Configuration
-    // =================
-
-    public function withCacheType(CacheType $type): self
-    {
-        return new self(
-            $type,
-            $this->warmupCache,
-            $this->useConventions,
-            $this->conventionThreshold,
-            $this->profiles,
-            $this->conventions
-        );
-    }
-
-    public function withMemoryCache(): self
-    {
-        return $this->withCacheType(CacheType::Memory);
-    }
-
-    public function withSharedCache(): self
-    {
-        return $this->withCacheType(CacheType::Shared);
-    }
-
-    public function withPersistentCache(): self
-    {
-        return $this->withCacheType(CacheType::Persistent);
-    }
-
-    public function withWarmup(bool $enabled = true): self
-    {
-        return new self(
-            $this->cacheType,
-            $enabled,
-            $this->useConventions,
-            $this->conventionThreshold,
-            $this->profiles,
-            $this->conventions
-        );
-    }
-
-    public function withoutWarmup(): self
-    {
-        return $this->withWarmup(false);
-    }
-
-    // ======================
-    // Convention Configuration
-    // ======================
-
-    public function withConventions(bool $enabled = true, float $threshold = 0.8): self
-    {
-        return new self(
-            $this->cacheType,
-            $this->warmupCache,
-            $enabled,
-            $threshold,
-            $this->profiles,
-            $this->conventions
-        );
-    }
-
-    public function withoutConventions(): self
-    {
-        return $this->withConventions(false);
-    }
-
-    public function withConventionThreshold(float $threshold): self
-    {
-        return new self(
-            $this->cacheType,
-            $this->warmupCache,
-            $this->useConventions,
-            max(0.0, min(1.0, $threshold)),
-            $this->profiles,
-            $this->conventions
-        );
-    }
-
-    public function addConvention(NamingConvention $convention): self
-    {
-        return new self(
-            $this->cacheType,
-            $this->warmupCache,
-            $this->useConventions,
-            $this->conventionThreshold,
-            $this->profiles,
-            [...$this->conventions, $convention]
-        );
-    }
-
-    // ==================
-    // Profile Configuration
-    // ==================
-
-    public function withProfile(MappingProfile $profile): self
-    {
-        return new self(
-            $this->cacheType,
-            $this->warmupCache,
-            $this->useConventions,
-            $this->conventionThreshold,
-            [...$this->profiles, $profile],
-            $this->conventions
-        );
-    }
-
-    public function withProfiles(array $profiles): self
-    {
-        return new self(
-            $this->cacheType,
-            $this->warmupCache,
-            $this->useConventions,
-            $this->conventionThreshold,
-            [...$this->profiles, ...$profiles],
-            $this->conventions
-        );
     }
 
     // =================
@@ -184,6 +63,127 @@ final readonly class MapperConfig
             ->withoutConventions();
     }
 
+    // =================
+    // Cache Configuration
+    // =================
+
+    public function withCacheType(CacheType $type): self
+    {
+        return new self(
+            $type,
+            $this->warmupCache,
+            $this->useConventions,
+            $this->conventionThreshold,
+            $this->profiles,
+            $this->conventions,
+        );
+    }
+
+    public function withMemoryCache(): self
+    {
+        return $this->withCacheType(CacheType::Memory);
+    }
+
+    public function withSharedCache(): self
+    {
+        return $this->withCacheType(CacheType::Shared);
+    }
+
+    public function withPersistentCache(): self
+    {
+        return $this->withCacheType(CacheType::Persistent);
+    }
+
+    public function withWarmup(bool $enabled = true): self
+    {
+        return new self(
+            $this->cacheType,
+            $enabled,
+            $this->useConventions,
+            $this->conventionThreshold,
+            $this->profiles,
+            $this->conventions,
+        );
+    }
+
+    public function withoutWarmup(): self
+    {
+        return $this->withWarmup(false);
+    }
+
+    // ======================
+    // Convention Configuration
+    // ======================
+
+    public function withConventions(bool $enabled = true, float $threshold = 0.8): self
+    {
+        return new self(
+            $this->cacheType,
+            $this->warmupCache,
+            $enabled,
+            $threshold,
+            $this->profiles,
+            $this->conventions,
+        );
+    }
+
+    public function withoutConventions(): self
+    {
+        return $this->withConventions(false);
+    }
+
+    public function withConventionThreshold(float $threshold): self
+    {
+        return new self(
+            $this->cacheType,
+            $this->warmupCache,
+            $this->useConventions,
+            max(0.0, min(1.0, $threshold)),
+            $this->profiles,
+            $this->conventions,
+        );
+    }
+
+    public function addConvention(NamingConvention $convention): self
+    {
+        return new self(
+            $this->cacheType,
+            $this->warmupCache,
+            $this->useConventions,
+            $this->conventionThreshold,
+            $this->profiles,
+            [...$this->conventions, $convention],
+        );
+    }
+
+    // ==================
+    // Profile Configuration
+    // ==================
+
+    public function withProfile(MappingProfile $profile): self
+    {
+        return new self(
+            $this->cacheType,
+            $this->warmupCache,
+            $this->useConventions,
+            $this->conventionThreshold,
+            [...$this->profiles, $profile],
+            $this->conventions,
+        );
+    }
+
+    public function withProfiles(array $profiles): self
+    {
+        return new self(
+            $this->cacheType,
+            $this->warmupCache,
+            $this->useConventions,
+            $this->conventionThreshold,
+            [...$this->profiles, ...$profiles],
+            $this->conventions,
+        );
+    }
+
     // ================
     // Validation
     // ================
@@ -195,13 +195,13 @@ final readonly class MapperConfig
         }
 
         foreach ($this->profiles as $profile) {
-            if (!$profile instanceof MappingProfile) {
+            if ( ! $profile instanceof MappingProfile) {
                 throw new InvalidArgumentException('All profiles must be instances of MappingProfile');
             }
         }
 
         foreach ($this->conventions as $convention) {
-            if (!$convention instanceof NamingConvention) {
+            if ( ! $convention instanceof NamingConvention) {
                 throw new InvalidArgumentException('All conventions must implement NamingConvention');
             }
         }

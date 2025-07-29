@@ -27,12 +27,12 @@ class HungarianNotationConvention extends AbstractNamingConvention implements Na
         'f' => 'float',
         'o' => 'object',
     ];
-    
+
     public function getName(): string
     {
         return 'hungarian';
     }
-    
+
     public function matches(string $name): bool
     {
         foreach ($this->typePrefixes as $prefix => $type) {
@@ -40,37 +40,38 @@ class HungarianNotationConvention extends AbstractNamingConvention implements Na
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     public function normalize(string $name): string
     {
         foreach ($this->typePrefixes as $prefix => $type) {
             if (preg_match('/^' . $prefix . '([A-Z].*)$/', $name, $matches)) {
                 // Convert first letter to lowercase
                 $withoutPrefix = lcfirst($matches[1]);
-                
+
                 // Use camelCase normalization
                 $camelConvention = new CamelCaseConvention();
                 return $camelConvention->normalize($withoutPrefix);
             }
         }
-        
+
         return $name;
     }
-    
+
     public function denormalize(string $normalized): string
     {
         // By default, we use 'str' prefix for denormalization
         $camelConvention = new CamelCaseConvention();
         $camelCase = $camelConvention->denormalize($normalized);
-        
+
         return 'str' . ucfirst($camelCase);
     }
-    
+
     /**
      * Detects which convention a property name uses.
+     * @phpstan-ignore-next-line method.unused
      */
     private function detectConvention(string $name): ?NamingConvention
     {
@@ -78,15 +79,15 @@ class HungarianNotationConvention extends AbstractNamingConvention implements Na
             new CamelCaseConvention(),
             new PascalCaseConvention(),
             new SnakeCaseConvention(),
-            new KebabCaseConvention()
+            new KebabCaseConvention(),
         ];
-        
+
         foreach ($conventions as $convention) {
             if ($convention->matches($name)) {
                 return $convention;
             }
         }
-        
+
         return null;
     }
 }

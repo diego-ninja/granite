@@ -3,6 +3,7 @@
 namespace Ninja\Granite\Serialization\Attributes;
 
 use Attribute;
+use InvalidArgumentException;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
 
 /**
@@ -20,15 +21,14 @@ readonly class SerializationConvention
      */
     public function __construct(
         public string|NamingConvention $convention,
-        public bool $bidirectional = true
-    ) {
-    }
+        public bool $bidirectional = true,
+    ) {}
 
     /**
      * Get the convention instance.
      *
      * @return NamingConvention Convention instance
-     * @throws \InvalidArgumentException If the convention class doesn't exist or implement NamingConvention
+     * @throws InvalidArgumentException If the convention class doesn't exist or implement NamingConvention
      */
     public function getConvention(): NamingConvention
     {
@@ -36,16 +36,10 @@ readonly class SerializationConvention
             return $this->convention;
         }
 
-        if (!class_exists($this->convention)) {
-            throw new \InvalidArgumentException("Convention class '{$this->convention}' does not exist");
+        if ( ! class_exists($this->convention)) {
+            throw new InvalidArgumentException("Convention class '{$this->convention}' does not exist");
         }
 
-        $instance = new $this->convention();
-
-        if (!$instance instanceof NamingConvention) {
-            throw new \InvalidArgumentException("Convention class '{$this->convention}' must implement NamingConvention");
-        }
-
-        return $instance;
+        return new $this->convention();
     }
 }

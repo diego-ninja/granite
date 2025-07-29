@@ -9,15 +9,24 @@ final readonly class DataTransformer
         $result = [];
 
         foreach ($mappingConfig as $destinationProperty => $config) {
+            if ( ! is_array($config)) {
+                continue;
+            }
+
             if ($config['ignore'] ?? false) {
                 continue;
             }
 
-            if (!$this->shouldApplyMapping($config, $sourceData)) {
+            if ( ! $this->shouldApplyMapping($config, $sourceData)) {
                 continue;
             }
 
-            $sourceValue = $this->getSourceValue($sourceData, $config['source']);
+            $sourceKey = $config['source'] ?? null;
+            if ( ! is_string($sourceKey)) {
+                continue;
+            }
+
+            $sourceValue = $this->getSourceValue($sourceData, $sourceKey);
             $transformedValue = $this->applyTransformation($sourceValue, $config, $sourceData);
             $result[$destinationProperty] = $this->applyDefaultValue($transformedValue, $config);
         }
@@ -28,7 +37,7 @@ final readonly class DataTransformer
     private function shouldApplyMapping(array $config, array $sourceData): bool
     {
         $condition = $config['condition'] ?? null;
-        return $condition === null || $condition($sourceData);
+        return null === $condition || (is_callable($condition) && $condition($sourceData));
     }
 
     private function getSourceValue(array $sourceData, string $key): mixed
@@ -46,7 +55,7 @@ final readonly class DataTransformer
         $value = $data;
 
         foreach ($keys as $key) {
-            if (!is_array($value) || !array_key_exists($key, $value)) {
+            if ( ! is_array($value) || ! array_key_exists($key, $value)) {
                 return null;
             }
             $value = $value[$key];
@@ -59,15 +68,15 @@ final readonly class DataTransformer
     {
         $transformer = $config['transformer'] ?? null;
 
-        if ($transformer === null) {
+        if (null === $transformer) {
             return $value;
         }
 
         return match (true) {
             is_callable($transformer) => $transformer($value, $sourceData),
             is_object($transformer) && method_exists($transformer, 'transform') => $transformer->transform($value, $sourceData),
-            is_array($transformer) && count($transformer) === 2 => $this->invokeArrayCallable($transformer, $value, $sourceData),
-            default => $value
+            is_array($transformer) && 2 === count($transformer) => $this->invokeArrayCallable($transformer, $value, $sourceData),
+            default => $value,
         };
     }
 
@@ -80,7 +89,7 @@ final readonly class DataTransformer
         }
 
         if (is_object($class)) {
-            return $class->$method($value, $sourceData);
+            return $class->{$method}($value, $sourceData);
         }
 
         return $value;
@@ -88,7 +97,7 @@ final readonly class DataTransformer
 
     private function applyDefaultValue(mixed $value, array $config): mixed
     {
-        if ($value !== null || !($config['hasDefault'] ?? false)) {
+        if (null !== $value || ! ($config['hasDefault'] ?? false)) {
             return $value;
         }
 

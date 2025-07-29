@@ -3,8 +3,8 @@
 namespace Ninja\Granite\Validation\Attributes;
 
 use Attribute;
-use Ninja\Granite\Validation\ValidationRule;
 use Ninja\Granite\Validation\Rules;
+use Ninja\Granite\Validation\ValidationRule;
 
 /**
  * Attribute for validating each item in an array.
@@ -13,7 +13,7 @@ use Ninja\Granite\Validation\Rules;
 class Each
 {
     /**
-     * @var ValidationRule|ValidationRule[] Rules to apply to each item
+     * @var ValidationRule|array<ValidationRule> Rules to apply to each item
      */
     private ValidationRule|array $rules;
 
@@ -22,6 +22,10 @@ class Each
      */
     private ?string $message;
 
+    /**
+     * @param ValidationRule|array<ValidationRule> $rules
+     * @param string|null $message
+     */
     public function __construct(ValidationRule|array $rules, ?string $message = null)
     {
         $this->rules = $rules;
@@ -32,7 +36,7 @@ class Each
     {
         $rule = new Rules\Each($this->rules);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

@@ -8,7 +8,6 @@ class OrderItemDTO
         public string $product,
         public int $qty,
         public float $price,
-        public float $subtotal
-    ) {
-    }
+        public float $subtotal,
+    ) {}
 }

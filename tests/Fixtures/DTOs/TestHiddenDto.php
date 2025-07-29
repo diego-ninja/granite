@@ -6,8 +6,8 @@ namespace Tests\Fixtures\DTOs;
 
 use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
-use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Attributes\Hidden;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 
 #[SerializationConvention(SnakeCaseConvention::class)]
 final readonly class TestHiddenDto extends GraniteDTO
@@ -15,6 +15,6 @@ final readonly class TestHiddenDto extends GraniteDTO
     public function __construct(
         public string $publicField,
         #[Hidden]
-        public string $secretField
+        public string $secretField,
     ) {}
 }

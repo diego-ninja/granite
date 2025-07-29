@@ -7,6 +7,7 @@ use DateMalformedStringException;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
+use InvalidArgumentException;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
@@ -34,7 +35,57 @@ abstract readonly class GraniteDTO implements GraniteObject
         $data = self::normalizeInputData($data);
         $instance = self::createEmptyInstance();
 
-        return self::hydrateInstance($instance, $data);
+        /** @var static $result */
+        $result = self::hydrateInstance($instance, $data);
+        return $result;
+    }
+
+    /**
+     * @return array Serialized array
+     * @throws RuntimeException If a property cannot be serialized
+     * @throws ReflectionException
+     * @throws SerializationException
+     */
+    public function array(): array
+    {
+        $result = [];
+        $properties = ReflectionCache::getPublicProperties(static::class);
+        $metadata = MetadataCache::getMetadata(static::class);
+
+        foreach ($properties as $property) {
+            $phpName = $property->getName();
+
+            // Skip hidden properties
+            if ($metadata->isHidden($phpName)) {
+                continue;
+            }
+
+            // Skip uninitialized properties
+            if ( ! $property->isInitialized($this)) {
+                continue;
+            }
+
+            $value = $property->getValue($this);
+            $serializedValue = $this->serializeValue($phpName, $value);
+
+            // Use custom property name if defined (includes convention-applied names)
+            $serializedName = $metadata->getSerializedName($phpName);
+            $result[$serializedName] = $serializedValue;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function json(): string
+    {
+        $json = json_encode($this->array());
+        if (false === $json) {
+            throw new RuntimeException('Failed to encode object to JSON');
+        }
+        return $json;
     }
 
     protected static function normalizeInputData(string|array|GraniteObject $data): array
@@ -44,10 +95,36 @@ abstract readonly class GraniteDTO implements GraniteObject
         }
 
         if (is_string($data)) {
-            return json_decode($data, true);
+            $decoded = json_decode($data, true);
+            if ( ! is_array($decoded)) {
+                throw new InvalidArgumentException('Invalid JSON string provided');
+            }
+            return $decoded;
         }
 
         return $data;
+    }
+
+    /**
+     * Define custom property names for serialization.
+     * Override in child classes to customize property names.
+     *
+     * @return array<string, string> Mapping of PHP property names to serialized names
+     */
+    protected static function serializedNames(): array
+    {
+        return [];
+    }
+
+    /**
+     * Define properties that should be hidden during serialization.
+     * Override in child classes to hide specific properties.
+     *
+     * @return array<string> List of property names to hide
+     */
+    protected static function hiddenProperties(): array
+    {
+        return [];
     }
 
     /**
@@ -64,13 +141,13 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
-     * @param GraniteObject $instance Instance to hydrate
+     * @param object $instance Instance to hydrate
      * @param array $data Data to hydrate with
      * @return static Hydrated instance
      * @throws DateMalformedStringException
      * @throws Exceptions\ReflectionException
      */
-    private static function hydrateInstance(GraniteObject $instance, array $data): GraniteObject
+    private static function hydrateInstance(object $instance, array $data): static
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
 
@@ -87,8 +164,8 @@ abstract readonly class GraniteDTO implements GraniteObject
             $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
 
             // Skip if property is not found in data
-            if ($value === null && !array_key_exists($phpName, $data) &&
-                !array_key_exists($serializedName, $data)) {
+            if (null === $value && ! array_key_exists($phpName, $data) &&
+                ! array_key_exists($serializedName, $data)) {
                 continue;
             }
 
@@ -97,7 +174,9 @@ abstract readonly class GraniteDTO implements GraniteObject
             $property->setValue($instance, $convertedValue);
         }
 
-        return $instance;
+        /** @var static $result */
+        $result = $instance;
+        return $result;
     }
 
     /**
@@ -113,7 +192,7 @@ abstract readonly class GraniteDTO implements GraniteObject
         array $data,
         string $phpName,
         string $serializedName,
-        ?NamingConvention $convention
+        ?NamingConvention $convention,
     ): mixed {
         // Strategy 1: Direct PHP name match
         if (array_key_exists($phpName, $data)) {
@@ -126,7 +205,7 @@ abstract readonly class GraniteDTO implements GraniteObject
         }
 
         // Strategy 3: Convention-based lookup (bidirectional)
-        if ($convention !== null) {
+        if (null !== $convention) {
             // Try to find a key that would convert to our PHP property name via the convention
             foreach (array_keys($data) as $key) {
                 if (self::conventionMatches($key, $phpName, $convention)) {
@@ -165,11 +244,12 @@ abstract readonly class GraniteDTO implements GraniteObject
             } else {
                 // Try to convert phpName to the normalized form
                 // This is a simplified approach - in practice you might want more sophisticated detection
-                $phpNameNormalized = strtolower(preg_replace('/([a-z])([A-Z])/', '$1 $2', $phpName));
+                $converted = preg_replace('/([a-z])([A-Z])/', '$1 $2', $phpName);
+                $phpNameNormalized = mb_strtolower($converted ?? $phpName);
             }
 
             return $dataKeyNormalized === $phpNameNormalized;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return false;
         }
     }
@@ -177,7 +257,7 @@ abstract readonly class GraniteDTO implements GraniteObject
     /**
      * Get the class-level naming convention if defined.
      *
-     * @param string $class Class name
+     * @param class-string $class Class name
      * @return NamingConvention|null The naming convention or null if not defined
      */
     private static function getClassConvention(string $class): ?NamingConvention
@@ -194,7 +274,7 @@ abstract readonly class GraniteDTO implements GraniteObject
 
             // Only return if bidirectional is enabled
             return $conventionAttr->bidirectional ? $conventionAttr->getConvention() : null;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return null;
         }
     }
@@ -207,7 +287,7 @@ abstract readonly class GraniteDTO implements GraniteObject
      */
     private static function convertValueToType(mixed $value, ?ReflectionType $type): mixed
     {
-        if ($value === null) {
+        if (null === $value) {
             return null;
         }
 
@@ -235,16 +315,25 @@ abstract readonly class GraniteDTO implements GraniteObject
 
         // Check for GraniteObject first
         if (is_subclass_of($typeName, GraniteObject::class)) {
-            return $value ? $typeName::from($value) : null;
+            if (null === $value) {
+                return null;
+            }
+            if (is_array($value) || is_string($value) || $value instanceof GraniteObject) {
+                return $typeName::from($value);
+            }
+            return null;
         }
 
         // Check for DateTime
-        if ($typeName === DateTimeInterface::class || is_subclass_of($typeName, DateTimeInterface::class)) {
+        if (DateTimeInterface::class === $typeName || is_subclass_of($typeName, DateTimeInterface::class)) {
             if ($value instanceof DateTimeInterface) {
                 return $value;
             }
 
-            return $value ? new DateTimeImmutable($value) : null;
+            if (is_string($value)) {
+                return new DateTimeImmutable($value);
+            }
+            return null;
         }
 
         // Check for Enum (PHP 8.1+)
@@ -286,49 +375,18 @@ abstract readonly class GraniteDTO implements GraniteObject
     private static function convertToUnionType(mixed $value, ReflectionUnionType $type): mixed
     {
         foreach ($type->getTypes() as $unionType) {
-            $typeName = $unionType->getName();
-            if ($typeName === DateTimeInterface::class || is_subclass_of($typeName, DateTimeInterface::class)) {
-                return $value ? new DateTimeImmutable($value) : null;
+            if ($unionType instanceof ReflectionNamedType) {
+                $typeName = $unionType->getName();
+                if (DateTimeInterface::class === $typeName || is_subclass_of($typeName, DateTimeInterface::class)) {
+                    if (is_string($value)) {
+                        return new DateTimeImmutable($value);
+                    }
+                    return $value;
+                }
             }
         }
 
         return $value;
-    }
-
-    /**
-     * @return array Serialized array
-     * @throws RuntimeException If a property cannot be serialized
-     * @throws ReflectionException
-     * @throws SerializationException
-     */
-    public function array(): array
-    {
-        $result = [];
-        $properties = ReflectionCache::getPublicProperties(static::class);
-        $metadata = MetadataCache::getMetadata(static::class);
-
-        foreach ($properties as $property) {
-            $phpName = $property->getName();
-
-            // Skip hidden properties
-            if ($metadata->isHidden($phpName)) {
-                continue;
-            }
-
-            // Skip uninitialized properties
-            if (!$property->isInitialized($this)) {
-                continue;
-            }
-
-            $value = $property->getValue($this);
-            $serializedValue = $this->serializeValue($phpName, $value);
-
-            // Use custom property name if defined (includes convention-applied names)
-            $serializedName = $metadata->getSerializedName($phpName);
-            $result[$serializedName] = $serializedValue;
-        }
-
-        return $result;
     }
 
     /**
@@ -339,7 +397,7 @@ abstract readonly class GraniteDTO implements GraniteObject
      */
     private function serializeValue(string $propertyName, mixed $value): mixed
     {
-        if ($value === null) {
+        if (null === $value) {
             return null;
         }
 
@@ -363,35 +421,5 @@ abstract readonly class GraniteDTO implements GraniteObject
         }
 
         throw SerializationException::unsupportedType(static::class, $propertyName, get_debug_type($value));
-    }
-
-    /**
-     * @throws ReflectionException
-     */
-    public function json(): string
-    {
-        return json_encode($this->array());
-    }
-
-    /**
-     * Define custom property names for serialization.
-     * Override in child classes to customize property names.
-     *
-     * @return array<string, string> Mapping of PHP property names to serialized names
-     */
-    protected static function serializedNames(): array
-    {
-        return [];
-    }
-
-    /**
-     * Define properties that should be hidden during serialization.
-     * Override in child classes to hide specific properties.
-     *
-     * @return array<string> List of property names to hide
-     */
-    protected static function hiddenProperties(): array
-    {
-        return [];
     }
 }

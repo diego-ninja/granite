@@ -31,7 +31,7 @@ class Regex
     {
         $rule = new Rules\Regex($this->pattern);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

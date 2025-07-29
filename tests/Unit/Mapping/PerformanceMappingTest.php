@@ -3,16 +3,17 @@
 namespace Tests\Unit\Mapping;
 
 use Ninja\Granite\GraniteDTO;
-use Ninja\Granite\Mapping\MapperConfig;
-use Ninja\Granite\Mapping\ObjectMapper;
-use Ninja\Granite\Mapping\Exceptions\MappingException;
-use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 use Ninja\Granite\Mapping\Attributes\MapWith;
-use PHPUnit\Framework\Attributes\Test;
+use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\MappingProfile;
+use Ninja\Granite\Mapping\ObjectMapper;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Helpers\TestCase;
+use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use stdClass;
+use Tests\Helpers\TestCase;
 
 class PerformanceMappingTest extends TestCase
 {
@@ -22,6 +23,19 @@ class PerformanceMappingTest extends TestCase
     {
         $this->mapper = ObjectMapper::getInstance();
         parent::setUp();
+    }
+
+    public static function boundaryValuesProvider(): array
+    {
+        return [
+            'zero' => [0, 'zero'],
+            'negative_one' => [-1, 'negative'],
+            'max_int' => [PHP_INT_MAX, 'large_positive'],
+            'min_int' => [PHP_INT_MIN, 'large_negative'],
+            'empty_string' => ['', 'empty'],
+            'single_char' => ['a', 'single'],
+            'very_long_string' => [str_repeat('x', 10000), 'very_long'],
+        ];
     }
 
     // ====== EXTREME EDGE CASES ======
@@ -63,8 +77,8 @@ class PerformanceMappingTest extends TestCase
                 true,
                 null,
                 ['nested' => 'array'],
-                new stdClass()
-            ]
+                new stdClass(),
+            ],
         ];
 
         $result = $this->mapper->map($source, MixedTypeArrayDTO::class);
@@ -82,7 +96,7 @@ class PerformanceMappingTest extends TestCase
             'description' => 'Çünkü Unicode desteklenmeli! 🚀',
             'emoji' => '🎉🎊🎈',
             'specialChars' => '!@#$%^&*()_+-=[]{}|;:,.<>?',
-            'newlines' => "Line 1\nLine 2\r\nLine 3"
+            'newlines' => "Line 1\nLine 2\r\nLine 3",
         ];
 
         $result = $this->mapper->map($source, UnicodeDTO::class);
@@ -97,7 +111,7 @@ class PerformanceMappingTest extends TestCase
     {
         $largeArray = [];
         for ($i = 0; $i < 100000; $i++) {
-            $largeArray[] = "item_$i";
+            $largeArray[] = "item_{$i}";
         }
 
         $source = ['largeArray' => $largeArray];
@@ -122,8 +136,8 @@ class PerformanceMappingTest extends TestCase
             'related' => [
                 'id' => 2,
                 'name' => 'Node 2',
-                'backRef' => 1 // Reference back to original
-            ]
+                'backRef' => 1, // Reference back to original
+            ],
         ];
 
         $result = $this->mapper->map($source, CircularRefSafeDTO::class);
@@ -149,8 +163,8 @@ class PerformanceMappingTest extends TestCase
                 'data' => str_repeat('x', 1000), // 1KB of data per item
                 'nested' => [
                     'calculations' => range(1, 100),
-                    'metadata' => ['timestamp' => time()]
-                ]
+                    'metadata' => ['timestamp' => time()],
+                ],
             ];
         }
 
@@ -181,7 +195,7 @@ class PerformanceMappingTest extends TestCase
 
         $results = [];
         foreach ($sources as $source) {
-            if ($source['type'] === 'A') {
+            if ('A' === $source['type']) {
                 $results[] = $this->mapper->map($source, TypeADTO::class);
             } else {
                 $results[] = $this->mapper->map($source, TypeBDTO::class);
@@ -202,7 +216,7 @@ class PerformanceMappingTest extends TestCase
             'validField' => 'valid',
             'arrayButString' => 'should_be_array',
             'objectButInt' => 123,
-            'floatButArray' => ['not', 'a', 'float']
+            'floatButArray' => ['not', 'a', 'float'],
         ];
 
         $result = $this->mapper->map($corruptedData, CorruptedDataDTO::class);
@@ -247,24 +261,11 @@ class PerformanceMappingTest extends TestCase
     {
         $profile = new BoundaryValueProfile();
         $mapper = new ObjectMapper(MapperConfig::create()->withProfile($profile));
-        
+
         $source = ['value' => $value];
         $result = $mapper->map($source, BoundaryValueDTO::class);
 
         $this->assertEquals($expectedResult, $result->processedValue);
-    }
-
-    public static function boundaryValuesProvider(): array
-    {
-        return [
-            'zero' => [0, 'zero'],
-            'negative_one' => [-1, 'negative'],
-            'max_int' => [PHP_INT_MAX, 'large_positive'],
-            'min_int' => [PHP_INT_MIN, 'large_negative'],
-            'empty_string' => ['', 'empty'],
-            'single_char' => ['a', 'single'],
-            'very_long_string' => [str_repeat('x', 10000), 'very_long'],
-        ];
     }
 
     // ====== CONFIGURATION EDGE CASES ======
@@ -306,7 +307,7 @@ class PerformanceMappingTest extends TestCase
         $source = [
             'resource' => 'cannot_serialize_this',
             'closure' => 'also_cannot_serialize',
-            'normalField' => 'this_is_fine'
+            'normalField' => 'this_is_fine',
         ];
 
         $result = $this->mapper->map($source, SerializationEdgeCaseDTO::class);
@@ -350,7 +351,7 @@ final readonly class ExtremelyDeepDTO extends GraniteDTO
 {
     public function __construct(
         #[MapWith([self::class, 'extractDeepValue'])]
-        public ?string $deepestValue = null
+        public ?string $deepestValue = null,
     ) {}
 
     public static function extractDeepValue(mixed $value, array $sourceData): ?string
@@ -359,7 +360,7 @@ final readonly class ExtremelyDeepDTO extends GraniteDTO
 
         // Navigate through up to 100 levels of nesting
         for ($i = 0; $i < 100; $i++) {
-            if (!is_array($current) || !isset($current['level'])) {
+            if ( ! is_array($current) || ! isset($current['level'])) {
                 break;
             }
             $current = $current['level'];
@@ -372,14 +373,14 @@ final readonly class ExtremelyDeepDTO extends GraniteDTO
 final readonly class NullableStructureDTO extends GraniteDTO
 {
     public function __construct(
-        public mixed $key = null
+        public mixed $key = null,
     ) {}
 }
 
 final readonly class MixedTypeArrayDTO extends GraniteDTO
 {
     public function __construct(
-        public array $mixedArray = []
+        public array $mixedArray = [],
     ) {}
 }
 
@@ -390,14 +391,14 @@ final readonly class UnicodeDTO extends GraniteDTO
         public string $description,
         public string $emoji,
         public ?string $specialChars = null,
-        public ?string $newlines = null
+        public ?string $newlines = null,
     ) {}
 }
 
 final readonly class LargeArrayDTO extends GraniteDTO
 {
     public function __construct(
-        public array $largeArray = []
+        public array $largeArray = [],
     ) {}
 }
 
@@ -406,9 +407,8 @@ final readonly class CircularRefSafeDTO extends GraniteDTO
     public function __construct(
         public int $id,
         public string $name,
-
         #[MapFrom('related.backRef')]
-        public ?int $backReference = null
+        public ?int $backReference = null,
     ) {}
 }
 
@@ -416,18 +416,16 @@ final readonly class ComplexPerformanceDTO extends GraniteDTO
 {
     public function __construct(
         public int $id,
-
         #[MapWith([self::class, 'processData'])]
         public string $processedData,
-
         #[MapFrom('nested.calculations')]
         #[MapWith([self::class, 'sumArray'])]
-        public int $calculationSum
+        public int $calculationSum,
     ) {}
 
     public static function processData(string $data): string
     {
-        return 'processed_' . substr($data, 0, 10);
+        return 'processed_' . mb_substr($data, 0, 10);
     }
 
     public static function sumArray(array $numbers): int
@@ -440,7 +438,7 @@ final readonly class TypeADTO extends GraniteDTO
 {
     public function __construct(
         public string $type,
-        public int $value
+        public int $value,
     ) {}
 }
 
@@ -448,7 +446,7 @@ final readonly class TypeBDTO extends GraniteDTO
 {
     public function __construct(
         public string $type,
-        public int $value
+        public int $value,
     ) {}
 }
 
@@ -458,7 +456,7 @@ final readonly class CorruptedDataDTO extends GraniteDTO
         public ?string $validField = null,
         public mixed $arrayButString = null,
         public mixed $objectButInt = null,
-        public mixed $floatButArray = null
+        public mixed $floatButArray = null,
     ) {}
 }
 
@@ -466,13 +464,13 @@ final readonly class ExceptionThrowingTransformerDTO extends GraniteDTO
 {
     public function __construct(
         #[MapWith([self::class, 'throwingTransformer'])]
-        public string $value
+        public string $value,
     ) {}
 
     public static function throwingTransformer(string $value): string
     {
-        if ($value === 'cause_exception') {
-            throw new \RuntimeException('Transformer exception');
+        if ('cause_exception' === $value) {
+            throw new RuntimeException('Transformer exception');
         }
         return $value;
     }
@@ -481,14 +479,14 @@ final readonly class ExceptionThrowingTransformerDTO extends GraniteDTO
 final readonly class BoundaryValueDTO extends GraniteDTO
 {
     public function __construct(
-        public string $processedValue
+        public string $processedValue,
     ) {}
 }
 
 final readonly class ConflictingConfigDTO extends GraniteDTO
 {
     public function __construct(
-        public string $transformedValue
+        public string $transformedValue,
     ) {}
 }
 
@@ -496,7 +494,7 @@ final readonly class SimpleTestDTO extends GraniteDTO
 {
     public function __construct(
         public int $id,
-        public string $name
+        public string $name,
     ) {}
 }
 
@@ -505,7 +503,7 @@ final readonly class SerializationEdgeCaseDTO extends GraniteDTO
     public function __construct(
         public string $normalField,
         public mixed $resource = null,
-        public mixed $closure = null
+        public mixed $closure = null,
     ) {}
 }
 
@@ -513,7 +511,7 @@ final readonly class ReadonlyPropertiesDTO extends GraniteDTO
 {
     public function __construct(
         public readonly string $value1,
-        public readonly string $value2
+        public readonly string $value2,
     ) {}
 }
 
@@ -524,8 +522,10 @@ class PerformanceTestingProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ComplexPerformanceDTO::class)
-            ->forMember('processedData', fn($mapping) =>
-            $mapping->mapFrom('data')
+            ->forMember(
+                'processedData',
+                fn($mapping) =>
+            $mapping->mapFrom('data'),
             );
     }
 }
@@ -535,18 +535,34 @@ class BoundaryValueProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', BoundaryValueDTO::class)
-            ->forMember('processedValue', fn($mapping) =>
+            ->forMember(
+                'processedValue',
+                fn($mapping) =>
                 $mapping->mapFrom('value')
-                    ->using(function($value) {
-                        if ($value === 0) return 'zero';
-                        if ($value === -1) return 'negative';
-                        if ($value === PHP_INT_MAX) return 'large_positive';
-                        if ($value === PHP_INT_MIN) return 'large_negative';
-                        if ($value === '') return 'empty';
-                        if (is_string($value) && strlen($value) === 1) return 'single';
-                        if (is_string($value) && strlen($value) > 100) return 'very_long';
+                    ->using(function ($value) {
+                        if (0 === $value) {
+                            return 'zero';
+                        }
+                        if (-1 === $value) {
+                            return 'negative';
+                        }
+                        if (PHP_INT_MAX === $value) {
+                            return 'large_positive';
+                        }
+                        if (PHP_INT_MIN === $value) {
+                            return 'large_negative';
+                        }
+                        if ('' === $value) {
+                            return 'empty';
+                        }
+                        if (is_string($value) && 1 === mb_strlen($value)) {
+                            return 'single';
+                        }
+                        if (is_string($value) && mb_strlen($value) > 100) {
+                            return 'very_long';
+                        }
                         return 'other';
-                    })
+                    }),
             );
     }
 }
@@ -556,9 +572,11 @@ class ConflictingProfile1 extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ConflictingConfigDTO::class)
-            ->forMember('transformedValue', fn($mapping) =>
+            ->forMember(
+                'transformedValue',
+                fn($mapping) =>
             $mapping->mapFrom('value')
-                ->using(fn($value) => 'PROFILE1: ' . $value)
+                ->using(fn($value) => 'PROFILE1: ' . $value),
             );
     }
 }
@@ -568,9 +586,11 @@ class ConflictingProfile2 extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ConflictingConfigDTO::class)
-            ->forMember('transformedValue', fn($mapping) =>
+            ->forMember(
+                'transformedValue',
+                fn($mapping) =>
             $mapping->mapFrom('value')
-                ->using(fn($value) => 'PROFILE2: ' . $value)
+                ->using(fn($value) => 'PROFILE2: ' . $value),
             );
     }
 }
@@ -593,12 +613,12 @@ trait StressTestHelpers
         for ($i = 0; $i < $size; $i++) {
             $data[] = [
                 'id' => $i,
-                'name' => "Item $i",
+                'name' => "Item {$i}",
                 'data' => str_repeat('x', 100),
                 'nested' => [
                     'value' => $i * 2,
-                    'metadata' => ['created' => time()]
-                ]
+                    'metadata' => ['created' => time()],
+                ],
             ];
         }
         return $data;
@@ -620,7 +640,7 @@ trait StressTestHelpers
             'result' => $result,
             'time' => $elapsed,
             'memory_used' => $memoryAfter - $memoryBefore,
-            'peak_memory' => $peakAfter - $peakBefore
+            'peak_memory' => $peakAfter - $peakBefore,
         ];
     }
 }

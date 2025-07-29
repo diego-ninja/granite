@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Serialization/MetadataTest.php
 
 declare(strict_types=1);
@@ -159,7 +160,7 @@ use Tests\Helpers\TestCase;
 
         $this->assertEquals([
             'firstName' => 'first_name',
-            'lastName' => 'last_name'
+            'lastName' => 'last_name',
         ], $debug['propertyNames']);
 
         $this->assertEquals(['password', 'apiToken'], $debug['hiddenProperties']);
@@ -171,7 +172,7 @@ use Tests\Helpers\TestCase;
 
         $this->assertEquals([
             'propertyNames' => [],
-            'hiddenProperties' => []
+            'hiddenProperties' => [],
         ], $debug);
     }
 

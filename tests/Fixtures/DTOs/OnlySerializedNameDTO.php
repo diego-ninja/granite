@@ -9,7 +9,6 @@ final readonly class OnlySerializedNameDTO
     public function __construct(
         #[SerializedName('full_name')]
         public string $name,
-
-        public string $description
+        public string $description,
     ) {}
 }

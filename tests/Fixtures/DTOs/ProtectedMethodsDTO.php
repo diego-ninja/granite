@@ -6,15 +6,15 @@ final readonly class ProtectedMethodsDTO
 {
     public function __construct(
         public string $name,
-        public string $hiddenField
+        public string $hiddenField,
     ) {}
 
-    protected static function serializedNames(): array
+    private static function serializedNames(): array
     {
         return ['name' => 'custom_name'];
     }
 
-    protected static function hiddenProperties(): array
+    private static function hiddenProperties(): array
     {
         return ['hiddenField'];
     }

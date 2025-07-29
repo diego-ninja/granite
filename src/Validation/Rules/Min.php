@@ -10,10 +10,8 @@ class Min extends AbstractRule
      * @param int|float $min Minimum value
      */
     public function __construct(
-        private readonly int|float $min
-    )
-    {
-    }
+        private readonly int|float $min,
+    ) {}
 
     /**
      * Check if the value meets the minimum requirement.
@@ -24,15 +22,17 @@ class Min extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        if ($value === null) {
+        if (null === $value) {
             return true;
         }
 
         if (is_string($value)) {
             return mb_strlen($value) >= $this->min;
-        } elseif (is_int($value) || is_float($value)) {
+        }
+        if (is_int($value) || is_float($value)) {
             return $value >= $this->min;
-        } elseif (is_array($value)) {
+        }
+        if (is_array($value)) {
             return count($value) >= $this->min;
         }
 

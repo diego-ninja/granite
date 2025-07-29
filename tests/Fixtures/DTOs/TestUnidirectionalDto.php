@@ -12,6 +12,6 @@ use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 final readonly class TestUnidirectionalDto extends GraniteDTO
 {
     public function __construct(
-        public string $testField
+        public string $testField,
     ) {}
 }

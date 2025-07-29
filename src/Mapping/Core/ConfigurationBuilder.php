@@ -9,8 +9,8 @@ use Ninja\Granite\Mapping\ConventionMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\PropertyMapping;
-use Ninja\Granite\Mapping\TypeMapping;
 use Ninja\Granite\Mapping\Traits\MappingStorageTrait;
+use Ninja\Granite\Mapping\TypeMapping;
 use Ninja\Granite\Support\ReflectionCache;
 use ReflectionClass;
 use ReflectionProperty;
@@ -31,7 +31,7 @@ final class ConfigurationBuilder
     public function __construct(
         MappingCache $cache,
         bool $useConventions = false,
-        float $conventionThreshold = 0.8
+        float $conventionThreshold = 0.8,
     ) {
         $this->cache = $cache;
         $this->useConventions = $useConventions;
@@ -49,7 +49,8 @@ final class ConfigurationBuilder
 
         // Check cache first
         if ($this->cache->has($sourceType, $destinationType)) {
-            return $this->cache->get($sourceType, $destinationType);
+            $cached = $this->cache->get($sourceType, $destinationType);
+            return is_array($cached) ? $cached : [];
         }
 
         // Build new configuration
@@ -62,114 +63,6 @@ final class ConfigurationBuilder
     }
 
     /**
-     * Build mapping configuration from profiles and conventions.
-     */
-    private function buildConfiguration(string $sourceType, string $destinationType): array
-    {
-        $config = [];
-
-        // Get destination properties
-        $properties = $this->getDestinationProperties($destinationType);
-
-        foreach ($properties as $property) {
-            $propertyName = $property->getName();
-
-            // Check for explicit mapping from profiles
-            $mapping = $this->findExplicitMapping($sourceType, $destinationType, $propertyName);
-
-            if ($mapping !== null) {
-                $config[$propertyName] = $this->buildPropertyConfig($mapping, $propertyName);
-            } else {
-                // Build from attributes or conventions
-                $config[$propertyName] = $this->buildPropertyFromAttributes($property, $sourceType, $destinationType);
-            }
-        }
-
-        // Apply convention-based mapping if enabled
-        if ($this->useConventions && $this->conventionMapper !== null) {
-            $config = $this->applyConventionMappings($sourceType, $destinationType, $config);
-        }
-
-        return $config;
-    }
-
-    /**
-     * Find explicit mapping from registered profiles.
-     */
-    private function findExplicitMapping(string $sourceType, string $destinationType, string $property): ?PropertyMapping
-    {
-        // Check direct mappings first
-        $mapping = $this->getMapping($sourceType, $destinationType, $property);
-        if ($mapping !== null) {
-            return $mapping;
-        }
-
-        // Check profiles
-        foreach ($this->profiles as $profile) {
-            $mapping = $profile->getMapping($sourceType, $destinationType, $property);
-            if ($mapping !== null) {
-                return $mapping;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Build property configuration from PropertyMapping.
-     */
-    private function buildPropertyConfig(PropertyMapping $mapping, string $propertyName): array
-    {
-        return [
-            'source' => $mapping->getSourceProperty() ?? $propertyName,
-            'transformer' => $mapping->getTransformer(),
-            'condition' => $mapping->getCondition(),
-            'default' => $mapping->getDefaultValue(),
-            'hasDefault' => $mapping->hasDefaultValue(),
-            'ignore' => $mapping->isIgnored()
-        ];
-    }
-
-    /**
-     * Build property configuration from attributes.
-     */
-    private function buildPropertyFromAttributes(ReflectionProperty $property, string $sourceType, string $destinationType): array
-    {
-        $attributeProcessor = new AttributeProcessor();
-        return $attributeProcessor->processProperty($property);
-    }
-
-    /**
-     * Apply convention-based mappings.
-     */
-    private function applyConventionMappings(string $sourceType, string $destinationType, array $config): array
-    {
-        if ($sourceType === 'array' || !class_exists($sourceType)) {
-            return $config;
-        }
-
-        $conventionMappings = $this->conventionMapper->discoverMappings($sourceType, $destinationType);
-
-        foreach ($conventionMappings as $destProperty => $sourceProperty) {
-            // Only apply if no explicit mapping exists
-            if (!isset($config[$destProperty]) || $config[$destProperty]['source'] === $destProperty) {
-                $config[$destProperty]['source'] = $sourceProperty;
-            }
-        }
-
-        return $config;
-    }
-
-    /**
-     * Get destination type properties.
-     * @throws ReflectionException
-     */
-    private function getDestinationProperties(string $destinationType): array
-    {
-        return ReflectionCache::getPublicProperties($destinationType);
-    }
-
-    /**
      * Create reverse configuration for existing mapping.
      * @throws MappingException
      */
@@ -178,15 +71,21 @@ final class ConfigurationBuilder
         $originalConfig = $this->getConfiguration($sourceType, $destinationType);
 
         foreach ($originalConfig as $destProp => $config) {
-            $sourceProp = $config['source'];
-
-            // Skip if no explicit source property or complex transformers
-            if ($sourceProp === null || $sourceProp === $destProp || $config['transformer'] !== null) {
+            if ( ! is_array($config)) {
                 continue;
             }
 
-            // Create reverse mapping
-            $reverseMapping->forMember($sourceProp, fn($m) => $m->mapFrom($destProp));
+            $sourceProp = $config['source'] ?? null;
+
+            // Skip if no explicit source property or complex transformers
+            if (null === $sourceProp || $sourceProp === $destProp || ($config['transformer'] ?? null) !== null) {
+                continue;
+            }
+
+            if (is_string($sourceProp) && is_string($destProp)) {
+                // Create reverse mapping
+                $reverseMapping->forMember($sourceProp, fn($m) => $m->mapFrom($destProp));
+            }
         }
     }
 
@@ -202,25 +101,8 @@ final class ConfigurationBuilder
     public function warmupCache(array $profiles): void
     {
         foreach ($profiles as $profile) {
-            $this->warmupProfileCache($profile);
-        }
-    }
-
-    private function warmupProfileCache(MappingProfile $profile): void
-    {
-        // Extract mappings from profile and warm up cache
-        $reflection = new ReflectionClass($profile);
-        $mappingsProperty = $reflection->getProperty('mappings');
-        $mappingsProperty->setAccessible(true);
-
-        $mappings = $mappingsProperty->getValue($profile);
-
-        foreach ($mappings as $key => $propertyMappings) {
-            [$sourceType, $destinationType] = explode('->', $key);
-
-            if (!$this->cache->has($sourceType, $destinationType)) {
-                $config = $this->buildConfiguration($sourceType, $destinationType);
-                $this->cache->put($sourceType, $destinationType, $config);
+            if ($profile instanceof MappingProfile) {
+                $this->warmupProfileCache($profile);
             }
         }
     }
@@ -233,7 +115,7 @@ final class ConfigurationBuilder
     {
         $this->useConventions = $enabled;
 
-        if ($enabled && $this->conventionMapper === null) {
+        if ($enabled && null === $this->conventionMapper) {
             $this->conventionMapper = new ConventionMapper();
         }
     }
@@ -255,5 +137,155 @@ final class ConfigurationBuilder
     public function clearCache(): void
     {
         $this->conventionMapper?->clearMappingsCache();
+    }
+
+    /**
+     * Build mapping configuration from profiles and conventions.
+     */
+    private function buildConfiguration(string $sourceType, string $destinationType): array
+    {
+        $config = [];
+
+        // Get destination properties
+        $properties = $this->getDestinationProperties($destinationType);
+
+        foreach ($properties as $property) {
+            if ( ! ($property instanceof ReflectionProperty)) {
+                continue;
+            }
+
+            $propertyName = $property->getName();
+
+            // Check for explicit mapping from profiles
+            $mapping = $this->findExplicitMapping($sourceType, $destinationType, $propertyName);
+
+            if (null !== $mapping) {
+                $config[$propertyName] = $this->buildPropertyConfig($mapping, $propertyName);
+            } else {
+                // Build from attributes or conventions
+                $config[$propertyName] = $this->buildPropertyFromAttributes($property, $sourceType, $destinationType);
+            }
+        }
+
+        // Apply convention-based mapping if enabled
+        if ($this->useConventions && null !== $this->conventionMapper) {
+            $config = $this->applyConventionMappings($sourceType, $destinationType, $config);
+        }
+
+        return $config;
+    }
+
+    /**
+     * Find explicit mapping from registered profiles.
+     */
+    private function findExplicitMapping(string $sourceType, string $destinationType, string $property): ?PropertyMapping
+    {
+        // Check direct mappings first
+        $mapping = $this->getMapping($sourceType, $destinationType, $property);
+        if (null !== $mapping) {
+            return $mapping;
+        }
+
+        // Check profiles
+        foreach ($this->profiles as $profile) {
+            $mapping = $profile->getMapping($sourceType, $destinationType, $property);
+            if ($mapping instanceof PropertyMapping) {
+                return $mapping;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Build property configuration from PropertyMapping.
+     */
+    private function buildPropertyConfig(PropertyMapping $mapping, string $propertyName): array
+    {
+        return [
+            'source' => $mapping->getSourceProperty() ?? $propertyName,
+            'transformer' => $mapping->getTransformer(),
+            'condition' => $mapping->getCondition(),
+            'default' => $mapping->getDefaultValue(),
+            'hasDefault' => $mapping->hasDefaultValue(),
+            'ignore' => $mapping->isIgnored(),
+        ];
+    }
+
+    /**
+     * Build property configuration from attributes.
+     */
+    private function buildPropertyFromAttributes(ReflectionProperty $property, string $sourceType, string $destinationType): array
+    {
+        $attributeProcessor = new AttributeProcessor();
+        return $attributeProcessor->processProperty($property);
+    }
+
+    /**
+     * Apply convention-based mappings.
+     */
+    private function applyConventionMappings(string $sourceType, string $destinationType, array $config): array
+    {
+        if ('array' === $sourceType || ! class_exists($sourceType) || ! class_exists($destinationType) || null === $this->conventionMapper) {
+            return $config;
+        }
+
+        $conventionMappings = $this->conventionMapper->discoverMappings($sourceType, $destinationType);
+
+        foreach ($conventionMappings as $destProperty => $sourceProperty) {
+            // Only apply if no explicit mapping exists
+            if ( ! isset($config[$destProperty]) || (
+                is_array($config[$destProperty]) &&
+                isset($config[$destProperty]['source']) &&
+                $config[$destProperty]['source'] === $destProperty
+            )) {
+                if ( ! is_array($config[$destProperty])) {
+                    $config[$destProperty] = [];
+                }
+                $config[$destProperty]['source'] = $sourceProperty;
+            }
+        }
+
+        return $config;
+    }
+
+    /**
+     * Get destination type properties.
+     * @param string $destinationType
+     * @throws ReflectionException
+     */
+    private function getDestinationProperties(string $destinationType): array
+    {
+        if ( ! class_exists($destinationType)) {
+            return [];
+        }
+
+        return ReflectionCache::getPublicProperties($destinationType);
+    }
+
+    private function warmupProfileCache(MappingProfile $profile): void
+    {
+        // Extract mappings from profile and warm up cache
+        $reflection = new ReflectionClass($profile);
+        $mappingsProperty = $reflection->getProperty('mappings');
+        $mappingsProperty->setAccessible(true);
+
+        $mappings = $mappingsProperty->getValue($profile);
+
+        if ( ! is_array($mappings)) {
+            return;
+        }
+
+        foreach ($mappings as $key => $propertyMappings) {
+            if ( ! is_string($key)) {
+                continue;
+            }
+            [$sourceType, $destinationType] = explode('->', $key);
+
+            if ( ! $this->cache->has($sourceType, $destinationType)) {
+                $config = $this->buildConfiguration($sourceType, $destinationType);
+                $this->cache->put($sourceType, $destinationType, $config);
+            }
+        }
     }
 }

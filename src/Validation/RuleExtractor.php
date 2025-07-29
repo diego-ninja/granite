@@ -13,7 +13,7 @@ class RuleExtractor
     /**
      * Extract validation rules from a class's property attributes.
      *
-     * @param string $class Class name
+     * @param class-string $class Class name
      * @return array<string, ValidationRule[]> Rules by property name
      * @throws ReflectionException
      */
@@ -41,7 +41,7 @@ class RuleExtractor
                 }
             }
 
-            if (!empty($propertyRules)) {
+            if ( ! empty($propertyRules)) {
                 $rules[$propertyName] = $propertyRules;
             }
         }

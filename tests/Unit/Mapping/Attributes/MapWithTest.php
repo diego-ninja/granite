@@ -2,10 +2,10 @@
 
 namespace Tests\Unit\Mapping\Attributes;
 
-use Ninja\Granite\Mapping\Attributes\MapWith;
-use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
+use Ninja\Granite\Mapping\Attributes\MapWith;
 use Ninja\Granite\Mapping\Contracts\Transformer;
+use Ninja\Granite\Mapping\ObjectMapper;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Helpers\TestCase;
@@ -25,7 +25,7 @@ class MapWithTest extends TestCase
     public function it_transforms_value_with_callable(): void
     {
         $source = [
-            'name' => 'john doe'
+            'name' => 'john doe',
         ];
 
         $result = $this->mapper->map($source, CallableTransformerDTO::class);
@@ -37,7 +37,7 @@ class MapWithTest extends TestCase
     public function it_transforms_value_with_static_method(): void
     {
         $source = [
-            'value' => 'test'
+            'value' => 'test',
         ];
 
         $result = $this->mapper->map($source, StaticMethodTransformerDTO::class);
@@ -49,7 +49,7 @@ class MapWithTest extends TestCase
     public function it_transforms_value_with_transformer_class(): void
     {
         $source = [
-            'value' => 'test'
+            'value' => 'test',
         ];
 
         $result = $this->mapper->map($source, TransformerClassDTO::class);
@@ -62,7 +62,7 @@ class MapWithTest extends TestCase
     {
         $source = [
             'firstName' => 'John',
-            'lastName' => 'Doe'
+            'lastName' => 'Doe',
         ];
 
         $result = $this->mapper->map($source, ContextTransformerDTO::class);
@@ -74,7 +74,7 @@ class MapWithTest extends TestCase
     public function it_handles_null_values(): void
     {
         $source = [
-            'value' => null
+            'value' => null,
         ];
 
         $result = $this->mapper->map($source, NullHandlingTransformerDTO::class);
@@ -89,7 +89,7 @@ class MapWithTest extends TestCase
             'stringValue' => '42',
             'intValue' => '100',
             'boolValue' => 1,
-            'arrayValue' => '1,2,3'
+            'arrayValue' => '1,2,3',
         ];
 
         $result = $this->mapper->map($source, TypeConversionDTO::class);
@@ -105,8 +105,8 @@ class MapWithTest extends TestCase
     {
         $source = [
             'user' => [
-                'name' => 'john doe'
-            ]
+                'name' => 'john doe',
+            ],
         ];
 
         $result = $this->mapper->map($source, CombinedAttributesDTO::class);
@@ -118,7 +118,7 @@ class MapWithTest extends TestCase
     public function it_handles_transformer_with_constructor_parameters(): void
     {
         $source = [
-            'formattedPrice' => 42.99
+            'formattedPrice' => 42.99,
         ];
 
         $result = $this->mapper->map($source, ParameterizedTransformerDTO::class);
@@ -132,13 +132,12 @@ class CallableTransformerDTO
 {
     public function __construct(
         #[MapWith([CallableTransformerDTO::class, 'toUpperCase'])]
-        public string $name = ''
-    ) {
-    }
-    
+        public string $name = '',
+    ) {}
+
     public static function toUpperCase(string $value): string
     {
-        return strtoupper($value);
+        return mb_strtoupper($value);
     }
 }
 
@@ -146,9 +145,8 @@ class StaticMethodTransformerDTO
 {
     public function __construct(
         #[MapWith([self::class, 'staticTransformer'])]
-        public string $value = ''
-    ) {
-    }
+        public string $value = '',
+    ) {}
 
     public static function staticTransformer(string $value): string
     {
@@ -168,18 +166,16 @@ class TransformerClassDTO
 {
     public function __construct(
         #[MapWith(new CustomTransformer())]
-        public string $value = ''
-    ) {
-    }
+        public string $value = '',
+    ) {}
 }
 
 class ContextTransformerDTO
 {
     public function __construct(
         #[MapWith([self::class, 'combineNames'])]
-        public string $fullName = ''
-    ) {
-    }
+        public string $fullName = '',
+    ) {}
 
     public static function combineNames(mixed $value, array $sourceData): string
     {
@@ -191,9 +187,8 @@ class NullHandlingTransformerDTO
 {
     public function __construct(
         #[MapWith([self::class, 'handleNull'])]
-        public string $value = ''
-    ) {
-    }
+        public string $value = '',
+    ) {}
 
     public static function handleNull(?string $value): string
     {
@@ -206,33 +201,29 @@ class TypeConversionDTO
     public function __construct(
         #[MapWith([TypeConversionDTO::class, 'toString'])]
         public string $stringValue = '',
-
         #[MapWith([TypeConversionDTO::class, 'toInt'])]
         public int $intValue = 0,
-
         #[MapWith([TypeConversionDTO::class, 'toBool'])]
         public bool $boolValue = false,
-
         #[MapWith([TypeConversionDTO::class, 'toIntArray'])]
-        public array $arrayValue = []
-    ) {
-    }
-    
+        public array $arrayValue = [],
+    ) {}
+
     public static function toString($v): string
     {
-        return (string)$v;
+        return (string) $v;
     }
-    
+
     public static function toInt($v): int
     {
-        return (int)$v;
+        return (int) $v;
     }
-    
+
     public static function toBool($v): bool
     {
-        return (bool)$v;
+        return (bool) $v;
     }
-    
+
     public static function toIntArray($v): array
     {
         return array_map('intval', explode(',', $v));
@@ -244,25 +235,22 @@ class CombinedAttributesDTO
     public function __construct(
         #[MapFrom('user.name')]
         #[MapWith([CombinedAttributesDTO::class, 'toUpperCase'])]
-        public string $userName = ''
-    ) {
-    }
-    
+        public string $userName = '',
+    ) {}
+
     public static function toUpperCase(string $value): string
     {
-        return strtoupper($value);
+        return mb_strtoupper($value);
     }
 }
 
 class CurrencyTransformer implements Transformer
 {
-    public function __construct(private string $symbol = '$')
-    {
-    }
+    public function __construct(private string $symbol = '$') {}
 
     public function transform(mixed $value, array $sourceData = []): string
     {
-        return $this->symbol . number_format((float)$value, 2);
+        return $this->symbol . number_format((float) $value, 2);
     }
 }
 
@@ -270,7 +258,6 @@ class ParameterizedTransformerDTO
 {
     public function __construct(
         #[MapWith(new CurrencyTransformer())]
-        public string $formattedPrice = ''
-    ) {
-    }
+        public string $formattedPrice = '',
+    ) {}
 }

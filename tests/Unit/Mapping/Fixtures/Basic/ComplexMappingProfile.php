@@ -13,17 +13,24 @@ class ComplexMappingProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ComplexMappedDTO::class)
-            ->forMember('userId', fn($mapping) =>
-                $mapping->mapFrom('user.id')
+            ->forMember(
+                'userId',
+                fn($mapping) =>
+                $mapping->mapFrom('user.id'),
             )
-            ->forMember('fullName', fn($mapping) =>
-                $mapping->using(fn($value, $source) =>
+            ->forMember(
+                'fullName',
+                fn($mapping) =>
+                $mapping->using(
+                    fn($value, $source) =>
                     ($source['user']['firstName'] ?? '') . ' ' .
-                    ($source['user']['lastName'] ?? '')
-                )
+                    ($source['user']['lastName'] ?? ''),
+                ),
             )
-            ->forMember('contactInfo', fn($mapping) =>
-                $mapping->mapFrom('contact')
+            ->forMember(
+                'contactInfo',
+                fn($mapping) =>
+                $mapping->mapFrom('contact'),
             );
     }
 }

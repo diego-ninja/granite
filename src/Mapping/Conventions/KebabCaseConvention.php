@@ -13,36 +13,36 @@ class KebabCaseConvention extends AbstractNamingConvention implements NamingConv
     {
         return 'kebab-case';
     }
-    
+
     public function matches(string $name): bool
     {
         // Kebab case: all lowercase with hyphens
-        return preg_match('/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/', $name) === 1;
+        return 1 === preg_match('/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/', $name);
     }
-    
+
     public function normalize(string $name): string
     {
         // Convert kebab-case to words with spaces
         // Example: "first-name" -> "first name"
         return str_replace('-', ' ', $name);
     }
-    
+
     public function denormalize(string $normalized): string
     {
         // Convert space-separated words to kebab-case
         // Example: "first name" -> "first-name"
         $words = explode(' ', $normalized);
         $result = '';
-        
+
         foreach ($words as $i => $word) {
-            if (trim($word) !== '') {
+            if ('' !== mb_trim($word)) {
                 if ($i > 0) {
                     $result .= '-';
                 }
-                $result .= strtolower(trim($word));
+                $result .= mb_strtolower(mb_trim($word));
             }
         }
-        
+
         return $result;
     }
 }

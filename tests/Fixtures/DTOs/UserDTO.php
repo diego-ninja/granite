@@ -1,4 +1,5 @@
 <?php
+
 // tests/Fixtures/DTOs/UserDTO.php
 
 namespace Tests\Fixtures\DTOs;
@@ -14,6 +15,6 @@ final readonly class UserDTO extends GraniteDTO
         public string             $name,
         public string             $email,
         public Address  $address,
-        public ?DateTimeInterface $createdAt = null
+        public ?DateTimeInterface $createdAt = null,
     ) {}
 }

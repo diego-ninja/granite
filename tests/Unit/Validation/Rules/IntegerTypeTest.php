@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/IntegerTypeTest.php
 
 declare(strict_types=1);
@@ -8,6 +9,7 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\IntegerType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(IntegerType::class)]
@@ -19,6 +21,41 @@ class IntegerTypeTest extends TestCase
     {
         $this->rule = new IntegerType();
         parent::setUp();
+    }
+
+    public static function validIntegerValuesProvider(): array
+    {
+        return [
+            'zero' => [0],
+            'positive small' => [1],
+            'positive medium' => [123],
+            'positive large' => [999999],
+            'negative small' => [-1],
+            'negative medium' => [-123],
+            'negative large' => [-999999],
+            'max int' => [PHP_INT_MAX],
+            'min int' => [PHP_INT_MIN],
+        ];
+    }
+
+    public static function invalidNonIntegerValuesProvider(): array
+    {
+        return [
+            'float zero' => [0.0],
+            'positive float' => [3.14],
+            'negative float' => [-2.71],
+            'string zero' => ['0'],
+            'string integer' => ['123'],
+            'string float' => ['3.14'],
+            'empty string' => [''],
+            'text string' => ['hello'],
+            'true boolean' => [true],
+            'false boolean' => [false],
+            'empty array' => [[]],
+            'integer array' => [[123]],
+            'stdClass object' => [new stdClass()],
+            'anonymous object' => [(object) ['int' => 123]],
+        ];
     }
 
     public function test_validates_positive_integers(): void
@@ -91,7 +128,7 @@ class IntegerTypeTest extends TestCase
 
     public function test_rejects_object_values(): void
     {
-        $this->assertFalse($this->rule->validate(new \stdClass()));
+        $this->assertFalse($this->rule->validate(new stdClass()));
         $this->assertFalse($this->rule->validate((object) ['value' => 123]));
     }
 
@@ -152,45 +189,10 @@ class IntegerTypeTest extends TestCase
         $this->assertTrue($this->rule->validate($value));
     }
 
-    public static function validIntegerValuesProvider(): array
-    {
-        return [
-            'zero' => [0],
-            'positive small' => [1],
-            'positive medium' => [123],
-            'positive large' => [999999],
-            'negative small' => [-1],
-            'negative medium' => [-123],
-            'negative large' => [-999999],
-            'max int' => [PHP_INT_MAX],
-            'min int' => [PHP_INT_MIN],
-        ];
-    }
-
     #[DataProvider('invalidNonIntegerValuesProvider')]
     public function test_rejects_non_integer_values(mixed $value): void
     {
         $this->assertFalse($this->rule->validate($value));
-    }
-
-    public static function invalidNonIntegerValuesProvider(): array
-    {
-        return [
-            'float zero' => [0.0],
-            'positive float' => [3.14],
-            'negative float' => [-2.71],
-            'string zero' => ['0'],
-            'string integer' => ['123'],
-            'string float' => ['3.14'],
-            'empty string' => [''],
-            'text string' => ['hello'],
-            'true boolean' => [true],
-            'false boolean' => [false],
-            'empty array' => [[]],
-            'integer array' => [[123]],
-            'stdClass object' => [new \stdClass()],
-            'anonymous object' => [(object) ['int' => 123]],
-        ];
     }
 
     public function test_rule_implements_validation_rule_interface(): void

@@ -8,8 +8,7 @@ final readonly class OnlyHiddenDTO
 {
     public function __construct(
         public string $name,
-
         #[Hidden]
-        public string $secret
+        public string $secret,
     ) {}
 }

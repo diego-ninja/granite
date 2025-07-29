@@ -25,7 +25,7 @@ class IpAddress
     {
         $rule = new Rules\IpAddress();
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

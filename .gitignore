@@ -6,3 +6,4 @@ src/TestDTO.php
 .phpunit.cache
 tests/_reports
 coverage
+var/

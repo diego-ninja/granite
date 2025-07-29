@@ -13,36 +13,36 @@ class SnakeCaseConvention extends AbstractNamingConvention implements NamingConv
     {
         return 'snake_case';
     }
-    
+
     public function matches(string $name): bool
     {
         // Snake case: all lowercase with underscores
-        return preg_match('/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/', $name) === 1;
+        return 1 === preg_match('/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/', $name);
     }
-    
+
     public function normalize(string $name): string
     {
         // Convert snake_case to words with spaces
         // Example: "first_name" -> "first name"
         return str_replace('_', ' ', $name);
     }
-    
+
     public function denormalize(string $normalized): string
     {
         // Convert space-separated words to snake_case
         // Example: "first name" -> "first_name"
         $words = explode(' ', $normalized);
         $result = '';
-        
+
         foreach ($words as $i => $word) {
-            if (trim($word) !== '') {
+            if ('' !== mb_trim($word)) {
                 if ($i > 0) {
                     $result .= '_';
                 }
-                $result .= strtolower(trim($word));
+                $result .= mb_strtolower(mb_trim($word));
             }
         }
-        
+
         return $result;
     }
 }

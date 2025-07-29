@@ -40,7 +40,7 @@ class SharedMappingCache implements MappingCache
      */
     public static function getInstance(): self
     {
-        if (self::$instance === null) {
+        if (null === self::$instance) {
             self::$instance = new self();
         }
 
@@ -70,7 +70,7 @@ class SharedMappingCache implements MappingCache
     {
         $result = $this->cache->get($sourceType, $destinationType);
 
-        if ($result !== null) {
+        if (null !== $result) {
             $this->hits++;
         } else {
             $this->misses++;
@@ -118,7 +118,7 @@ class SharedMappingCache implements MappingCache
             'hits' => $this->hits,
             'misses' => $this->misses,
             'total' => $total,
-            'hit_rate' => round($hitRate, 2) . '%'
+            'hit_rate' => round($hitRate, 2) . '%',
         ];
     }
 }

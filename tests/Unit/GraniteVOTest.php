@@ -1,32 +1,64 @@
 <?php
+
 // tests/Unit/GraniteVOTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use Ninja\Granite\GraniteVO;
-use Ninja\Granite\GraniteDTO;
+use Error;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\ValidationException;
+use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\GraniteVO;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Helpers\TestCase;
-use Tests\Fixtures\VOs\UserVO;
-use Tests\Fixtures\VOs\ValidatedUserVO;
-use Tests\Fixtures\VOs\ProductVO;
-use Tests\Fixtures\VOs\Money;
+use ReflectionClass;
 use Tests\Fixtures\VOs\Address;
 use Tests\Fixtures\VOs\MixedValidationVO;
+use Tests\Fixtures\VOs\Money;
+use Tests\Fixtures\VOs\ProductVO;
+use Tests\Fixtures\VOs\UserVO;
+use Tests\Fixtures\VOs\ValidatedUserVO;
+use Tests\Helpers\TestCase;
 
 #[CoversClass(GraniteVO::class)]
 class GraniteVOTest extends TestCase
 {
+    public static function invalidUserDataProvider(): array
+    {
+        return [
+            'empty name' => [
+                ['name' => '', 'email' => 'john@example.com'],
+                'name',
+            ],
+            'short name' => [
+                ['name' => 'J', 'email' => 'john@example.com'],
+                'name',
+            ],
+            'invalid email' => [
+                ['name' => 'John Doe', 'email' => 'invalid'],
+                'email',
+            ],
+            'missing email' => [
+                ['name' => 'John Doe'],
+                'email',
+            ],
+            'too young' => [
+                ['name' => 'John Doe', 'email' => 'john@example.com', 'age' => 15],
+                'age',
+            ],
+            'too old' => [
+                ['name' => 'John Doe', 'email' => 'john@example.com', 'age' => 150],
+                'age',
+            ],
+        ];
+    }
     public function test_extends_granite_dto(): void
     {
         $vo = UserVO::from([
             'name' => 'John',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ]);
 
         $this->assertInstanceOf(GraniteDTO::class, $vo);
@@ -38,7 +70,7 @@ class GraniteVOTest extends TestCase
         $data = [
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ];
 
         $vo = UserVO::from($data);
@@ -54,7 +86,7 @@ class GraniteVOTest extends TestCase
 
         ValidatedUserVO::from([
             'name' => '', // Required but empty
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ]);
     }
 
@@ -64,7 +96,7 @@ class GraniteVOTest extends TestCase
 
         ValidatedUserVO::from([
             'name' => 'John Doe',
-            'email' => 'invalid-email' // Invalid email format
+            'email' => 'invalid-email', // Invalid email format
         ]);
     }
 
@@ -75,7 +107,7 @@ class GraniteVOTest extends TestCase
         ValidatedUserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 15 // Below minimum age of 18
+            'age' => 15, // Below minimum age of 18
         ]);
     }
 
@@ -85,7 +117,7 @@ class GraniteVOTest extends TestCase
 
         ValidatedUserVO::from([
             'name' => 'J', // Too short (minimum 2 characters)
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ]);
     }
 
@@ -96,7 +128,7 @@ class GraniteVOTest extends TestCase
         ValidatedUserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 150 // Above maximum age of 120
+            'age' => 150, // Above maximum age of 120
         ]);
     }
 
@@ -105,7 +137,7 @@ class GraniteVOTest extends TestCase
         try {
             ValidatedUserVO::from([
                 'name' => '', // Required field with custom message
-                'email' => 'john@example.com'
+                'email' => 'john@example.com',
             ]);
             $this->fail('Expected ValidationException was not thrown');
         } catch (ValidationException $e) {
@@ -123,7 +155,7 @@ class GraniteVOTest extends TestCase
             'sku' => 'INVALID', // Should be 10 alphanumeric characters
             'price' => 99.99,
             'quantity' => 10,
-            'category' => 'electronics'
+            'category' => 'electronics',
         ]);
     }
 
@@ -134,7 +166,7 @@ class GraniteVOTest extends TestCase
             'sku' => 'ABCD123456', // Valid 10-character SKU
             'price' => 99.99,
             'quantity' => 10,
-            'category' => 'electronics'
+            'category' => 'electronics',
         ]);
 
         $this->assertEquals('Test Product', $vo->name);
@@ -147,13 +179,13 @@ class GraniteVOTest extends TestCase
         $vo1 = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $vo2 = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $this->assertTrue($vo1->equals($vo2));
@@ -164,13 +196,13 @@ class GraniteVOTest extends TestCase
         $vo1 = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $vo2 = UserVO::from([
             'name' => 'Jane Doe', // Different name
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $this->assertFalse($vo1->equals($vo2));
@@ -180,7 +212,7 @@ class GraniteVOTest extends TestCase
     {
         $vo = UserVO::from([
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ]);
 
         $this->assertTrue($vo->equals($vo));
@@ -190,12 +222,12 @@ class GraniteVOTest extends TestCase
     {
         $user = UserVO::from([
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ]);
 
         $money = Money::from([
             'amount' => 100.0,
-            'currency' => 'USD'
+            'currency' => 'USD',
         ]);
 
         $this->assertFalse($user->equals($money));
@@ -206,13 +238,13 @@ class GraniteVOTest extends TestCase
         $vo = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $array = [
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ];
 
         $this->assertTrue($vo->equals($array));
@@ -223,13 +255,13 @@ class GraniteVOTest extends TestCase
         $vo = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $array = [
             'name' => 'Jane Doe', // Different name
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ];
 
         $this->assertFalse($vo->equals($array));
@@ -239,13 +271,13 @@ class GraniteVOTest extends TestCase
     {
         $vo = UserVO::from([
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ]);
 
         $array = [
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'extra_property' => 'extra_value'
+            'extra_property' => 'extra_value',
         ];
 
         $this->assertFalse($vo->equals($array));
@@ -256,12 +288,12 @@ class GraniteVOTest extends TestCase
         $vo = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $array = [
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
             // Missing age
         ];
 
@@ -273,7 +305,7 @@ class GraniteVOTest extends TestCase
         $original = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $modified = $original->with(['name' => 'Jane Doe']);
@@ -290,7 +322,7 @@ class GraniteVOTest extends TestCase
         $original = ValidatedUserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $this->expectException(ValidationException::class);
@@ -303,12 +335,12 @@ class GraniteVOTest extends TestCase
         $original = ValidatedUserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $modified = $original->with([
             'name' => 'Jane Smith',
-            'age' => 25
+            'age' => 25,
         ]);
 
         $this->assertEquals('Jane Smith', $modified->name);
@@ -321,13 +353,13 @@ class GraniteVOTest extends TestCase
         $original = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $modified = $original->with([
             'name' => 'Jane Smith',
             'email' => 'jane@example.com',
-            'age' => 25
+            'age' => 25,
         ]);
 
         $this->assertEquals('Jane Smith', $modified->name);
@@ -344,7 +376,7 @@ class GraniteVOTest extends TestCase
             'title' => '', // Required via attribute
             'content' => 'short', // Min 10 chars via method
             'tags' => range(1, 10), // Max 5 items via method
-            'status' => 'invalid' // Must be in specific values via method
+            'status' => 'invalid', // Must be in specific values via method
         ]);
     }
 
@@ -356,7 +388,7 @@ class GraniteVOTest extends TestCase
             'title' => 'Valid Title', // Attribute validation
             'content' => 'This is a long enough content string', // Method validation (min 10)
             'tags' => ['tag1', 'tag2'], // Method validation (max 5)
-            'status' => 'published' // Method validation (must be in allowed values)
+            'status' => 'published', // Method validation (must be in allowed values)
         ]);
 
         $this->assertEquals('Valid Title', $vo->title);
@@ -367,15 +399,15 @@ class GraniteVOTest extends TestCase
     {
         $vo = UserVO::from([
             'name' => 'John Doe',
-            'email' => 'john@example.com'
+            'email' => 'john@example.com',
         ]);
 
         // Should be readonly
-        $reflection = new \ReflectionClass($vo);
+        $reflection = new ReflectionClass($vo);
         $this->assertTrue($reflection->isReadonly());
 
         // Attempting to modify should fail
-        $this->expectException(\Error::class);
+        $this->expectException(Error::class);
         $vo->name = 'Modified Name';
     }
 
@@ -385,7 +417,7 @@ class GraniteVOTest extends TestCase
             'street' => '123 Main St',
             'city' => 'New York',
             'country' => 'USA',
-            'zipCode' => '10001'
+            'zipCode' => '10001',
         ]);
 
         // Should validate nested value object
@@ -398,7 +430,7 @@ class GraniteVOTest extends TestCase
         $vo = ValidatedUserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $array = $vo->array();
@@ -424,42 +456,12 @@ class GraniteVOTest extends TestCase
         }
     }
 
-    public static function invalidUserDataProvider(): array
-    {
-        return [
-            'empty name' => [
-                ['name' => '', 'email' => 'john@example.com'],
-                'name'
-            ],
-            'short name' => [
-                ['name' => 'J', 'email' => 'john@example.com'],
-                'name'
-            ],
-            'invalid email' => [
-                ['name' => 'John Doe', 'email' => 'invalid'],
-                'email'
-            ],
-            'missing email' => [
-                ['name' => 'John Doe'],
-                'email'
-            ],
-            'too young' => [
-                ['name' => 'John Doe', 'email' => 'john@example.com', 'age' => 15],
-                'age'
-            ],
-            'too old' => [
-                ['name' => 'John Doe', 'email' => 'john@example.com', 'age' => 150],
-                'age'
-            ],
-        ];
-    }
-
     public function test_performance_with_validation(): void
     {
         $data = [
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ];
 
         $start = microtime(true);
@@ -478,7 +480,7 @@ class GraniteVOTest extends TestCase
     {
         $largeData = ['name' => 'Test', 'email' => 'test@example.com'];
         for ($i = 0; $i < 100; $i++) {
-            $largeData["field_$i"] = "value_$i";
+            $largeData["field_{$i}"] = "value_{$i}";
         }
 
         $vo1 = UserVO::from($largeData);
@@ -501,7 +503,7 @@ class GraniteVOTest extends TestCase
         $vo = UserVO::from([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ]);
 
         $start = microtime(true);
@@ -526,7 +528,7 @@ class GraniteVOTest extends TestCase
             ValidatedUserVO::from([
                 'name' => '', // Required error + min length error
                 'email' => 'invalid', // Invalid email format
-                'age' => 15 // Below minimum age
+                'age' => 15, // Below minimum age
             ]);
             $this->fail('Expected ValidationException was not thrown');
         } catch (ValidationException $e) {

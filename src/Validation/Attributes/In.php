@@ -31,7 +31,7 @@ class In
     {
         $rule = new Rules\In($this->values);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

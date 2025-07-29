@@ -26,7 +26,7 @@ class CacheFactory
         return match ($type) {
             CacheType::Shared => SharedMappingCache::getInstance(),
             CacheType::Persistent => new PersistentMappingCache(self::getCachePath()),
-            default => new InMemoryMappingCache()
+            default => new InMemoryMappingCache(),
         };
     }
 
@@ -38,7 +38,7 @@ class CacheFactory
      */
     public static function setCacheDirectory(string $dir): void
     {
-        self::$cacheDir = rtrim($dir, '/\\');
+        self::$cacheDir = mb_rtrim($dir, '/\\');
     }
 
     /**

@@ -13,15 +13,15 @@ class Url extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        if ($value === null) {
+        if (null === $value) {
             return true;
         }
 
-        if (!is_string($value)) {
+        if ( ! is_string($value)) {
             return false;
         }
 
-        return (bool)filter_var($value, FILTER_VALIDATE_URL);
+        return (bool) filter_var($value, FILTER_VALIDATE_URL);
     }
 
     /**

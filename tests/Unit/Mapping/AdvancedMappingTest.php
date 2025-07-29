@@ -2,18 +2,21 @@
 
 namespace Tests\Unit\Mapping;
 
+use DateTimeImmutable;
+use DateTimeInterface;
+use Exception;
 use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\GraniteVO;
-use Ninja\Granite\Mapping\MapperConfig;
-use Ninja\Granite\Mapping\ObjectMapper;
-use Ninja\Granite\Mapping\Contracts\Transformer;
-use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 use Ninja\Granite\Mapping\Attributes\MapWith;
+use Ninja\Granite\Mapping\Contracts\Transformer;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\MappingProfile;
+use Ninja\Granite\Mapping\ObjectMapper;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(ObjectMapper::class)]
@@ -25,6 +28,40 @@ class AdvancedMappingTest extends TestCase
     {
         $this->mapper = ObjectMapper::getInstance();
         parent::setUp();
+    }
+
+    public static function complexDataStructuresProvider(): array
+    {
+        return [
+            'nested_objects' => [
+                [
+                    'user' => ['name' => 'John', 'email' => 'john@example.com'],
+                    'preferences' => ['theme' => 'dark', 'language' => 'en'],
+                ],
+                NestedObjectsDTO::class,
+            ],
+            'mixed_arrays' => [
+                [
+                    'items' => [
+                        ['type' => 'product', 'name' => 'Laptop'],
+                        ['type' => 'service', 'name' => 'Support'],
+                    ],
+                ],
+                MixedArraysDTO::class,
+            ],
+            'deep_nesting' => [
+                [
+                    'level1' => [
+                        'level2' => [
+                            'level3' => [
+                                'value' => 'deep_value',
+                            ],
+                        ],
+                    ],
+                ],
+                DeepNestingDTO::class,
+            ],
+        ];
     }
 
     // ====== DEEP NESTING AND COMPLEX STRUCTURES ======
@@ -41,13 +78,13 @@ class AdvancedMappingTest extends TestCase
                                 'lead' => [
                                     'name' => 'John Doe',
                                     'email' => 'john@company.com',
-                                    'skills' => ['php', 'mysql', 'redis']
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                    'skills' => ['php', 'mysql', 'redis'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
 
         $result = $this->mapper->map($source, DeeplyNestedDTO::class);
@@ -69,8 +106,8 @@ class AdvancedMappingTest extends TestCase
             'members' => [
                 ['name' => 'John', 'role' => 'lead', 'active' => true],
                 ['name' => 'Jane', 'role' => 'developer', 'active' => false],
-                ['name' => 'Bob', 'role' => 'designer', 'active' => true]
-            ]
+                ['name' => 'Bob', 'role' => 'designer', 'active' => true],
+            ],
         ];
 
         $result = $mapper->map($source, TeamWithMembersDTO::class);
@@ -94,7 +131,7 @@ class AdvancedMappingTest extends TestCase
         $adminSource = [
             'id' => 1,
             'name' => 'Admin User',
-            'type' => 'admin'
+            'type' => 'admin',
         ];
 
         $adminResult = $mapper->map($adminSource, ConditionalUserDTO::class);
@@ -104,7 +141,7 @@ class AdvancedMappingTest extends TestCase
         $userSource = [
             'id' => 2,
             'name' => 'Regular User',
-            'type' => 'user'
+            'type' => 'user',
         ];
 
         $userResult = $mapper->map($userSource, ConditionalUserDTO::class);
@@ -122,7 +159,7 @@ class AdvancedMappingTest extends TestCase
         $shapes = [
             ['type' => 'circle', 'radius' => 5],
             ['type' => 'rectangle', 'width' => 10, 'height' => 20],
-            ['type' => 'triangle', 'base' => 8, 'height' => 12]
+            ['type' => 'triangle', 'base' => 8, 'height' => 12],
         ];
 
         foreach ($shapes as $shape) {
@@ -142,7 +179,7 @@ class AdvancedMappingTest extends TestCase
             'lastName' => 'Doe',
             'middleName' => 'William',
             'title' => 'Dr.',
-            'suffix' => 'Jr.'
+            'suffix' => 'Jr.',
         ];
 
         $result = $this->mapper->map($source, FullNameDTO::class);
@@ -158,7 +195,7 @@ class AdvancedMappingTest extends TestCase
         $validSource = [
             'name' => 'Valid User',
             'email' => 'valid@example.com',
-            'age' => 25
+            'age' => 25,
         ];
 
         $result = $this->mapper->map($validSource, ValidatedUserVO::class);
@@ -175,7 +212,7 @@ class AdvancedMappingTest extends TestCase
         $invalidSource = [
             'name' => 'X', // Too short
             'email' => 'invalid-email',
-            'age' => 15 // Too young
+            'age' => 15, // Too young
         ];
 
         $this->mapper->map($invalidSource, ValidatedUserVO::class);
@@ -197,9 +234,9 @@ class AdvancedMappingTest extends TestCase
                 [
                     'id' => 2,
                     'name' => 'Category 2',
-                    'parent_id' => 1
-                ]
-            ]
+                    'parent_id' => 1,
+                ],
+            ],
         ];
 
         $result = $mapper->map($source, CategoryDTO::class);
@@ -221,7 +258,7 @@ class AdvancedMappingTest extends TestCase
             'price' => '99.99',      // String to float
             'active' => '1',         // String to bool
             'tags' => 'tag1,tag2,tag3', // String to array
-            'created_at' => '2024-01-01T10:00:00Z' // String to DateTime
+            'created_at' => '2024-01-01T10:00:00Z', // String to DateTime
         ];
 
         $result = $this->mapper->map($source, TypeCoercionDTO::class);
@@ -234,7 +271,7 @@ class AdvancedMappingTest extends TestCase
         $this->assertTrue($result->active);
         $this->assertIsArray($result->tags);
         $this->assertEquals(['tag1', 'tag2', 'tag3'], $result->tags);
-        $this->assertInstanceOf(\DateTimeInterface::class, $result->createdAt);
+        $this->assertInstanceOf(DateTimeInterface::class, $result->createdAt);
     }
 
     // ====== PERFORMANCE AND MEMORY TESTS ======
@@ -262,8 +299,8 @@ class AdvancedMappingTest extends TestCase
         for ($i = 0; $i < 50; $i++) {
             $sources[] = [
                 'id' => $i,
-                'name' => "User $i",
-                'email' => "user$i@example.com"
+                'name' => "User {$i}",
+                'email' => "user{$i}@example.com",
             ];
         }
 
@@ -289,7 +326,7 @@ class AdvancedMappingTest extends TestCase
         $malformedSource = [
             'user' => 'not_an_object', // Should be object but is string
             'settings' => null,        // Null instead of expected array
-            'metadata' => []           // Empty when data expected
+            'metadata' => [],           // Empty when data expected
         ];
 
         $result = $this->mapper->map($malformedSource, RobustMappingDTO::class);
@@ -307,7 +344,7 @@ class AdvancedMappingTest extends TestCase
         try {
             $source = ['invalid' => 'structure'];
             $this->mapper->map($source, NonExistentTargetClass::class);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->assertStringContainsString('NonExistentTargetClass', $e->getMessage());
             if (method_exists($e, 'getContext')) {
                 $context = $e->getContext();
@@ -322,33 +359,31 @@ class AdvancedMappingTest extends TestCase
     public function it_supports_bidirectional_mapping(): void
     {
         // Creamos un perfil personalizado para este test específico
-        $profile = new class extends MappingProfile {
+        $profile = new class () extends MappingProfile {
             protected function configure(): void
             {
                 // Entity to DTO
                 $this->createMap('array', UserDTO::class)
-                    ->forMember('fullName', function($mapping) {
-                        $mapping->using(function($value, $source) {
-                            return trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? ''));
-                        });
+                    ->forMember('fullName', function ($mapping): void {
+                        $mapping->using(fn($value, $source) => mb_trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
                     })
-                    ->forMember('email', function($mapping) {
+                    ->forMember('email', function ($mapping): void {
                         $mapping->mapFrom('email_address');
                     });
 
                 // DTO to Entity
                 $this->createMap(UserDTO::class, UserEntityDTO::class)
-                    ->forMember('firstName', function($mapping) {
-                        $mapping->using(function($value, $source) {
+                    ->forMember('firstName', function ($mapping): void {
+                        $mapping->using(function ($value, $source) {
                             return 'John'; // Valor fijo para asegurar que el test pase
                         });
                     })
-                    ->forMember('lastName', function($mapping) {
-                        $mapping->using(function($value, $source) {
+                    ->forMember('lastName', function ($mapping): void {
+                        $mapping->using(function ($value, $source) {
                             return 'Doe'; // Valor fijo para asegurar que el test pase
                         });
                     })
-                    ->forMember('emailAddress', function($mapping) {
+                    ->forMember('emailAddress', function ($mapping): void {
                         $mapping->mapFrom('email');
                     });
             }
@@ -361,7 +396,7 @@ class AdvancedMappingTest extends TestCase
             'id' => 1,
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ];
 
         $dto = $mapper->map($entity, UserDTO::class);
@@ -384,14 +419,14 @@ class AdvancedMappingTest extends TestCase
             'id' => 1,
             'name' => 'Product',
             'value' => 100,
-            'currency' => 'USD'
+            'currency' => 'USD',
         ];
 
-        $profile = new class extends MappingProfile {
+        $profile = new class () extends MappingProfile {
             protected function configure(): void
             {
                 $this->createMap('array', CustomAttributeDTO::class)
-                    ->forMember('formattedValue', function($mapping) {
+                    ->forMember('formattedValue', function ($mapping): void {
                         $mapping->mapFrom('value')
                             ->using(new CurrencyTransformer('$'));
                     });
@@ -414,40 +449,6 @@ class AdvancedMappingTest extends TestCase
         $this->assertInstanceOf($targetClass, $result);
     }
 
-    public static function complexDataStructuresProvider(): array
-    {
-        return [
-            'nested_objects' => [
-                [
-                    'user' => ['name' => 'John', 'email' => 'john@example.com'],
-                    'preferences' => ['theme' => 'dark', 'language' => 'en']
-                ],
-                NestedObjectsDTO::class
-            ],
-            'mixed_arrays' => [
-                [
-                    'items' => [
-                        ['type' => 'product', 'name' => 'Laptop'],
-                        ['type' => 'service', 'name' => 'Support']
-                    ]
-                ],
-                MixedArraysDTO::class
-            ],
-            'deep_nesting' => [
-                [
-                    'level1' => [
-                        'level2' => [
-                            'level3' => [
-                                'value' => 'deep_value'
-                            ]
-                        ]
-                    ]
-                ],
-                DeepNestingDTO::class
-            ]
-        ];
-    }
-
     // ====== HELPER METHODS ======
 
     private function generateLargeNestedStructure(int $count): array
@@ -456,15 +457,15 @@ class AdvancedMappingTest extends TestCase
         for ($i = 0; $i < $count; $i++) {
             $data[] = [
                 'id' => $i,
-                'name' => "Item $i",
+                'name' => "Item {$i}",
                 'children' => [
-                    ['id' => $i * 10, 'value' => "Child 1 of $i"],
-                    ['id' => $i * 10 + 1, 'value' => "Child 2 of $i"],
+                    ['id' => $i * 10, 'value' => "Child 1 of {$i}"],
+                    ['id' => $i * 10 + 1, 'value' => "Child 2 of {$i}"],
                 ],
                 'metadata' => [
                     'created' => date('Y-m-d H:i:s'),
-                    'tags' => ['tag1', 'tag2', 'tag3']
-                ]
+                    'tags' => ['tag1', 'tag2', 'tag3'],
+                ],
             ];
         }
         return $data;
@@ -478,12 +479,10 @@ final readonly class DeeplyNestedDTO extends GraniteDTO
     public function __construct(
         #[MapFrom('company.departments.engineering.teams.backend.lead.name')]
         public ?string $teamLeadName = null,
-
         #[MapFrom('company.departments.engineering.teams.backend.lead.email')]
         public ?string $teamLeadEmail = null,
-
         #[MapFrom('company.departments.engineering.teams.backend.lead.skills')]
-        public array $teamLeadSkills = []
+        public array $teamLeadSkills = [],
     ) {}
 }
 
@@ -492,7 +491,7 @@ final readonly class TeamMemberDTO extends GraniteDTO
     public function __construct(
         public string $name,
         public string $role,
-        public bool $active
+        public bool $active,
     ) {}
 }
 
@@ -501,7 +500,7 @@ final readonly class TeamWithMembersDTO extends GraniteDTO
     public function __construct(
         public int $id,
         public string $name,
-        public array $members = []
+        public array $members = [],
     ) {}
 }
 
@@ -511,7 +510,7 @@ final readonly class ConditionalUserDTO extends GraniteDTO
         public int $id,
         public string $name,
         public string $displayName,
-        public string $type
+        public string $type,
     ) {}
 }
 
@@ -519,7 +518,7 @@ final readonly class ShapeDTO extends GraniteDTO
 {
     public function __construct(
         public string $type,
-        public float $area
+        public float $area,
     ) {}
 }
 
@@ -527,7 +526,7 @@ final readonly class FullNameDTO extends GraniteDTO
 {
     public function __construct(
         #[MapWith([self::class, 'buildFullName'])]
-        public string $fullName
+        public string $fullName,
     ) {}
 
     public static function buildFullName(mixed $value, array $sourceData): string
@@ -537,7 +536,7 @@ final readonly class FullNameDTO extends GraniteDTO
             $sourceData['firstName'] ?? '',
             $sourceData['middleName'] ?? '',
             $sourceData['lastName'] ?? '',
-            $sourceData['suffix'] ?? ''
+            $sourceData['suffix'] ?? '',
         ]);
 
         return implode(' ', $parts);
@@ -549,7 +548,7 @@ final readonly class ValidatedUserVO extends GraniteVO
     public function __construct(
         public string $name,
         public string $email,
-        public int $age
+        public int $age,
     ) {}
 
     protected static function rules(): array
@@ -557,7 +556,7 @@ final readonly class ValidatedUserVO extends GraniteVO
         return [
             'name' => 'required|string|min:2',
             'email' => 'required|email',
-            'age' => 'required|integer|min:18'
+            'age' => 'required|integer|min:18',
         ];
     }
 }
@@ -568,7 +567,7 @@ final readonly class CategoryDTO extends GraniteDTO
         public int $id,
         public string $name,
         public ?int $parentId = null,
-        public array $childrenIds = []
+        public array $childrenIds = [],
     ) {}
 }
 
@@ -577,19 +576,15 @@ final readonly class TypeCoercionDTO extends GraniteDTO
     public function __construct(
         #[MapWith([self::class, 'toInt'])]
         public int $id,
-
         #[MapWith([self::class, 'toFloat'])]
         public float $price,
-
         #[MapWith([self::class, 'toBool'])]
         public bool $active,
-
         #[MapWith([self::class, 'toArray'])]
         public array $tags,
-
         #[MapFrom('created_at')]
         #[MapWith([self::class, 'toDateTime'])]
-        public ?\DateTimeInterface $createdAt = null
+        public ?DateTimeInterface $createdAt = null,
     ) {}
 
     public static function toInt(mixed $value): int
@@ -614,25 +609,25 @@ final readonly class TypeCoercionDTO extends GraniteDTO
         }
         return is_array($value) ? $value : [$value];
     }
-    
-    public static function toDateTime(mixed $value): ?\DateTimeInterface
+
+    public static function toDateTime(mixed $value): ?DateTimeInterface
     {
-        if ($value === null) {
+        if (null === $value) {
             return null;
         }
-        
-        if ($value instanceof \DateTimeInterface) {
+
+        if ($value instanceof DateTimeInterface) {
             return $value;
         }
-        
+
         if (is_string($value)) {
             try {
-                return new \DateTimeImmutable($value);
-            } catch (\Exception $e) {
+                return new DateTimeImmutable($value);
+            } catch (Exception $e) {
                 return null;
             }
         }
-        
+
         return null;
     }
 }
@@ -643,7 +638,7 @@ final readonly class LargeNestedDTO extends GraniteDTO
         public int $id,
         public string $name,
         public array $children = [],
-        public array $metadata = []
+        public array $metadata = [],
     ) {}
 }
 
@@ -652,7 +647,7 @@ final readonly class SimpleUserDTO extends GraniteDTO
     public function __construct(
         public int $id,
         public string $name,
-        public string $email
+        public string $email,
     ) {}
 }
 
@@ -661,11 +656,9 @@ final readonly class RobustMappingDTO extends GraniteDTO
     public function __construct(
         #[MapFrom('user.name')]
         public ?string $userName = null,
-
         #[MapFrom('user.email')]
         public ?string $userEmail = null,
-
-        public ?array $settings = null
+        public ?array $settings = null,
     ) {}
 }
 
@@ -674,7 +667,7 @@ final readonly class UserDTO extends GraniteDTO
     public function __construct(
         public int $id,
         public string $fullName,
-        public ?string $email = null
+        public ?string $email = null,
     ) {}
 }
 
@@ -684,7 +677,7 @@ final readonly class UserEntityDTO extends GraniteDTO
         public int $id,
         public string $firstName,
         public string $lastName,
-        public ?string $emailAddress = null
+        public ?string $emailAddress = null,
     ) {}
 }
 
@@ -694,14 +687,14 @@ class CurrencyTransformer implements Transformer
 
     public function transform(mixed $value, array $sourceData = []): mixed
     {
-        if ($value === null) {
+        if (null === $value) {
             return null;
         }
-        
+
         if (is_numeric($value)) {
             return $this->symbol . number_format((float) $value, 2);
         }
-        
+
         return $value;
     }
 }
@@ -711,7 +704,7 @@ final readonly class CustomAttributeDTO extends GraniteDTO
     public function __construct(
         public int $id,
         public string $name,
-        public ?string $formattedValue = null
+        public ?string $formattedValue = null,
     ) {}
 }
 
@@ -720,16 +713,15 @@ final readonly class NestedObjectsDTO extends GraniteDTO
     public function __construct(
         #[MapFrom('user.name')]
         public ?string $userName = null,
-
         #[MapFrom('preferences.theme')]
-        public ?string $theme = null
+        public ?string $theme = null,
     ) {}
 }
 
 final readonly class MixedArraysDTO extends GraniteDTO
 {
     public function __construct(
-        public array $items = []
+        public array $items = [],
     ) {}
 }
 
@@ -737,7 +729,7 @@ final readonly class DeepNestingDTO extends GraniteDTO
 {
     public function __construct(
         #[MapFrom('level1.level2.level3.value')]
-        public ?string $deepValue = null
+        public ?string $deepValue = null,
     ) {}
 }
 
@@ -748,14 +740,14 @@ class NestedArrayProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', TeamWithMembersDTO::class)
-            ->forMember('members', function($mapping) {
-                $mapping->using(function($value, $source) {
+            ->forMember('members', function ($mapping): void {
+                $mapping->using(function ($value, $source) {
                     $members = [];
                     foreach ($source['members'] ?? [] as $member) {
                         $members[] = new TeamMemberDTO(
                             $member['name'],
                             $member['role'],
-                            $member['active']
+                            $member['active'],
                         );
                     }
                     return $members;
@@ -769,8 +761,8 @@ class ConditionalMappingProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ConditionalUserDTO::class)
-            ->forMember('displayName', function($mapping) {
-                $mapping->using(function($value, $source) {
+            ->forMember('displayName', function ($mapping): void {
+                $mapping->using(function ($value, $source) {
                     if (($source['type'] ?? '') === 'admin') {
                         return 'ADMIN: ' . ($source['name'] ?? '');
                     }
@@ -785,13 +777,13 @@ class PolymorphicMappingProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ShapeDTO::class)
-            ->forMember('area', function($mapping) {
-                $mapping->using(function($value, $source) {
+            ->forMember('area', function ($mapping): void {
+                $mapping->using(function ($value, $source) {
                     return match ($source['type'] ?? '') {
                         'circle' => pi() * pow($source['radius'] ?? 0, 2),
                         'rectangle' => ($source['width'] ?? 0) * ($source['height'] ?? 0),
                         'triangle' => 0.5 * ($source['base'] ?? 0) * ($source['height'] ?? 0),
-                        default => 0
+                        default => 0,
                     };
                 });
             });
@@ -803,10 +795,12 @@ class CircularReferenceHandlingProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', CategoryDTO::class)
-            ->forMember('childrenIds', function($mapping) {
+            ->forMember('childrenIds', function ($mapping): void {
                 $mapping->mapFrom('children')
-                    ->using(function($children) {
-                        if (!is_array($children)) return [];
+                    ->using(function ($children) {
+                        if ( ! is_array($children)) {
+                            return [];
+                        }
                         return array_map(fn($child) => $child['id'] ?? null, $children);
                     });
             });
@@ -819,36 +813,34 @@ class BidirectionalMappingProfile extends MappingProfile
     {
         // Entity to DTO
         $this->createMap('array', UserDTO::class)
-            ->forMember('fullName', function($mapping) {
-                $mapping->using(function($value, $source) {
-                    return trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? ''));
-                });
+            ->forMember('fullName', function ($mapping): void {
+                $mapping->using(fn($value, $source) => mb_trim(($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? '')));
             })
-            ->forMember('email', function($mapping) {
+            ->forMember('email', function ($mapping): void {
                 $mapping->mapFrom('email_address');
             });
 
         // DTO to Entity
         $this->createMap(UserDTO::class, UserEntityDTO::class)
-            ->forMember('firstName', function($mapping) {
-                $mapping->using(function($value, $source) {
+            ->forMember('firstName', function ($mapping): void {
+                $mapping->using(function ($value, $source) {
                     if (empty($source->fullName)) {
                         return '';
                     }
-                    $parts = explode(' ', trim($source->fullName), 2);
+                    $parts = explode(' ', mb_trim($source->fullName), 2);
                     return $parts[0];
                 });
             })
-            ->forMember('lastName', function($mapping) {
-                $mapping->using(function($value, $source) {
+            ->forMember('lastName', function ($mapping): void {
+                $mapping->using(function ($value, $source) {
                     if (empty($source->fullName)) {
                         return '';
                     }
-                    $parts = explode(' ', trim($source->fullName), 2);
+                    $parts = explode(' ', mb_trim($source->fullName), 2);
                     return $parts[1] ?? '';
                 });
             })
-            ->forMember('emailAddress', function($mapping) {
+            ->forMember('emailAddress', function ($mapping): void {
                 $mapping->mapFrom('email');
             });
     }

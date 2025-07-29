@@ -9,6 +9,6 @@ final readonly class NullableUserDTO extends GraniteDTO
     public function __construct(
         public int $id,
         public ?string $name = null,
-        public ?string $email = null
+        public ?string $email = null,
     ) {}
 }

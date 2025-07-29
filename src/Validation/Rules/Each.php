@@ -19,12 +19,11 @@ class Each extends AbstractRule
     /**
      * Constructor.
      *
-     * @param ValidationRule|ValidationRule[] $rules Rules to apply to each item
+     * @param ValidationRule|array<ValidationRule> $rules Rules to apply to each item
      */
     public function __construct(
-        private readonly ValidationRule|array $rules
-    ) {
-    }
+        private readonly ValidationRule|array $rules,
+    ) {}
 
     /**
      * Check if each element in the array passes the validation rules.
@@ -39,7 +38,7 @@ class Each extends AbstractRule
         $this->failedRule = null;
 
         // If not an array, or empty, there's nothing to validate
-        if (!is_array($value) || empty($value)) {
+        if ( ! is_array($value) || empty($value)) {
             return true;
         }
 
@@ -47,7 +46,7 @@ class Each extends AbstractRule
         foreach ($value as $index => $item) {
             // For a single rule
             if ($this->rules instanceof ValidationRule) {
-                if (!$this->rules->validate($item, $allData)) {
+                if ( ! $this->rules->validate($item, $allData)) {
                     $this->currentIndex = $index;
                     return false;
                 }
@@ -55,7 +54,7 @@ class Each extends AbstractRule
             // For multiple rules
             else {
                 foreach ($this->rules as $rule) {
-                    if ($rule instanceof ValidationRule && !$rule->validate($item, $allData)) {
+                    if ( ! $rule->validate($item, $allData)) {
                         $this->currentIndex = $index;
                         $this->failedRule = $rule;
                         return false;
@@ -75,10 +74,10 @@ class Each extends AbstractRule
      */
     protected function defaultMessage(string $property): string
     {
-        if ($this->currentIndex !== null) {
+        if (null !== $this->currentIndex) {
             $itemProperty = sprintf("%s[%s]", $property, $this->currentIndex);
 
-            if ($this->failedRule !== null) {
+            if (null !== $this->failedRule) {
                 return $this->failedRule->message($itemProperty);
             }
 

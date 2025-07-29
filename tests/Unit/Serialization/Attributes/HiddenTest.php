@@ -6,8 +6,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Serialization\Attributes;
 
+use Attribute;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Hidden::class)] class HiddenTest extends TestCase
@@ -21,25 +23,25 @@ use Tests\Helpers\TestCase;
 
     public function test_is_readonly_class(): void
     {
-        $reflection = new \ReflectionClass(Hidden::class);
+        $reflection = new ReflectionClass(Hidden::class);
 
         $this->assertTrue($reflection->isReadonly());
     }
 
     public function test_has_correct_attribute_target(): void
     {
-        $reflection = new \ReflectionClass(Hidden::class);
-        $attributes = $reflection->getAttributes(\Attribute::class);
+        $reflection = new ReflectionClass(Hidden::class);
+        $attributes = $reflection->getAttributes(Attribute::class);
 
         $this->assertCount(1, $attributes);
 
         $attributeInstance = $attributes[0]->newInstance();
-        $this->assertEquals(\Attribute::TARGET_PROPERTY, $attributeInstance->flags);
+        $this->assertEquals(Attribute::TARGET_PROPERTY, $attributeInstance->flags);
     }
 
     public function test_constructor_takes_no_parameters(): void
     {
-        $reflection = new \ReflectionClass(Hidden::class);
+        $reflection = new ReflectionClass(Hidden::class);
         $constructor = $reflection->getConstructor();
 
         $this->assertNotNull($constructor);
@@ -57,23 +59,23 @@ use Tests\Helpers\TestCase;
 
     public function test_can_be_used_in_reflection(): void
     {
-        $testClass = new readonly class {
+        $testClass = new readonly class () {
             #[Hidden]
             public string $hiddenProperty;
 
             public string $visibleProperty;
         };
 
-        $reflection = new \ReflectionClass($testClass);
+        $reflection = new ReflectionClass($testClass);
         $properties = $reflection->getProperties();
 
         $hiddenProperty = null;
         $visibleProperty = null;
 
         foreach ($properties as $property) {
-            if ($property->getName() === 'hiddenProperty') {
+            if ('hiddenProperty' === $property->getName()) {
                 $hiddenProperty = $property;
-            } elseif ($property->getName() === 'visibleProperty') {
+            } elseif ('visibleProperty' === $property->getName()) {
                 $visibleProperty = $property;
             }
         }

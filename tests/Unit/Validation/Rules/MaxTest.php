@@ -1,4 +1,5 @@
 <?php
+
 // tests/Unit/Validation/Rules/MaxTest.php
 
 declare(strict_types=1);
@@ -8,10 +9,44 @@ namespace Tests\Unit\Validation\Rules;
 use Ninja\Granite\Validation\Rules\Max;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Max::class)] class MaxTest extends TestCase
 {
+    public static function validMaxValuesProvider(): array
+    {
+        return [
+            // String length tests
+            [5, 'hello', true],
+            [5, 'hello world', false],
+            [0, '', true],
+            [1, 'x', true],
+            [1, 'xy', false],
+
+            // Numeric tests
+            [10, 10, true],
+            [10, 9, true],
+            [10, 11, false],
+            [7.5, 7.5, true],
+            [7.5, 7.4, true],
+            [7.5, 7.6, false],
+
+            // Array tests
+            [2, ['a', 'b'], true],
+            [2, ['a', 'b', 'c'], false],
+            [0, [], true],
+            [1, ['item'], true],
+            [1, ['item1', 'item2'], false],
+
+            // Edge cases
+            [0, 0, true],
+            [0, 1, false],
+            [-5, -5, true],
+            [-5, -4, false],
+            [-5, -6, true],
+        ];
+    }
     public function test_validates_string_length(): void
     {
         $rule = new Max(5);
@@ -64,7 +99,7 @@ use Tests\Helpers\TestCase;
     {
         $rule = new Max(5);
 
-        $this->assertTrue($rule->validate(new \stdClass()));
+        $this->assertTrue($rule->validate(new stdClass()));
         $this->assertTrue($rule->validate(true));
         $this->assertTrue($rule->validate(false));
     }
@@ -133,40 +168,6 @@ use Tests\Helpers\TestCase;
     {
         $rule = new Max($max);
         $this->assertEquals($expected, $rule->validate($value));
-    }
-
-    public static function validMaxValuesProvider(): array
-    {
-        return [
-            // String length tests
-            [5, 'hello', true],
-            [5, 'hello world', false],
-            [0, '', true],
-            [1, 'x', true],
-            [1, 'xy', false],
-
-            // Numeric tests
-            [10, 10, true],
-            [10, 9, true],
-            [10, 11, false],
-            [7.5, 7.5, true],
-            [7.5, 7.4, true],
-            [7.5, 7.6, false],
-
-            // Array tests
-            [2, ['a', 'b'], true],
-            [2, ['a', 'b', 'c'], false],
-            [0, [], true],
-            [1, ['item'], true],
-            [1, ['item1', 'item2'], false],
-
-            // Edge cases
-            [0, 0, true],
-            [0, 1, false],
-            [-5, -5, true],
-            [-5, -4, false],
-            [-5, -6, true],
-        ];
     }
 
     public function test_rule_implements_validation_rule_interface(): void

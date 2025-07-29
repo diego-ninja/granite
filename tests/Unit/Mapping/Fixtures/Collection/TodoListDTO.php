@@ -10,14 +10,14 @@ class TodoListDTO
         public int $id,
         public string $name,
         #[MapWith([self::class, 'transformItems'])]
-        public array $items = []
+        public array $items = [],
     ) {}
 
     public static function transformItems(array $items): array
     {
         return array_map(fn($item) => [
             'text' => $item['text'],
-            'completed' => $item['done'] ?? false
+            'completed' => $item['done'] ?? false,
         ], $items);
     }
 }

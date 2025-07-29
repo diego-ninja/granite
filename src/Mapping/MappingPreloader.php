@@ -22,10 +22,23 @@ class MappingPreloader
         $count = 0;
 
         foreach ($typePairs as $pair) {
-            list($sourceType, $destinationType) = $pair;
+            if ( ! is_array($pair) || count($pair) < 2) {
+                continue;
+            }
+
+            [$sourceType, $destinationType] = $pair;
+
+            if ( ! is_string($sourceType) || ! is_string($destinationType)) {
+                continue;
+            }
 
             // Skip if already cached
             if ($mapper->getCache()->has($sourceType, $destinationType)) {
+                continue;
+            }
+
+            // Only create mapping for valid class types
+            if ( ! class_exists($sourceType) || ! class_exists($destinationType)) {
                 continue;
             }
 
@@ -33,7 +46,7 @@ class MappingPreloader
             $mapping = $mapper->createMap($sourceType, $destinationType);
 
             // Force seal to generate the mapping configuration
-            if (!$mapping->isSealed()) {
+            if ( ! $mapping->isSealed()) {
                 $mapping->seal();
             }
 
@@ -61,9 +74,17 @@ class MappingPreloader
         // Group classes by base name
         $grouped = [];
         foreach ($classes as $class) {
+            if ( ! is_string($class)) {
+                continue;
+            }
+
             foreach ($suffixes as $suffix) {
+                if ( ! is_string($suffix)) {
+                    continue;
+                }
+
                 if (str_ends_with($class, $suffix)) {
-                    $baseName = substr($class, 0, -strlen($suffix));
+                    $baseName = mb_substr($class, 0, -mb_strlen($suffix));
                     $grouped[$baseName][$suffix] = $class;
                     break;
                 }
@@ -96,11 +117,14 @@ class MappingPreloader
         $autoLoader->setPsr4($namespace . '\\', []);
 
         $prefix = $namespace . '\\';
-        $prefixLen = strlen($prefix);
+        $prefixLen = mb_strlen($prefix);
 
-        foreach ($autoLoader->getClassMap() as $className => $filePath) {
-            if (strncmp($className, $prefix, $prefixLen) === 0) {
-                $classes[] = $className;
+        $classMap = $autoLoader->getClassMap();
+        if (is_array($classMap)) {
+            foreach ($classMap as $className => $filePath) {
+                if (is_string($className) && 0 === strncmp($className, $prefix, $prefixLen)) {
+                    $classes[] = $className;
+                }
             }
         }
 

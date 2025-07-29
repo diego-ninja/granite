@@ -13,7 +13,7 @@ use Ninja\Granite\Mapping\Transformers\CollectionTransformer;
 readonly class MapCollection
 {
     /**
-     * @param string $destinationType The class name for collection items
+     * @param class-string $destinationType The class name for collection items
      * @param bool $preserveKeys Whether to preserve array keys
      * @param bool $recursive Whether to handle nested collections recursively
      * @param mixed $itemTransformer Optional transformer for collection items
@@ -22,7 +22,7 @@ readonly class MapCollection
         public string $destinationType,
         public bool $preserveKeys = false,
         public bool $recursive = false,
-        public mixed $itemTransformer = null
+        public mixed $itemTransformer = null,
     ) {}
 
     /**
@@ -31,11 +31,11 @@ readonly class MapCollection
     public function createTransformer(mixed $mapper): Transformer
     {
         return new CollectionTransformer(
-            $mapper,
             $this->destinationType,
+            is_object($mapper) && $mapper instanceof \Ninja\Granite\Mapping\Contracts\Mapper ? $mapper : null,
             $this->preserveKeys,
             $this->recursive,
-            $this->itemTransformer
+            $this->itemTransformer,
         );
     }
 }

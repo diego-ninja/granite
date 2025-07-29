@@ -35,7 +35,7 @@ readonly class Required
     {
         $rule = new Rules\Required();
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

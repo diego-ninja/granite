@@ -1,4 +1,5 @@
 <?php
+
 // tests/Fixtures/DTOs/SimpleDTO.php
 
 declare(strict_types=1);
@@ -13,6 +14,6 @@ final readonly class SimpleDTO extends GraniteDTO
         public int $id,
         public ?string $name,
         public ?string $email,
-        public ?int $age = null
+        public ?int $age = null,
     ) {}
 }

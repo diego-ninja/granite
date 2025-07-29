@@ -13,24 +13,34 @@ class UserMappingProfile extends MappingProfile
     protected function configure(): void
     {
         $this->createMap('array', ProfileMappedUserDTO::class)
-            ->forMember('fullName', fn($mapping) =>
-                $mapping->using(fn($value, $source) =>
-                    ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? '')
-                )
+            ->forMember(
+                'fullName',
+                fn($mapping) =>
+                $mapping->using(
+                    fn($value, $source) =>
+                    ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? ''),
+                ),
             )
-            ->forMember('birthYear', fn($mapping) =>
+            ->forMember(
+                'birthYear',
+                fn($mapping) =>
                 $mapping->mapFrom('birthDate')
-                    ->using(fn($value) => date('Y', strtotime($value)))
+                    ->using(fn($value) => date('Y', strtotime($value))),
             )
-            ->forMember('email', fn($mapping) =>
-                $mapping->mapFrom('emailAddress')
+            ->forMember(
+                'email',
+                fn($mapping) =>
+                $mapping->mapFrom('emailAddress'),
             );
 
         $this->createMap('array', HybridMappedUserDTO::class)
-            ->forMember('fullName', fn($mapping) =>
-                $mapping->using(fn($value, $source) =>
-                    ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? '')
-                )
+            ->forMember(
+                'fullName',
+                fn($mapping) =>
+                $mapping->using(
+                    fn($value, $source) =>
+                    ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? ''),
+                ),
             );
     }
 }

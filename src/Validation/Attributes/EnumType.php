@@ -42,7 +42,7 @@ class EnumType
     {
         $rule = new Rules\EnumType($this->enumClass);
 
-        if ($this->message !== null) {
+        if (null !== $this->message) {
             $rule->withMessage($this->message);
         }
 

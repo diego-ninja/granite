@@ -2,15 +2,22 @@
 
 namespace Tests\Unit\Mapping\Fixtures\Collection;
 
-use Ninja\Granite\Mapping\MapperConfig;
-use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Ninja\Granite\Mapping\MapperConfig;
 use Ninja\Granite\Mapping\MappingProfile;
-use Ninja\Granite\Mapping\Transformers\CollectionTransformer;
+use Ninja\Granite\Mapping\ObjectMapper;
 
 class CollectionMappingProfile extends MappingProfile
 {
     private ?ObjectMapper $mapper = null;
+
+    public function getMapper(): ObjectMapper
+    {
+        if (null === $this->mapper) {
+            $this->mapper = new ObjectMapper(MapperConfig::create()->withProfile($this));
+        }
+        return $this->mapper;
+    }
 
     /**
      * @throws MappingException
@@ -22,26 +29,30 @@ class CollectionMappingProfile extends MappingProfile
 
         // Nested array mapping with collection
         $this->createMap('array', TeamDTO::class)
-            ->forMember('members', fn($mapping) => 
+            ->forMember(
+                'members',
+                fn($mapping) =>
                 $mapping->mapFrom('members')
-                    ->using(function($value) {
-                        if (!is_array($value)) {
+                    ->using(function ($value) {
+                        if ( ! is_array($value)) {
                             return [];
                         }
                         return $this->getMapper()->mapArray($value, TeamMemberDTO::class);
-                    })
+                    }),
             );
 
         // Entity to DTO with collection
         $this->createMap('array', ArticleDTO::class)
-            ->forMember('comments', fn($mapping) => 
+            ->forMember(
+                'comments',
+                fn($mapping) =>
                 $mapping->mapFrom('comments')
-                    ->using(function($value) {
-                        if (!is_array($value)) {
+                    ->using(function ($value) {
+                        if ( ! is_array($value)) {
                             return [];
                         }
                         return $this->getMapper()->mapArray($value, CommentDTO::class);
-                    })
+                    }),
             );
 
         // Map with custom transformer
@@ -49,36 +60,42 @@ class CollectionMappingProfile extends MappingProfile
 
         // Deeply nested collections
         $this->createMap('array', TeamNestedDTO::class)
-            ->forMember('members', fn($mapping) => 
+            ->forMember(
+                'members',
+                fn($mapping) =>
                 $mapping->mapFrom('members')
-                    ->using(function($value) {
-                        if (!is_array($value)) {
+                    ->using(function ($value) {
+                        if ( ! is_array($value)) {
                             return [];
                         }
                         return $this->getMapper()->mapArray($value, TeamMemberNestedDTO::class);
-                    })
+                    }),
             );
 
         $this->createMap('array', DepartmentDTO::class)
-            ->forMember('teams', fn($mapping) => 
+            ->forMember(
+                'teams',
+                fn($mapping) =>
                 $mapping->mapFrom('teams')
-                    ->using(function($value) {
-                        if (!is_array($value)) {
+                    ->using(function ($value) {
+                        if ( ! is_array($value)) {
                             return [];
                         }
                         return $this->getMapper()->mapArray($value, TeamNestedDTO::class);
-                    })
+                    }),
             );
 
         $this->createMap('array', OrganizationDTO::class)
-            ->forMember('departments', fn($mapping) => 
+            ->forMember(
+                'departments',
+                fn($mapping) =>
                 $mapping->mapFrom('departments')
-                    ->using(function($value) {
-                        if (!is_array($value)) {
+                    ->using(function ($value) {
+                        if ( ! is_array($value)) {
                             return [];
                         }
                         return $this->getMapper()->mapArray($value, DepartmentDTO::class);
-                    })
+                    }),
             );
 
         // Mixed collection types
@@ -86,22 +103,18 @@ class CollectionMappingProfile extends MappingProfile
 
         // Preserve keys in collection
         $this->createMap('array', ConfigDTO::class)
-            ->forMember('settings', fn($mapping) => 
-                $mapping->mapFrom('settings')
+            ->forMember(
+                'settings',
+                fn($mapping) =>
+                $mapping->mapFrom('settings'),
             );
 
         // Key-value mapping
         $this->createMap('array', KeyValueDTO::class)
-            ->forMember('mappings', fn($mapping) => 
-                $mapping->mapFrom('mappings')
+            ->forMember(
+                'mappings',
+                fn($mapping) =>
+                $mapping->mapFrom('mappings'),
             );
-    }
-
-    public function getMapper(): ObjectMapper
-    {
-        if ($this->mapper === null) {
-            $this->mapper = new ObjectMapper(MapperConfig::create()->withProfile($this));
-        }
-        return $this->mapper;
     }
 }

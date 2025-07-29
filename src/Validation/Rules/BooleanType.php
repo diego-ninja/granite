@@ -13,7 +13,7 @@ class BooleanType extends AbstractRule
      */
     public function validate(mixed $value, ?array $allData = null): bool
     {
-        return $value === null || is_bool($value);
+        return null === $value || is_bool($value);
     }
 
     /**

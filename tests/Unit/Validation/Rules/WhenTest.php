@@ -1,16 +1,16 @@
 <?php
+
 // tests/Unit/Validation/Rules/WhenTest.php
 
 declare(strict_types=1);
 
 namespace Tests\Unit\Validation\Rules;
 
-use Ninja\Granite\Validation\Rules\When;
+use Ninja\Granite\Validation\Rules\Email;
+use Ninja\Granite\Validation\Rules\Min;
 use Ninja\Granite\Validation\Rules\Required;
 use Ninja\Granite\Validation\Rules\StringType;
-use Ninja\Granite\Validation\Rules\Min;
-use Ninja\Granite\Validation\Rules\Email;
-use Ninja\Granite\Validation\Rules\IntegerType;
+use Ninja\Granite\Validation\Rules\When;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Helpers\TestCase;
 
@@ -19,7 +19,7 @@ class WhenTest extends TestCase
 {
     public function test_validates_when_condition_is_true(): void
     {
-        $condition = fn($value, $allData) => $allData['type'] === 'premium';
+        $condition = fn($value, $allData) => 'premium' === $allData['type'];
         $rule = new When($condition, new Required());
 
         $allData = ['type' => 'premium'];
@@ -30,7 +30,7 @@ class WhenTest extends TestCase
 
     public function test_passes_when_condition_is_false(): void
     {
-        $condition = fn($value, $allData) => $allData['type'] === 'premium';
+        $condition = fn($value, $allData) => 'premium' === $allData['type'];
         $rule = new When($condition, new Required());
 
         $allData = ['type' => 'basic'];
@@ -91,11 +91,9 @@ class WhenTest extends TestCase
 
     public function test_validates_with_complex_condition(): void
     {
-        $condition = function($value, $allData) {
-            return isset($allData['subscription_type']) &&
-                $allData['subscription_type'] === 'enterprise' &&
+        $condition = fn($value, $allData) => isset($allData['subscription_type']) &&
+                'enterprise' === $allData['subscription_type'] &&
                 ($allData['user_count'] ?? 0) > 100;
-        };
 
         $rule = new When($condition, new Required());
 
@@ -217,7 +215,7 @@ class WhenTest extends TestCase
         $receivedValue = null;
         $receivedAllData = null;
 
-        $condition = function($value, $allData) use (&$receivedValue, &$receivedAllData) {
+        $condition = function ($value, $allData) use (&$receivedValue, &$receivedAllData) {
             $receivedValue = $value;
             $receivedAllData = $allData;
             return false;
@@ -240,7 +238,7 @@ class WhenTest extends TestCase
         $innerCondition = fn($value, $allData) => ($allData['level'] ?? 0) > 2;
         $innerRule = new When($innerCondition, new Min(10));
 
-        $outerCondition = fn($value, $allData) => $allData['type'] === 'advanced';
+        $outerCondition = fn($value, $allData) => 'advanced' === $allData['type'];
         $outerRule = new When($outerCondition, $innerRule);
 
         // Both conditions true
@@ -300,14 +298,14 @@ class WhenTest extends TestCase
 
     public function test_performance_with_complex_conditions(): void
     {
-        $condition = function($value, $allData) {
+        $condition = function ($value, $allData) {
             // Simulate complex condition evaluation
             $checks = [
                 isset($allData['user_type']),
                 isset($allData['permissions']),
                 is_array($allData['permissions'] ?? null),
                 in_array('admin', $allData['permissions'] ?? []),
-                ($allData['experience_level'] ?? 0) > 5
+                ($allData['experience_level'] ?? 0) > 5,
             ];
 
             return array_reduce($checks, fn($carry, $check) => $carry && $check, true);
@@ -318,7 +316,7 @@ class WhenTest extends TestCase
         $testData = [
             'user_type' => 'advanced',
             'permissions' => ['user', 'admin', 'moderator'],
-            'experience_level' => 8
+            'experience_level' => 8,
         ];
 
         $start = microtime(true);
