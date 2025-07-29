@@ -4,7 +4,6 @@ parameters:
         - src
     excludePaths:
         - tests/Fixtures
-        - src/TestDTO.php
     ignoreErrors:
         # Allow mixed types in specific contexts where it's intentional  
         - '#Parameter \#1 \$data of method .* expects array, mixed given#'

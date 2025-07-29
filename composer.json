@@ -57,8 +57,8 @@
         "test:support": "phpunit --testsuite=Support",
         "test:exceptions": "phpunit --testsuite=Exceptions",
         "analyse": "phpstan analyse",
-        "cs:check": "phpcs src tests",
-        "cs:fix": "phpcbf src tests"
+        "cs:check": "pint --test src tests",
+        "cs:fix": "pint src tests"
     },
     "config": {
         "sort-packages": true,
