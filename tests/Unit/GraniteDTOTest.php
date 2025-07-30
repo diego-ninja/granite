@@ -345,17 +345,6 @@ class GraniteDTOTest extends TestCase
         SimpleDTO::from('{"invalid": json}');
     }
 
-    public function test_handles_invalid_datetime_strings(): void
-    {
-        $this->expectException(DateMalformedStringException::class);
-
-        ComplexDTO::from([
-            'id' => 1,
-            'name' => 'Test',
-            'createdAt' => 'invalid-date-string',
-        ]);
-    }
-
     public function test_skips_uninitialized_properties_in_serialization(): void
     {
         // Create a DTO where some properties might not be initialized

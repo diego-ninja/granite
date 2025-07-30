@@ -8,15 +8,21 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
 use InvalidArgumentException;
+use Ninja\Granite\Config\GraniteConfig;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
+use Ninja\Granite\Serialization\Attributes\CarbonDate;
+use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\MetadataCache;
+use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Support\ReflectionCache;
+use Ninja\Granite\Transformers\CarbonTransformer;
 use ReflectionAttribute;
 use ReflectionException;
 use ReflectionNamedType;
+use ReflectionProperty;
 use ReflectionType;
 use ReflectionUnionType;
 use RuntimeException;
@@ -33,25 +39,15 @@ abstract readonly class GraniteDTO implements GraniteObject
     public static function from(string|array|GraniteObject $data): static
     {
         $data = self::normalizeInputData($data);
-
-        // Check if class is readonly and has constructor
-        $reflection = ReflectionCache::getClass(static::class);
-        if ($reflection->isReadOnly() && $reflection->getConstructor()) {
-            return self::createReadonlyInstance($data);
-        }
-
         $instance = self::createEmptyInstance();
 
-        /** @var static $result */
-        $result = self::hydrateInstance($instance, $data);
-        return $result;
+        return self::hydrateInstance($instance, $data);
     }
 
     /**
      * @return array Serialized array
      * @throws RuntimeException If a property cannot be serialized
-     * @throws ReflectionException
-     * @throws SerializationException
+     * @throws SerializationException|Exceptions\ReflectionException
      */
     public function array(): array
     {
@@ -73,7 +69,7 @@ abstract readonly class GraniteDTO implements GraniteObject
             }
 
             $value = $property->getValue($this);
-            $serializedValue = $this->serializeValue($phpName, $value);
+            $serializedValue = $this->serializeValue($phpName, $value, $property);
 
             // Use custom property name if defined (includes convention-applied names)
             $serializedName = $metadata->getSerializedName($phpName);
@@ -84,7 +80,7 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
-     * @throws ReflectionException
+     * @throws SerializationException|Exceptions\ReflectionException
      */
     public function json(): string
     {
@@ -135,74 +131,6 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
-     * Creates instance for readonly classes using constructor.
-     *
-     * @param array $data Source data
-     * @return static New readonly instance
-     * @throws DateMalformedStringException
-     * @throws Exceptions\ReflectionException
-     */
-    private static function createReadonlyInstance(array $data): static
-    {
-        try {
-            $reflection = ReflectionCache::getClass(static::class);
-            $constructor = $reflection->getConstructor();
-
-            if ( ! $constructor) {
-                throw new RuntimeException('Readonly class ' . static::class . ' must have a constructor');
-            }
-
-            $parameters = $constructor->getParameters();
-            $args = [];
-
-            // Get serialization metadata and class convention
-            $metadata = MetadataCache::getMetadata(static::class);
-            $classConvention = self::getClassConvention(static::class);
-
-            foreach ($parameters as $parameter) {
-                $paramName = $parameter->getName();
-                $serializedName = $metadata->getSerializedName($paramName);
-
-                // Find value using same strategy as hydrateInstance
-                $value = self::findValueInData($data, $paramName, $serializedName, $classConvention);
-
-                if (null === $value && ! array_key_exists($paramName, $data) && ! array_key_exists($serializedName, $data)) {
-                    // If parameter is not present in data, fall back to reflection approach
-                    // This allows properties to remain uninitialized regardless of default values
-                    return self::fallbackToReflectionApproach($data);
-                }
-                $convertedValue = self::convertValueToType($value, $parameter->getType());
-                $args[] = $convertedValue;
-
-            }
-
-            /** @var static $instance */
-            $instance = $reflection->newInstanceArgs($args);
-            return $instance;
-
-        } catch (ReflectionException $e) {
-            throw Exceptions\ReflectionException::classNotFound(static::class);
-        }
-    }
-
-    /**
-     * Fallback method for readonly classes when constructor approach fails.
-     *
-     * @param array $data Source data
-     * @return static New instance using reflection
-     * @throws DateMalformedStringException
-     * @throws Exceptions\ReflectionException
-     */
-    private static function fallbackToReflectionApproach(array $data): static
-    {
-        $instance = self::createEmptyInstance();
-
-        /** @var static $result */
-        $result = self::hydrateInstance($instance, $data);
-        return $result;
-    }
-
-    /**
      * @throws Exceptions\ReflectionException
      */
     private static function createEmptyInstance(): object
@@ -229,6 +157,7 @@ abstract readonly class GraniteDTO implements GraniteObject
         // Get serialization metadata and class convention
         $metadata = MetadataCache::getMetadata(static::class);
         $classConvention = self::getClassConvention(static::class);
+        $classDateTimeProvider = self::getClassDateTimeProvider(static::class);
 
         // Process each property
         foreach ($properties as $property) {
@@ -245,7 +174,7 @@ abstract readonly class GraniteDTO implements GraniteObject
             }
 
             $type = $property->getType();
-            $convertedValue = self::convertValueToType($value, $type);
+            $convertedValue = self::convertValueToType($value, $type, $property, $classDateTimeProvider);
             $property->setValue($instance, $convertedValue);
         }
 
@@ -283,7 +212,7 @@ abstract readonly class GraniteDTO implements GraniteObject
         if (null !== $convention) {
             // Try to find a key that would convert to our PHP property name via the convention
             foreach (array_keys($data) as $key) {
-                if (self::conventionMatches($key, $phpName, $convention)) {
+                if (MetadataCache::conventionMatches($key, $phpName, $convention)) {
                     return $data[$key];
                 }
             }
@@ -293,51 +222,15 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
-     * Check if a data key matches the PHP property name via convention.
-     *
-     * @param string $dataKey Key from input data
-     * @param string $phpName PHP property name
-     * @param NamingConvention $convention Naming convention
-     * @return bool Whether they match
-     */
-    private static function conventionMatches(string $dataKey, string $phpName, NamingConvention $convention): bool
-    {
-        try {
-            // Normalize both names and compare
-            $dataKeyNormalized = $dataKey;
-            $phpNameNormalized = $phpName;
-
-            // If dataKey matches the convention, normalize it
-            if ($convention->matches($dataKey)) {
-                $dataKeyNormalized = $convention->normalize($dataKey);
-            }
-
-            // If phpName matches a different convention, we need to normalize it too
-            // For now, assume phpNames are in camelCase and normalize via convention
-            if ($convention->matches($phpName)) {
-                $phpNameNormalized = $convention->normalize($phpName);
-            } else {
-                // Try to convert phpName to the normalized form
-                // This is a simplified approach - in practice you might want more sophisticated detection
-                $converted = preg_replace('/([a-z])([A-Z])/', '$1 $2', $phpName);
-                $phpNameNormalized = mb_strtolower($converted ?? $phpName);
-            }
-
-            return $dataKeyNormalized === $phpNameNormalized;
-        } catch (Exception $e) {
-            return false;
-        }
-    }
-
-    /**
      * Get the class-level naming convention if defined.
      *
-     * @param class-string $class Class name
+     * @param string $class Class name
      * @return NamingConvention|null The naming convention or null if not defined
      */
     private static function getClassConvention(string $class): ?NamingConvention
     {
         try {
+            /** @var class-string $class */
             $reflection = ReflectionCache::getClass($class);
             $conventionAttrs = $reflection->getAttributes(SerializationConvention::class, ReflectionAttribute::IS_INSTANCEOF);
 
@@ -355,23 +248,52 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
+     * Get the class-level DateTime provider if defined.
+     *
+     * @param string $class Class name
+     * @return DateTimeProvider|null The DateTime provider or null if not defined
+     */
+    private static function getClassDateTimeProvider(string $class): ?DateTimeProvider
+    {
+        try {
+            /** @var class-string $class */
+            $reflection = ReflectionCache::getClass($class);
+            $providerAttrs = $reflection->getAttributes(DateTimeProvider::class, ReflectionAttribute::IS_INSTANCEOF);
+
+            if (empty($providerAttrs)) {
+                return null;
+            }
+
+            return $providerAttrs[0]->newInstance();
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /**
      * @param mixed $value The value to convert
      * @param ReflectionType|null $type The target type
+     * @param ReflectionProperty|null $property The property being converted (for attribute access)
+     * @param DateTimeProvider|null $classProvider Class-level DateTime provider
      * @return mixed Converted value
      * @throws DateMalformedStringException
      */
-    private static function convertValueToType(mixed $value, ?ReflectionType $type): mixed
-    {
+    private static function convertValueToType(
+        mixed $value,
+        ?ReflectionType $type,
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): mixed {
         if (null === $value) {
             return null;
         }
 
         if ($type instanceof ReflectionNamedType) {
-            return self::convertToNamedType($value, $type);
+            return self::convertToNamedType($value, $type, $property, $classProvider);
         }
 
         if ($type instanceof ReflectionUnionType) {
-            return self::convertToUnionType($value, $type);
+            return self::convertToUnionType($value, $type, $property, $classProvider);
         }
 
         return $value;
@@ -380,13 +302,24 @@ abstract readonly class GraniteDTO implements GraniteObject
     /**
      * @param mixed $value The value to convert
      * @param ReflectionNamedType $type The target type
+     * @param ReflectionProperty|null $property The property being converted
+     * @param DateTimeProvider|null $classProvider Class-level DateTime provider
      * @return mixed Converted value
      * @throws DateMalformedStringException
      * @throws Exception
      */
-    private static function convertToNamedType(mixed $value, ReflectionNamedType $type): mixed
-    {
+    private static function convertToNamedType(
+        mixed $value,
+        ReflectionNamedType $type,
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): mixed {
         $typeName = $type->getName();
+
+        // Check for Carbon classes first (before general DateTime check)
+        if (CarbonSupport::isCarbonClass($typeName)) {
+            return self::convertToCarbon($value, $typeName, $property, $classProvider);
+        }
 
         // Check for GraniteObject first
         if (is_subclass_of($typeName, GraniteObject::class)) {
@@ -401,14 +334,7 @@ abstract readonly class GraniteDTO implements GraniteObject
 
         // Check for DateTime
         if (DateTimeInterface::class === $typeName || is_subclass_of($typeName, DateTimeInterface::class)) {
-            if ($value instanceof DateTimeInterface) {
-                return $value;
-            }
-
-            if (is_string($value)) {
-                return new DateTimeImmutable($value);
-            }
-            return null;
+            return self::convertToDateTime($value, $typeName, $property, $classProvider);
         }
 
         // Check for Enum (PHP 8.1+)
@@ -441,22 +367,149 @@ abstract readonly class GraniteDTO implements GraniteObject
     }
 
     /**
+     * Convert value to Carbon instance.
+     *
+     * @param mixed $value Value to convert
+     * @param string $typeName Target Carbon type name
+     * @param ReflectionProperty|null $property Property for attribute access
+     * @param DateTimeProvider|null $classProvider Class-level provider
+     * @return DateTimeInterface|null Carbon instance
+     */
+    private static function convertToCarbon(
+        mixed $value,
+        string $typeName,
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): ?DateTimeInterface {
+        if ( ! CarbonSupport::isAvailable()) {
+            return null;
+        }
+
+        // Check for Carbon-specific attributes
+        $carbonTransformer = self::getCarbonTransformerFromAttributes($property, $classProvider);
+
+        if (null !== $carbonTransformer) {
+            return $carbonTransformer->transform($value);
+        }
+
+        // Fallback to basic Carbon creation
+        $immutable = CarbonSupport::isCarbonImmutable($typeName);
+        return CarbonSupport::create($value, null, null, $immutable);
+    }
+
+    /**
+     * Convert value to DateTime instance (with possible Carbon auto-conversion).
+     *
+     * @param mixed $value Value to convert
+     * @param string $typeName Target DateTime type name
+     * @param ReflectionProperty|null $property Property for attribute access
+     * @param DateTimeProvider|null $classProvider Class-level provider
+     * @return DateTimeInterface|null DateTime instance
+     * @throws DateMalformedStringException
+     */
+    private static function convertToDateTime(
+        mixed $value,
+        string $typeName,
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): ?DateTimeInterface {
+        // Check if global config suggests auto-converting to Carbon
+        $config = GraniteConfig::getInstance();
+        if ($config->shouldAutoConvertToCarbon($typeName)) {
+            $carbonResult = self::convertToCarbon($value, $config->getPreferredDateTimeClass(), $property, $classProvider);
+            if (null !== $carbonResult) {
+                return $carbonResult;
+            }
+        }
+
+        // Check for class-level DateTime provider
+        if (null !== $classProvider && $classProvider->isCarbonProvider()) {
+            return self::convertToCarbon($value, $classProvider->provider, $property, $classProvider);
+        }
+
+        // Standard DateTime conversion
+        if ($value instanceof DateTimeInterface) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            try {
+                return new DateTimeImmutable($value);
+            } catch (Exception) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get Carbon transformer from property attributes.
+     *
+     * @param ReflectionProperty|null $property Property to check for attributes
+     * @param DateTimeProvider|null $classProvider Class-level provider
+     * @return CarbonTransformer|null Carbon transformer or null
+     */
+    private static function getCarbonTransformerFromAttributes(
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): ?CarbonTransformer {
+        if (null === $property) {
+            return null;
+        }
+
+        // Check for CarbonDate attribute (most comprehensive)
+        $carbonDateAttrs = $property->getAttributes(CarbonDate::class, ReflectionAttribute::IS_INSTANCEOF);
+        if ( ! empty($carbonDateAttrs)) {
+            /** @var CarbonDate $attr */
+            $attr = $carbonDateAttrs[0]->newInstance();
+            return $attr->createTransformer();
+        }
+
+
+        // Only create transformer if we have some Carbon-specific configuration
+        if ((null !== $classProvider && $classProvider->isCarbonProvider())) {
+            return new CarbonTransformer(
+                immutable: $classProvider->isCarbonImmutable(),
+            );
+        }
+
+        return null;
+    }
+
+    /**
      * @param mixed $value The value to convert
      * @param ReflectionUnionType $type The union type
+     * @param ReflectionProperty|null $property Property for attribute access
+     * @param DateTimeProvider|null $classProvider Class-level provider
      * @return mixed Converted value
      * @throws DateMalformedStringException
      * @throws Exception
      */
-    private static function convertToUnionType(mixed $value, ReflectionUnionType $type): mixed
-    {
+    private static function convertToUnionType(
+        mixed $value,
+        ReflectionUnionType $type,
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): mixed {
         foreach ($type->getTypes() as $unionType) {
             if ($unionType instanceof ReflectionNamedType) {
                 $typeName = $unionType->getName();
-                if (DateTimeInterface::class === $typeName || is_subclass_of($typeName, DateTimeInterface::class)) {
-                    if (is_string($value)) {
-                        return new DateTimeImmutable($value);
+
+                // Try Carbon types first
+                if (CarbonSupport::isCarbonClass($typeName)) {
+                    $result = self::convertToCarbon($value, $typeName, $property, $classProvider);
+                    if (null !== $result) {
+                        return $result;
                     }
-                    return $value;
+                }
+
+                // Try DateTime types
+                if (DateTimeInterface::class === $typeName || is_subclass_of($typeName, DateTimeInterface::class)) {
+                    $result = self::convertToDateTime($value, $typeName, $property, $classProvider);
+                    if (null !== $result) {
+                        return $result;
+                    }
                 }
             }
         }
@@ -467,10 +520,11 @@ abstract readonly class GraniteDTO implements GraniteObject
     /**
      * @param string $propertyName The property name (for error reporting)
      * @param mixed $value The value to serialize
+     * @param ReflectionProperty|null $property Property for attribute access
      * @return mixed Serialized value
      * @throws SerializationException If the value cannot be serialized
      */
-    private function serializeValue(string $propertyName, mixed $value): mixed
+    private function serializeValue(string $propertyName, mixed $value, ?ReflectionProperty $property = null): mixed
     {
         if (null === $value) {
             return null;
@@ -478,6 +532,24 @@ abstract readonly class GraniteDTO implements GraniteObject
 
         if (is_scalar($value) || is_array($value)) {
             return $value;
+        }
+
+        // Handle Carbon instances with custom serialization
+        if (CarbonSupport::isCarbonInstance($value)) {
+            $carbonTransformer = self::getCarbonTransformerFromAttributes($property);
+            if (null !== $carbonTransformer) {
+                /** @var DateTimeInterface $value */
+                return $carbonTransformer->serialize($value);
+            }
+
+            // Fallback to global config
+            $config = GraniteConfig::getInstance();
+            /** @var DateTimeInterface $value */
+            return CarbonSupport::serialize(
+                $value,
+                $config->getCarbonSerializeFormat(),
+                $config->getCarbonSerializeTimezone(),
+            );
         }
 
         if ($value instanceof DateTimeInterface) {
