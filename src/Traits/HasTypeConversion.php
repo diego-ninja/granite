@@ -111,11 +111,8 @@ trait HasTypeConversion
             if (null === $value) {
                 return null;
             }
-            if (is_array($value) || is_string($value) || $value instanceof GraniteObject) {
-                return $typeName::from($value);
-            }
-            // For scalar values that are not strings, we can't convert directly
-            return null;
+
+            return $typeName::from($value);
         }
 
         // Check for DateTime
