@@ -446,6 +446,196 @@ $array = $event->array();
 // }
 ```
 
+### 📅 Carbon Date Support
+
+Granite includes comprehensive support for Carbon dates with specialized attributes and behaviors:
+
+```php
+<?php
+
+use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Serialization\Attributes\CarbonDate;
+use Ninja\Granite\Serialization\Attributes\CarbonRange;
+use Ninja\Granite\Serialization\Attributes\CarbonRelative;
+use Carbon\Carbon;
+
+final readonly class EventSchedule extends GraniteDTO
+{
+    public function __construct(
+        public string $title,
+        
+        // Custom format for serialization
+        #[CarbonDate(format: 'd/m/Y H:i')]
+        public Carbon $startDate,
+        
+        // ISO format with timezone
+        #[CarbonDate(format: 'c', timezone: 'UTC')]
+        public Carbon $endDate,
+        
+        // Date only format
+        #[CarbonDate(format: 'Y-m-d')]
+        public Carbon $publishDate,
+        
+        // Relative date parsing support
+        #[CarbonRelative]
+        public ?Carbon $reminderDate = null,
+        
+        // Range validation during deserialization
+        #[CarbonRange(min: 'now', max: '+1 year')]
+        public Carbon $deadline
+    ) {}
+}
+
+// Multiple ways to create with Carbon support
+$event = EventSchedule::from([
+    'title' => 'Annual Conference',
+    'startDate' => '2024-12-25 09:00:00',        // Standard format
+    'endDate' => Carbon::parse('2024-12-25 17:00:00'),  // Carbon object
+    'publishDate' => '2024-12-01',               // Date only
+    'reminderDate' => 'tomorrow at 9am',         // Relative parsing
+    'deadline' => '+6 months'                    // Relative format
+]);
+
+// Serialization uses the specified formats
+$array = $event->array();
+// Result: {
+//   'title' => 'Annual Conference',
+//   'startDate' => '25/12/2024 09:00',        // Custom format
+//   'endDate' => '2024-12-25T17:00:00+00:00', // ISO with timezone
+//   'publishDate' => '2024-12-01',             // Date only
+//   'reminderDate' => '2024-07-31T09:00:00+00:00',
+//   'deadline' => '2025-01-30T00:00:00+00:00'
+// }
+```
+
+#### Carbon Date Attributes
+
+**`#[CarbonDate]`** - Control Carbon serialization format
+```php
+#[CarbonDate(format: 'Y-m-d H:i:s')]
+public Carbon $createdAt;
+
+#[CarbonDate(format: 'c', timezone: 'UTC')]
+public Carbon $publishedAt;
+
+#[CarbonDate(format: 'd/m/Y')]  // European date format
+public Carbon $eventDate;
+```
+
+**`#[CarbonRelative]`** - Enable relative date parsing
+```php
+#[CarbonRelative]
+public ?Carbon $dueDate;
+
+// Accepts: 'tomorrow', 'next week', '2 hours ago', 'first day of next month'
+$task = Task::from(['dueDate' => 'next Friday at 5pm']);
+```
+
+**`#[CarbonRange]`** - Validate date ranges
+```php
+#[CarbonRange(min: 'now', max: '+1 year')]
+public Carbon $eventDate;  // Must be between now and next year
+
+#[CarbonRange(min: '2024-01-01', max: '2024-12-31')]
+public Carbon $fiscalYear;  // Must be within 2024
+```
+
+#### Carbon with Multiple Formats
+
+```php
+final readonly class FlexibleEvent extends GraniteDTO
+{
+    public function __construct(
+        public string $name,
+        
+        // Accepts multiple input formats, outputs in specific format
+        #[CarbonDate(format: 'Y-m-d\TH:i:s\Z')]
+        public Carbon $startTime,
+        
+        // Business hours only
+        #[CarbonDate(format: 'H:i')]
+        public Carbon $businessHours,
+        
+        // Week of year
+        #[CarbonDate(format: 'W')]
+        public Carbon $weekNumber
+    ) {}
+}
+
+// All these input formats work for startTime
+$event1 = FlexibleEvent::from(['startTime' => '2024-12-25 10:30:00']);
+$event2 = FlexibleEvent::from(['startTime' => '2024-12-25T10:30:00Z']);
+$event3 = FlexibleEvent::from(['startTime' => Carbon::now()]);
+
+// All serialize to: "2024-12-25T10:30:00Z"
+```
+
+#### Carbon Provider Configuration
+
+Configure default Carbon behavior at the class level:
+
+```php
+<?php
+
+use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
+use Carbon\Carbon;
+
+#[DateTimeProvider(
+    defaultTimezone: 'UTC',
+    defaultFormat: 'Y-m-d H:i:s',
+    parseFormats: ['Y-m-d H:i:s', 'Y-m-d\TH:i:s\Z', 'Y-m-d']
+)]
+final readonly class GlobalEvent extends GraniteDTO
+{
+    public function __construct(
+        public string $title,
+        public Carbon $startDate,  // Uses class defaults
+        public Carbon $endDate,
+        
+        #[CarbonDate(format: 'd/m/Y')]  // Override for specific property
+        public Carbon $publishDate
+    ) {}
+}
+```
+
+#### Carbon Timezone Handling
+
+```php
+final readonly class TimezoneEvent extends GraniteDTO
+{
+    public function __construct(
+        public string $name,
+        
+        // Store in UTC, display in local timezone
+        #[CarbonDate(format: 'c', timezone: 'UTC')]
+        public Carbon $utcTime,
+        
+        // Preserve original timezone
+        #[CarbonDate(format: 'c', preserveTimezone: true)]
+        public Carbon $localTime,
+        
+        // Convert to specific timezone for serialization
+        #[CarbonDate(format: 'Y-m-d H:i T', timezone: 'America/New_York')]
+        public Carbon $easternTime
+    ) {}
+}
+
+$event = TimezoneEvent::from([
+    'name' => 'Global Meeting',
+    'utcTime' => '2024-12-25 15:30:00+02:00',
+    'localTime' => '2024-12-25 15:30:00+02:00', 
+    'easternTime' => '2024-12-25 15:30:00+02:00'
+]);
+
+$array = $event->array();
+// Result: {
+//   'name' => 'Global Meeting',
+//   'utcTime' => '2024-12-25T13:30:00+00:00',      // Converted to UTC
+//   'localTime' => '2024-12-25T15:30:00+02:00',    // Original timezone preserved
+//   'easternTime' => '2024-12-25 08:30 EST'        // Converted to Eastern time
+// }
+```
+
 ### Enum Serialization
 
 Enums are automatically handled based on their type:

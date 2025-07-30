@@ -3,15 +3,15 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
 [![Total Downloads](https://img.shields.io/packagist/dt/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
 ![PHP Version](https://img.shields.io/packagist/php-v/diego-ninja/granite.svg?style=flat&color=blue)
-[![PHPStan Level](https://img.shields.io/badge/phpstan-10-blue.svg?style=flat)](https://phpstan.org/)
 [![Code Style](https://img.shields.io/badge/code%20style-PER-blue.svg?style=flat)](https://www.php-fig.org/per/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
 [![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
 
-[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat)](https://coveralls.io/github/diego-ninja/granite)
+[![PHPStan Level](https://img.shields.io/badge/phpstan-10-green.svg?style=flat)](https://phpstan.org/)
 [![PHPUnit](https://img.shields.io/badge/PHPUnit-✓%20passing-green.svg?style=flat)](https://phpunit.de/)
-[![Tests](https://img.shields.io/badge/tests-1078%20passed-green.svg?style=flat)](https://phpunit.de/)
+[![Tests](https://img.shields.io/badge/tests-1333%20passed-green.svg?style=flat)](https://phpunit.de/)
+[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat)](https://coveralls.io/github/diego-ninja/granite)
 
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 
@@ -24,11 +24,18 @@ This documentation has been generated almost in its entirety using 🦠 Claude 4
 - Thread-safe by design
 - Functional programming friendly
 
+### 🎯 **Enhanced Object Creation**
+- **Multiple `from()` patterns** - Array, JSON, named parameters, mixed usage
+- **Transparent operation** - No method overrides needed in child classes
+- **Type-safe** - Full PHPStan Level 10 compatibility
+- **Flexible usage** - Perfect for APIs, domain modeling, and clean code
+
 ### ✅ **Comprehensive Validation**
-- 25+ built-in validation rules
+- 30+ built-in validation rules including Carbon date validation
 - Attribute-based validation (PHP 8+)
 - Custom validation rules and callbacks
 - Conditional and nested validation
+- **Carbon-specific rules** - Age, BusinessDay, Future, Past, Range, Weekend
 
 ### 🔄 **Powerful ObjectMapper**
 - Automatic property mapping between objects
@@ -40,6 +47,7 @@ This documentation has been generated almost in its entirety using 🦠 Claude 4
 - JSON/Array serialization with custom property names
 - Class-level naming conventions with `SerializationConvention` attribute
 - Hide sensitive properties automatically
+- **Carbon date handling** - Custom formats, relative parsing, timezone support
 - DateTime and Enum handling
 - Nested object serialization
 
@@ -68,6 +76,8 @@ use Ninja\Granite\Validation\Attributes\Min;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Attributes\Hidden;
+use Ninja\Granite\Serialization\Attributes\CarbonDate;
+use Carbon\Carbon;
 
 // Create a Value Object with validation
 final readonly class User extends GraniteVO
@@ -87,26 +97,139 @@ final readonly class User extends GraniteVO
         public ?string $password = null,
         
         #[SerializedName('created_at')]
-        public DateTime $createdAt = new DateTime()
+        #[CarbonDate(format: 'Y-m-d H:i:s')]
+        public Carbon $createdAt = new Carbon()
     ) {}
 }
 
-// Create and validate
+// Multiple ways to create objects - all work transparently!
+
+// 1. From array (traditional)
 $user = User::from([
     'name' => 'John Doe',
     'email' => 'john@example.com',
     'password' => 'secret123'
 ]);
 
+// 2. From JSON string
+$user = User::from('{"name": "John Doe", "email": "john@example.com", "password": "secret123"}');
+
+// 3. Named parameters (NEW!) - Works transparently without method overrides
+$user = User::from(
+    name: 'John Doe',
+    email: 'john@example.com',
+    password: 'secret123'
+);
+
+// 4. Mixed - base data with named overrides (NEW!)
+$baseData = ['name' => 'John', 'email' => 'john@example.com'];
+$user = User::from($baseData, name: 'John Doe', password: 'secret123');
+
+// 5. From another Granite object
+$anotherUser = User::from($user);
+
 // Immutable updates
 $updatedUser = $user->with(['name' => 'Jane Doe']);
 
-// Serialization
+// Serialization with Carbon support
 $json = $user->json();
-// {"id":null,"name":"John Doe","email":"john@example.com","created_at":"2024-01-15T10:30:00+00:00"}
+// {"id":null,"name":"John Doe","email":"john@example.com","created_at":"2024-01-15 10:30:00"}
 
 $array = $user->array();
-// password is hidden, created_at uses custom name
+// password is hidden, created_at uses custom Carbon format
+```
+
+### 🎯 Enhanced `from()` Method
+
+Granite's `from()` method supports multiple invocation patterns **transparently** - no need to override methods in child classes!
+
+```php
+final readonly class Product extends GraniteDTO
+{
+    public function __construct(
+        public string $name,
+        public float $price,
+        public ?string $description = null,
+        #[CarbonDate] 
+        public Carbon $createdAt = new Carbon()
+    ) {}
+}
+
+// All these patterns work automatically:
+
+// Array data
+$product = Product::from(['name' => 'Laptop', 'price' => 999.99]);
+
+// JSON string  
+$product = Product::from('{"name": "Laptop", "price": 999.99}');
+
+// Named parameters - perfect for APIs and clean code
+$product = Product::from(
+    name: 'Laptop',
+    price: 999.99,
+    description: 'High-performance laptop'
+);
+
+// Mixed patterns - base data + overrides
+$defaults = ['name' => 'Generic Product', 'price' => 0.0];
+$product = Product::from($defaults, name: 'Laptop', price: 999.99);
+
+// From another Granite object
+$clonedProduct = Product::from($product);
+
+// Partial data - unspecified properties remain uninitialized
+$partial = Product::from(name: 'Laptop', price: 999.99);
+// $partial->description is uninitialized, not null
+```
+
+### 📅 Carbon Date Support
+
+Granite includes comprehensive support for Carbon dates with specialized attributes:
+
+```php
+use Ninja\Granite\Serialization\Attributes\CarbonDate;
+use Ninja\Granite\Serialization\Attributes\CarbonRange;
+use Ninja\Granite\Serialization\Attributes\CarbonRelative;
+use Ninja\Granite\Validation\Rules\Carbon\Age;
+use Ninja\Granite\Validation\Rules\Carbon\Future;
+use Ninja\Granite\Validation\Rules\Carbon\BusinessDay;
+
+final readonly class Event extends GraniteVO  
+{
+    public function __construct(
+        public string $title,
+        
+        // Custom date format for serialization
+        #[CarbonDate(format: 'd/m/Y H:i')]
+        public Carbon $startDate,
+        
+        // Date range validation
+        #[CarbonRange(min: 'now', max: '+1 year')]
+        public Carbon $endDate,
+        
+        // Relative date parsing ('tomorrow', '2 weeks ago', etc.)
+        #[CarbonRelative]
+        public ?Carbon $reminderDate = null,
+        
+        // Business logic validation
+        #[Future(message: 'Event must be in the future')]
+        #[BusinessDay(message: 'Event must be on a business day')]
+        public Carbon $publishDate
+    ) {}
+}
+
+// Create with various date formats
+$event = Event::from(
+    title: 'Conference',
+    startDate: '2024-12-25 09:00:00',     // Standard format
+    endDate: Carbon::parse('+3 days'),     // Carbon object
+    reminderDate: 'tomorrow at 9am',       // Relative format
+    publishDate: '2024-12-01'              // Date only
+);
+
+// Serialization uses custom formats
+$json = $event->json();
+// {"title":"Conference","startDate":"25/12/2024 09:00",...}
 ```
 
 ### Serialization Conventions
@@ -139,11 +262,12 @@ $json = $profile->json();
 
 ### Core Concepts
 
-- **[Validation](docs/validation.md)** - Comprehensive validation system with 25+ built-in rules
-- **[Serialization](docs/serialization.md)** - Control how objects are converted to/from arrays and JSON
-- **[ObjectMapper](docs/objectmapper.md)** - Powerful object-to-object mapping with conventions
+- **[Enhanced from() Method](docs/hydration.md)** - Multiple invocation patterns for flexible object creation ✨ NEW
+- **[Validation](docs/validation.md)** - Comprehensive validation system with 30+ built-in rules including Carbon
+- **[Serialization](docs/serialization.md)** - Control how objects are converted to/from arrays and JSON with Carbon support
+- **[ObjectMapper](docs/automapper.md)** - Powerful object-to-object mapping with conventions
 - **[Advanced Usage](docs/advanced_usage.md)** - Patterns for complex applications
-- **[API Reference](docs/api_reference.md)** - Complete API documentation
+- **[API Reference](docs/api_reference.md)** - Complete API documentation with new Carbon features
 
 
 ### Guides
@@ -468,6 +592,17 @@ $userDto = $mapper->map($userEntity, UserDto::class);
 | `#[EnumType]` | Valid enum value | `#[EnumType(Status::class)]` |
 | `#[Each(...)]` | Validate array items | `#[Each(new Email())]` |
 | `#[When(...)]` | Conditional validation | `#[When($condition, $rule)]` |
+
+### 📅 Carbon Date Validation Rules
+
+| Rule | Description | Example |
+|------|-------------|---------|
+| `#[Age(min: 18, max: 65)]` | Validate age range | `#[Age(min: 18, message: 'Must be adult')]` |
+| `#[BusinessDay]` | Must be a business day | `#[BusinessDay('Only weekdays allowed')]` |
+| `#[Future]` | Date must be in the future | `#[Future('Event must be upcoming')]` |
+| `#[Past]` | Date must be in the past | `#[Past('Birth date must be past')]` |
+| `#[Range(min: 'now', max: '+1 year')]` | Date within range | `#[Range(min: 'today', max: 'next month')]` |
+| `#[Weekend]` | Must be weekend | `#[Weekend('Event only on weekends')]` |
 
 ## 📈 Performance
 

@@ -9,7 +9,7 @@ namespace Tests\Unit;
 use Error;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\ValidationException;
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\GraniteVO;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -54,14 +54,14 @@ class GraniteVOTest extends TestCase
             ],
         ];
     }
-    public function test_extends_granite_dto(): void
+    public function test_extends_granite(): void
     {
         $vo = UserVO::from([
             'name' => 'John',
             'email' => 'john@example.com',
         ]);
 
-        $this->assertInstanceOf(GraniteDTO::class, $vo);
+        $this->assertInstanceOf(Granite::class, $vo);
         $this->assertInstanceOf(GraniteObject::class, $vo);
     }
 

@@ -1,10 +1,10 @@
 <?php
 
 use Ninja\Granite\Exceptions\GraniteException;
-use Ninja\Granite\Mapping\ObjectMapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Ninja\Granite\Mapping\ObjectMapper;
 
-if (!function_exists('map')) {
+if ( ! function_exists('map')) {
     /**
      * Map an object or array to a destination type using global ObjectMapper instance.
      *
@@ -30,7 +30,7 @@ if (!function_exists('map')) {
     }
 }
 
-if (!function_exists('map_array')) {
+if ( ! function_exists('map_array')) {
     /**
      * Map an array of objects to a destination type using global ObjectMapper instance.
      *
@@ -46,7 +46,7 @@ if (!function_exists('map_array')) {
     }
 }
 
-if (!function_exists('map_to')) {
+if ( ! function_exists('map_to')) {
     /**
      * Map source data to an existing destination object.
      *
@@ -61,12 +61,13 @@ if (!function_exists('map_to')) {
     }
 }
 
-if (!function_exists('configure_mapper')) {
+if ( ! function_exists('configure_mapper')) {
     /**
      * Configure the global ObjectMapper instance.
      *
      * @param callable $configurator Configuration callback
      *
+     * @throws Ninja\Granite\Exceptions\ReflectionException
      * @example
      * configure_mapper(function($mapper) {
      *     $mapper->addProfile(new UserMappingProfile());

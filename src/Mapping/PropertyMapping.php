@@ -64,7 +64,7 @@ class PropertyMapping
         bool $recursive = false,
         mixed $itemTransformer = null,
     ): self {
-        $this->transformer = new Transformers\CollectionTransformer(
+        $this->transformer = new \Ninja\Granite\Transformers\CollectionTransformer(
             destinationType: $itemType,
             mapper: null,
             preserveKeys: $preserveKeys,
@@ -166,7 +166,7 @@ class PropertyMapping
      */
     public function setMapper(mixed $mapper): self
     {
-        if ($this->transformer instanceof Transformers\CollectionTransformer && $mapper instanceof Contracts\Mapper) {
+        if ($this->transformer instanceof \Ninja\Granite\Transformers\CollectionTransformer && $mapper instanceof Contracts\Mapper) {
             $this->transformer->setMapper($mapper);
         }
 

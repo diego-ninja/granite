@@ -4,7 +4,7 @@ namespace Ninja\Granite\Mapping\Attributes;
 
 use Attribute;
 use Ninja\Granite\Mapping\Contracts\Transformer;
-use Ninja\Granite\Mapping\Transformers\CollectionTransformer;
+use Ninja\Granite\Transformers\CollectionTransformer;
 
 /**
  * Attribute to configure collection mapping.

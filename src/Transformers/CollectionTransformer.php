@@ -1,6 +1,6 @@
 <?php
 
-namespace Ninja\Granite\Mapping\Transformers;
+namespace Ninja\Granite\Transformers;
 
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;

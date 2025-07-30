@@ -5,7 +5,7 @@ namespace Ninja\Granite\Support;
 /**
  * String helper utilities for cross-version PHP compatibility.
  */
-class StringHelper
+final readonly class StringHelper
 {
     /**
      * Multibyte-safe trim function.

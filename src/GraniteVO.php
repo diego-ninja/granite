@@ -4,44 +4,26 @@ namespace Ninja\Granite;
 
 use DateMalformedStringException;
 use InvalidArgumentException;
-use Ninja\Granite\Contracts\GraniteObject;
-use Ninja\Granite\Exceptions\ValidationException;
-use Ninja\Granite\Validation\GraniteValidator;
-use Ninja\Granite\Validation\RuleExtractor;
-use ReflectionException;
+use Ninja\Granite\Exceptions\SerializationException;
 
-abstract readonly class GraniteVO extends GraniteDTO
+abstract readonly class GraniteVO extends Granite
 {
     /**
      * Create a new Value Object instance with validation.
      *
-     * @param string|array|GraniteObject $data Source data
+     * @param mixed ...$args Variable arguments supporting multiple patterns
      * @return static The new Value Object instance
      * @throws InvalidArgumentException If validation fails
-     * @throws ReflectionException
      * @throws DateMalformedStringException
-     * @throws ValidationException
+     * @throws Exceptions\ReflectionException
      */
-    public static function from(string|array|GraniteObject $data): static
+    public static function from(mixed ...$args): static
     {
-        // First normalize the data to work with an array
-        $data = self::normalizeInputData($data);
-
-        // Get rules from both method and attributes
-        $methodRules = static::rules();
-        $attributeRules = RuleExtractor::extractRules(static::class);
-
-        // Merge rules, preferring method rules if defined for the same property
-        $rules = $attributeRules;
-        foreach ($methodRules as $property => $propertyRules) {
-            $rules[$property] = $propertyRules;
+        if (empty($args)) {
+            throw new InvalidArgumentException('At least one argument is required');
         }
 
-        // Create validator and validate data
-        GraniteValidator::fromArray($rules)->validate($data, static::class);
-
-        // Create the instance using parent method
-        return parent::from($data);
+        return parent::from(...$args);
     }
 
     /**
@@ -50,7 +32,8 @@ abstract readonly class GraniteVO extends GraniteDTO
      *
      * @param mixed $other The Value Object or array to compare with
      * @return bool True if equal, false otherwise
-     * @throws ReflectionException
+     * @throws Exceptions\ReflectionException
+     * @throws SerializationException
      */
     public function equals(mixed $other): bool
     {
@@ -104,9 +87,8 @@ abstract readonly class GraniteVO extends GraniteDTO
      * @param array $modifications Properties to modify
      * @return static New Value Object with modifications
      * @throws InvalidArgumentException If validation fails
-     * @throws ReflectionException
      * @throws DateMalformedStringException
-     * @throws ValidationException|Exceptions\SerializationException
+     * @throws SerializationException|Exceptions\ReflectionException
      */
     public function with(array $modifications): static
     {
@@ -121,16 +103,4 @@ abstract readonly class GraniteVO extends GraniteDTO
         // Create new instance with modified data
         return static::from($data);
     }
-
-    /**
-     * Get validation rules for this Value Object.
-     * Override this method in child classes to define validation rules.
-     *
-     * @return array<string, array> Validation rules by property name
-     */
-    protected static function rules(): array
-    {
-        return [];
-    }
-
 }

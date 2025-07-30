@@ -25,27 +25,51 @@ abstract readonly class GraniteDTO implements GraniteObject
 
 #### Static Methods
 
-##### `from(string|array|GraniteObject $data): static`
-Creates a new instance from various data sources.
+##### `from(mixed ...$args): static` ✨ ENHANCED
+Creates a new instance from various data sources with multiple invocation patterns.
 
 **Parameters:**
-- `$data` - Source data (JSON string, array, or another GraniteObject)
+- `...$args` - Variable arguments supporting multiple patterns:
+  - Array data: `from(['key' => 'value'])`
+  - JSON string: `from('{"key": "value"}')`
+  - Granite object: `from($graniteObject)`
+  - Named parameters: `from(key: 'value', another: 'value')`
+  - Mixed usage: `from($baseData, key: 'override')`
 
 **Returns:** New instance of the DTO
 
 **Throws:**
 - `ValidationException` - If validation fails (GraniteVO only)
 - `SerializationException` - If deserialization fails
+- `InvalidArgumentException` - If invalid JSON provided
 
 ```php
+// Array data
 $user = UserDTO::from([
     'id' => 1,
     'name' => 'John Doe',
     'email' => 'john@example.com'
 ]);
 
-$user = UserDTO::from('{"id":1,"name":"John Doe"}');
+// JSON string
+$user = UserDTO::from('{"id":1,"name":"John Doe","email":"john@example.com"}');
+
+// Named parameters (NEW!)
+$user = UserDTO::from(
+    id: 1,
+    name: 'John Doe',
+    email: 'john@example.com'
+);
+
+// Mixed usage (NEW!)
+$defaults = ['name' => 'Default', 'email' => 'default@example.com'];
+$user = UserDTO::from($defaults, id: 1, name: 'John Doe');
+
+// From another Granite object
 $user = UserDTO::from($otherUser);
+
+// Empty object (partial initialization)
+$user = UserDTO::from();
 ```
 
 #### Instance Methods
@@ -403,6 +427,141 @@ Abstract method that performs the validation.
 - `When(callable $condition, ValidationRule $rule)` - Conditional validation
 - `Callback(callable $callback)` - Custom validation function
 
+### 📅 Carbon Date Validation Rules ✨ NEW
+
+#### `Age(int $min, int $max, ?string $message = null)`
+Validates that a Carbon date represents an age within the specified range.
+
+```php
+use Ninja\Granite\Validation\Rules\Carbon\Age;
+
+#[Age(min: 18, max: 65)]
+public Carbon $birthDate;
+
+#[Age(min: 21, message: 'Must be at least 21 years old')]
+public Carbon $dateOfBirth;
+```
+
+#### `BusinessDay(?string $message = null)`
+Validates that a Carbon date falls on a business day (Monday-Friday).
+
+```php
+use Ninja\Granite\Validation\Rules\Carbon\BusinessDay;
+
+#[BusinessDay]
+public Carbon $meetingDate;
+
+#[BusinessDay(message: 'Events can only be scheduled on business days')]
+public Carbon $eventDate;
+```
+
+#### `Future(?string $message = null)`
+Validates that a Carbon date is in the future.
+
+```php
+use Ninja\Granite\Validation\Rules\Carbon\Future;
+
+#[Future]
+public Carbon $eventDate;
+
+#[Future(message: 'Event must be scheduled for a future date')]
+public Carbon $scheduledAt;
+```
+
+#### `Past(?string $message = null)`
+Validates that a Carbon date is in the past.
+
+```php
+use Ninja\Granite\Validation\Rules\Carbon\Past;
+
+#[Past]
+public Carbon $birthDate;
+
+#[Past(message: 'Birth date must be in the past')]
+public Carbon $dateOfBirth;
+```
+
+#### `Range(string $min, string $max, ?string $message = null)`
+Validates that a Carbon date falls within the specified range.
+
+```php
+use Ninja\Granite\Validation\Rules\Carbon\Range;
+
+#[Range(min: 'now', max: '+1 year')]
+public Carbon $eventDate;
+
+#[Range(min: '2024-01-01', max: '2024-12-31')]
+public Carbon $fiscalDate;
+
+#[Range(min: 'today', max: 'next month', message: 'Date must be within the next month')]
+public Carbon $deadline;
+```
+
+#### `Weekend(?string $message = null)`
+Validates that a Carbon date falls on a weekend (Saturday or Sunday).
+
+```php
+use Ninja\Granite\Validation\Rules\Carbon\Weekend;
+
+#[Weekend]
+public Carbon $leisureDate;
+
+#[Weekend(message: 'Personal events must be scheduled on weekends')]
+public Carbon $personalEvent;
+```
+
+#### Usage Examples
+
+```php
+<?php
+
+use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Validation\Rules\Carbon\Age;
+use Ninja\Granite\Validation\Rules\Carbon\BusinessDay;
+use Ninja\Granite\Validation\Rules\Carbon\Future;
+use Ninja\Granite\Validation\Rules\Carbon\Range;
+use Carbon\Carbon;
+
+final readonly class EventRegistration extends GraniteVO
+{
+    public function __construct(
+        public string $name,
+        
+        #[Age(min: 18, max: 99, message: 'Participant must be between 18 and 99 years old')]
+        public Carbon $birthDate,
+        
+        #[Future(message: 'Event must be scheduled for the future')]
+        #[BusinessDay(message: 'Events can only be on business days')]
+        public Carbon $eventDate,
+        
+        #[Range(min: 'now', max: '+6 months', message: 'Registration must be within 6 months')]
+        public Carbon $registrationDeadline
+    ) {}
+}
+
+// Valid registration
+$registration = EventRegistration::from(
+    name: 'John Doe',
+    birthDate: '1990-05-15',           // Age validation passes
+    eventDate: 'next Monday at 9am',   // Future + BusinessDay validation passes
+    registrationDeadline: '+3 months'  // Range validation passes
+);
+
+// Invalid registration - throws ValidationException
+try {
+    $invalid = EventRegistration::from(
+        name: 'Jane Doe',
+        birthDate: '2010-01-01',       // Age validation fails (too young)
+        eventDate: 'next Saturday',    // BusinessDay validation fails
+        registrationDeadline: '+1 year' // Range validation fails (too far)
+    );
+} catch (ValidationException $e) {
+    foreach ($e->getErrors() as $property => $errors) {
+        echo "$property: " . implode(', ', $errors) . "\n";
+    }
+}
+```
+
 ## Serialization Attributes
 
 ### `#[SerializedName(string $name)]`
@@ -426,6 +585,103 @@ public string $password;
 #[SerializedName('api_key')]
 #[Hidden]
 public ?string $apiKey;
+```
+
+### `#[SerializationConvention(string|object $convention)]`
+Applies a naming convention to all properties in a class.
+
+```php
+use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
+
+#[SerializationConvention(SnakeCaseConvention::class)]
+final readonly class User extends GraniteDTO
+{
+    public function __construct(
+        public string $firstName,    // serialized as "first_name"
+        public string $lastName,     // serialized as "last_name"
+        public string $emailAddress  // serialized as "email_address"
+    ) {}
+}
+```
+
+### 📅 Carbon Date Attributes
+
+### `#[CarbonDate(string $format, ?string $timezone = null, bool $preserveTimezone = false)]` ✨ NEW
+Controls Carbon date serialization format and timezone handling.
+
+**Parameters:**
+- `$format` - PHP date format string (e.g., 'Y-m-d H:i:s', 'c', 'd/m/Y')
+- `$timezone` - Target timezone for serialization (e.g., 'UTC', 'America/New_York')
+- `$preserveTimezone` - Whether to preserve the original timezone
+
+```php
+use Carbon\Carbon;
+
+#[CarbonDate(format: 'Y-m-d H:i:s')]
+public Carbon $createdAt;
+
+#[CarbonDate(format: 'c', timezone: 'UTC')]
+public Carbon $publishedAt;
+
+#[CarbonDate(format: 'd/m/Y')]
+public Carbon $eventDate;
+
+#[CarbonDate(format: 'Y-m-d H:i T', timezone: 'America/New_York')]
+public Carbon $easternTime;
+```
+
+### `#[CarbonRelative]` ✨ NEW
+Enables relative date parsing for Carbon properties.
+
+```php
+#[CarbonRelative]
+public ?Carbon $dueDate;
+
+// Accepts: 'tomorrow', 'next week', '2 hours ago', 'first day of next month'
+$task = Task::from(['dueDate' => 'next Friday at 5pm']);
+```
+
+### `#[CarbonRange(string $min, string $max, ?string $message = null)]` ✨ NEW
+Validates that Carbon dates fall within a specified range.
+
+**Parameters:**
+- `$min` - Minimum date (Carbon parseable string like 'now', '2024-01-01')
+- `$max` - Maximum date (Carbon parseable string like '+1 year', '2024-12-31')
+- `$message` - Custom validation message
+
+```php
+#[CarbonRange(min: 'now', max: '+1 year')]
+public Carbon $eventDate;
+
+#[CarbonRange(min: '2024-01-01', max: '2024-12-31', message: 'Date must be within 2024')]
+public Carbon $fiscalDate;
+```
+
+### `#[DateTimeProvider(string $defaultTimezone, string $defaultFormat, array $parseFormats)]` ✨ NEW
+Configures default Carbon behavior at the class level.
+
+**Parameters:**
+- `$defaultTimezone` - Default timezone for all Carbon properties
+- `$defaultFormat` - Default serialization format
+- `$parseFormats` - Array of acceptable input formats for parsing
+
+```php
+#[DateTimeProvider(
+    defaultTimezone: 'UTC',
+    defaultFormat: 'Y-m-d H:i:s',
+    parseFormats: ['Y-m-d H:i:s', 'Y-m-d\TH:i:s\Z', 'Y-m-d']
+)]
+final readonly class Event extends GraniteDTO
+{
+    public function __construct(
+        public string $title,
+        public Carbon $startDate,  // Uses class defaults
+        public Carbon $endDate,
+        
+        #[CarbonDate(format: 'd/m/Y')]  // Override for specific property
+        public Carbon $publishDate
+    ) {}
+}
 ```
 
 ## Mapping Attributes

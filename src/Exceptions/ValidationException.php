@@ -9,9 +9,22 @@ use Exception;
  */
 class ValidationException extends GraniteException
 {
+    /**
+     * @var array<array<string>> Validation errors by field.
+     * The keys are field names and the values are arrays of error messages.
+     */
     private array $errors;
     private string $objectType;
 
+    /**
+     * Create a new ValidationException.
+     *
+     * @param string $objectType The type of object that failed validation.
+     * @param array<array<string>> $errors Validation errors by field.
+     * @param string $message Optional custom message for the exception.
+     * @param int $code Optional custom error code.
+     * @param Exception|null $previous Optional previous exception for chaining.
+     */
     public function __construct(string $objectType, array $errors, string $message = "", int $code = 0, ?Exception $previous = null)
     {
         $this->objectType = $objectType;
@@ -31,6 +44,7 @@ class ValidationException extends GraniteException
 
     /**
      * Get validation errors by field.
+     * @return array<array<string>>
      */
     public function getErrors(): array
     {
@@ -42,8 +56,7 @@ class ValidationException extends GraniteException
      */
     public function getFieldErrors(string $field): array
     {
-        $fieldErrors = $this->errors[$field] ?? [];
-        return is_array($fieldErrors) ? $fieldErrors : [];
+        return $this->errors[$field] ?? [];
     }
 
     /**
@@ -69,12 +82,8 @@ class ValidationException extends GraniteException
     {
         $messages = [];
         foreach ($this->errors as $fieldErrors) {
-            if (is_array($fieldErrors)) {
-                foreach ($fieldErrors as $error) {
-                    if (is_string($error)) {
-                        $messages[] = $error;
-                    }
-                }
+            foreach ($fieldErrors as $error) {
+                $messages[] = $error;
             }
         }
         return $messages;
@@ -87,12 +96,8 @@ class ValidationException extends GraniteException
     {
         $messages = [];
         foreach ($this->errors as $fieldErrors) {
-            if (is_array($fieldErrors)) {
-                foreach ($fieldErrors as $error) {
-                    if (is_string($error)) {
-                        $messages[] = "• {$error}";
-                    }
-                }
+            foreach ($fieldErrors as $error) {
+                $messages[] = "• {$error}";
             }
         }
 
