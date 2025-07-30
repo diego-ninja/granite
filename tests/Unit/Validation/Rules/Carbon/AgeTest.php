@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-#[CoversClass(\Ninja\Granite\Validation\Rules\Carbon\Age::class)]
+#[CoversClass(Age::class)]
 final class AgeTest extends TestCase
 {
     /**

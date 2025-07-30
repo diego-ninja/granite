@@ -12,7 +12,7 @@ use Ninja\Granite\Transformers\CarbonTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(\Ninja\Granite\Serialization\Attributes\CarbonDate::class)]
+#[CoversClass(CarbonDate::class)]
 final class CarbonDateTest extends TestCase
 {
     public function testDefaultValues(): void

@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-#[CoversClass(\Ninja\Granite\Validation\Rules\Carbon\Range::class)]
+#[CoversClass(Range::class)]
 final class RangeTest extends TestCase
 {
     /**

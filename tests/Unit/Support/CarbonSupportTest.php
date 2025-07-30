@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-#[CoversClass(\Ninja\Granite\Support\CarbonSupport::class)]
+#[CoversClass(CarbonSupport::class)]
 final class CarbonSupportTest extends TestCase
 {
     protected function setUp(): void

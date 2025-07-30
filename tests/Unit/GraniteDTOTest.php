@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use DateMalformedStringException;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Error;

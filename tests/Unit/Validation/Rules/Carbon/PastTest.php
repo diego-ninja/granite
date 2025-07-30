@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-#[CoversClass(\Ninja\Granite\Validation\Rules\Carbon\Past::class)]
+#[CoversClass(Past::class)]
 final class PastTest extends TestCase
 {
     /**

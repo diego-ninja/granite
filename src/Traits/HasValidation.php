@@ -56,7 +56,7 @@ trait HasValidation
      * Get validation errors without throwing exceptions.
      *
      * @param array|null $data Optional data context for validation
-     * @return array<string, array<string>> Validation errors by property name
+     * @return array<array<string>> Validation errors by property name
      * @throws ReflectionException
      * @throws SerializationException
      * @throws \Ninja\Granite\Exceptions\ReflectionException

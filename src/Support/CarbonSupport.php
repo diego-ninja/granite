@@ -4,7 +4,6 @@ namespace Ninja\Granite\Support;
 
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
-use Carbon\CarbonInterface;
 use DateTimeInterface;
 use Exception;
 
