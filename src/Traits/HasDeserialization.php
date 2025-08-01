@@ -128,6 +128,11 @@ trait HasDeserialization
 
         static::validateData($data, static::class);
 
+        // Check if we need to use constructor due to readonly properties from parent classes
+        if (self::hasReadonlyPropertiesFromParentClasses()) {
+            return self::createInstanceWithConstructor($data);
+        }
+
         $instance = self::createEmptyInstance();
         return self::hydrateInstance($instance, $data);
     }
@@ -349,6 +354,140 @@ trait HasDeserialization
         // Process each property
         foreach ($properties as $property) {
             $phpName = $property->getName();
+            $serializedName = $metadata->getSerializedName($phpName);
+
+            // Try to find the value in the input data with multiple strategies
+            $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
+
+            // Skip if property is not found in data
+            if (null === $value && ! array_key_exists($phpName, $data) &&
+                ! array_key_exists($serializedName, $data)) {
+                continue;
+            }
+
+            $type = $property->getType();
+            $convertedValue = self::convertValueToType($value, $type, $property, $classDateTimeProvider);
+
+            // In PHP 8.3, readonly properties can only be set by the declaring class
+            // Check if this is a readonly property from a parent class
+            if ($property->isReadOnly() && $property->getDeclaringClass()->getName() !== static::class) {
+                // Skip readonly properties from parent classes in PHP 8.3
+                // They should be initialized through the parent constructor
+                continue;
+            }
+
+            $property->setValue($instance, $convertedValue);
+        }
+
+        /** @var static $result */
+        $result = $instance;
+        return $result;
+    }
+
+    /**
+     * Check if the class has readonly properties from parent classes.
+     * This helps determine if we need to use constructor initialization.
+     *
+     * @return bool True if readonly properties from parent classes exist
+     * @throws Exceptions\ReflectionException
+     */
+    protected static function hasReadonlyPropertiesFromParentClasses(): bool
+    {
+        $properties = ReflectionCache::getPublicProperties(static::class);
+
+        foreach ($properties as $property) {
+            if ($property->isReadOnly() && $property->getDeclaringClass()->getName() !== static::class) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Create instance using constructor for readonly property compatibility.
+     * This method maps data to constructor parameters.
+     *
+     * @param array $data Data to use for initialization
+     * @return static Created instance
+     * @throws Exceptions\ReflectionException
+     */
+    protected static function createInstanceWithConstructor(array $data): static
+    {
+        try {
+            $reflection = ReflectionCache::getClass(static::class);
+            $constructor = $reflection->getConstructor();
+
+            if ( ! $constructor) {
+                // No constructor, fall back to empty instance + hydration
+                $instance = self::createEmptyInstance();
+                return self::hydrateInstance($instance, $data);
+            }
+
+            $parameters = $constructor->getParameters();
+            $args = [];
+
+            // Map data to constructor parameters
+            foreach ($parameters as $param) {
+                $paramName = $param->getName();
+
+                if (array_key_exists($paramName, $data)) {
+                    $args[] = $data[$paramName];
+                } elseif ($param->isDefaultValueAvailable()) {
+                    $args[] = $param->getDefaultValue();
+                } elseif ($param->allowsNull()) {
+                    $args[] = null;
+                } else {
+                    // Required parameter not found in data, use null and let constructor handle it
+                    $args[] = null;
+                }
+            }
+
+            $instance = $reflection->newInstanceArgs($args);
+
+            // Hydrate any remaining properties not handled by constructor
+            return self::hydrateRemainingProperties($instance, $data);
+
+        } catch (ReflectionException $e) {
+            throw Exceptions\ReflectionException::classNotFound(static::class);
+        }
+    }
+
+    /**
+     * Hydrate properties not handled by constructor.
+     *
+     * @param object $instance Instance to hydrate
+     * @param array $data Data to hydrate with
+     * @return static Hydrated instance
+     * @throws DateMalformedStringException
+     * @throws Exceptions\ReflectionException
+     */
+    protected static function hydrateRemainingProperties(object $instance, array $data): static
+    {
+        $properties = ReflectionCache::getPublicProperties(static::class);
+        $reflection = ReflectionCache::getClass(static::class);
+        $constructor = $reflection->getConstructor();
+        $constructorParams = $constructor ? array_map(fn($p) => $p->getName(), $constructor->getParameters()) : [];
+
+        // Get serialization metadata and class convention
+        $metadata = MetadataCache::getMetadata(static::class);
+        $classConvention = self::getClassConvention(static::class);
+        $classDateTimeProvider = self::getClassDateTimeProvider(static::class);
+
+        // Process properties not handled by constructor
+        foreach ($properties as $property) {
+            $phpName = $property->getName();
+
+            // Skip if this property was handled by constructor
+            if (in_array($phpName, $constructorParams, true)) {
+                continue;
+            }
+
+            // Skip readonly properties from parent classes (they should be set by constructor)
+            if ($property->isReadOnly() && $property->getDeclaringClass()->getName() !== static::class) {
+                continue;
+            }
+
             $serializedName = $metadata->getSerializedName($phpName);
 
             // Try to find the value in the input data with multiple strategies

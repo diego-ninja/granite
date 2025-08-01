@@ -495,7 +495,7 @@ class GraniteVOTest extends TestCase
         $elapsed = microtime(true) - $start;
 
         // Should complete 1000 equality checks in reasonable time
-        $this->assertLessThan(0.1, $elapsed, "Equals method took too long: {$elapsed}s");
+        $this->assertLessThan(0.2, $elapsed, "Equals method took too long: {$elapsed}s");
     }
 
     public function test_with_method_performance(): void

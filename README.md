@@ -10,7 +10,7 @@
 
 [![PHPStan Level](https://img.shields.io/badge/phpstan-10-green.svg?style=flat)](https://phpstan.org/)
 [![PHPUnit](https://img.shields.io/badge/PHPUnit-✓%20passing-green.svg?style=flat)](https://phpunit.de/)
-[![Tests](https://img.shields.io/badge/tests-1333%20passed-green.svg?style=flat)](https://phpunit.de/)
+[![Tests](https://img.shields.io/badge/tests-1350%20passed-green.svg?style=flat)](https://phpunit.de/)
 [![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat)](https://coveralls.io/github/diego-ninja/granite)
 
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
