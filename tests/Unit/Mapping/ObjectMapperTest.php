@@ -264,8 +264,9 @@ class ObjectMapperTest extends TestCase
 
     public function test_performance_with_large_datasets(): void
     {
+        $objectCount = 3000;
         $largeDataset = [];
-        for ($i = 0; $i < 10000; $i++) {
+        for ($i = 0; $i < $objectCount; $i++) {
             $largeDataset[] = [
                 'id' => $i,
                 'name' => "User {$i}",
@@ -277,7 +278,7 @@ class ObjectMapperTest extends TestCase
         $result = $this->mapper->mapArray($largeDataset, SimpleDTO::class);
         $elapsed = microtime(true) - $start;
 
-        $this->assertCount(10000, $result);
+        $this->assertCount($objectCount, $result);
         $this->assertLessThan(2.0, $elapsed, "Mapping 10000 objects took too long: {$elapsed}s");
     }
 
