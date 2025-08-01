@@ -367,7 +367,7 @@ trait HasDeserialization
 
             $type = $property->getType();
             $convertedValue = self::convertValueToType($value, $type, $property, $classDateTimeProvider);
-            
+
             // In PHP 8.3, readonly properties can only be set by the declaring class
             // Check if this is a readonly property from a parent class
             if ($property->isReadOnly() && $property->getDeclaringClass()->getName() !== static::class) {
@@ -375,7 +375,7 @@ trait HasDeserialization
                 // They should be initialized through the parent constructor
                 continue;
             }
-            
+
             $property->setValue($instance, $convertedValue);
         }
 
@@ -418,7 +418,7 @@ trait HasDeserialization
             $reflection = ReflectionCache::getClass(static::class);
             $constructor = $reflection->getConstructor();
 
-            if (!$constructor) {
+            if ( ! $constructor) {
                 // No constructor, fall back to empty instance + hydration
                 $instance = self::createEmptyInstance();
                 return self::hydrateInstance($instance, $data);
@@ -430,7 +430,7 @@ trait HasDeserialization
             // Map data to constructor parameters
             foreach ($parameters as $param) {
                 $paramName = $param->getName();
-                
+
                 if (array_key_exists($paramName, $data)) {
                     $args[] = $data[$paramName];
                 } elseif ($param->isDefaultValueAvailable()) {
@@ -444,7 +444,7 @@ trait HasDeserialization
             }
 
             $instance = $reflection->newInstanceArgs($args);
-            
+
             // Hydrate any remaining properties not handled by constructor
             return self::hydrateRemainingProperties($instance, $data);
 
@@ -477,7 +477,7 @@ trait HasDeserialization
         // Process properties not handled by constructor
         foreach ($properties as $property) {
             $phpName = $property->getName();
-            
+
             // Skip if this property was handled by constructor
             if (in_array($phpName, $constructorParams, true)) {
                 continue;
