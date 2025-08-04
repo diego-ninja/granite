@@ -8,10 +8,10 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
 [![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
 
-[![PHPStan Level](https://img.shields.io/badge/phpstan-10-green.svg?style=flat)](https://phpstan.org/)
-[![PHPUnit](https://img.shields.io/badge/PHPUnit-✓%20passing-green.svg?style=flat)](https://phpunit.de/)
-[![Tests](https://img.shields.io/badge/tests-1350%20passed-green.svg?style=flat)](https://phpunit.de/)
-[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat)](https://coveralls.io/github/diego-ninja/granite)
+[![Tests](https://github.com/diego-ninja/granite/actions/workflows/tests.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/tests.yml)
+[![Static Analysis](https://github.com/diego-ninja/granite/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/static-analysis.yml)
+[![Code Style](https://github.com/diego-ninja/granite/actions/workflows/code-style.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/code-style.yml)
+[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat&logo=coveralls)](https://coveralls.io/github/diego-ninja/granite)
 
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 

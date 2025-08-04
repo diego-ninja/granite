@@ -6,10 +6,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Mapping;
 
+use Exception;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\PropertyMapping;
 use Ninja\Granite\Mapping\TypeMapping;
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionClass;
 use Tests\Fixtures\Automapper\EmptyProfile;
 use Tests\Helpers\TestCase;
 use TypeError;
@@ -312,5 +314,298 @@ class TypeMappingTest extends TestCase
 
         $this->assertInstanceOf(PropertyMapping::class, $propertyMapping);
         $this->assertEquals('source', $propertyMapping->getSourceProperty());
+    }
+
+    public function test_seal_marks_mapping_as_sealed(): void
+    {
+        // Use stdClass as destination which exists
+        $mapping = new TypeMapping($this->profile, 'array', 'stdClass');
+
+        $this->assertFalse($mapping->isSealed());
+
+        $result = $mapping->seal();
+
+        $this->assertTrue($mapping->isSealed());
+        $this->assertSame($mapping, $result); // Method chaining
+    }
+
+    public function test_seal_can_be_called_multiple_times(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', 'stdClass');
+
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+
+        // Second call should not throw
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_for_member_throws_when_sealed(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', 'stdClass');
+        $mapping->seal();
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage('Cannot modify mapping after it has been sealed');
+
+        $mapping->forMember('newProp', function ($mapping): void {
+            $mapping->mapFrom('source');
+        });
+    }
+
+    public function test_get_source_type(): void
+    {
+        $this->assertEquals('SourceClass', $this->typeMapping->getSourceType());
+    }
+
+    public function test_get_destination_type(): void
+    {
+        $this->assertEquals('DestClass', $this->typeMapping->getDestinationType());
+    }
+
+    public function test_seal_validates_destination_type_exists(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', 'NonExistentClass');
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage("Destination type 'NonExistentClass' does not exist");
+
+        $mapping->seal();
+    }
+
+    public function test_seal_validates_destination_properties(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', 'stdClass');
+        $mapping->forMember('nonExistentProperty', function ($m): void {
+            $m->mapFrom('source');
+        });
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage("Destination property 'nonExistentProperty' does not exist");
+
+        $mapping->seal();
+    }
+
+    public function test_seal_skips_source_validation_for_array(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', 'stdClass');
+
+        // This should not throw even though 'array' is not a class
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_seal_detects_mapped_and_ignored_conflict(): void
+    {
+        // Create a test class with the property
+        $mapping = new TypeMapping($this->profile, 'array', TestDestinationClass::class);
+
+        $mapping->forMember('name', function ($m): void {
+            $m->mapFrom('source')->ignore();
+        });
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage("Property 'name' is both mapped and ignored");
+
+        $mapping->seal();
+    }
+
+    public function test_seal_validates_source_properties_for_class_types(): void
+    {
+        $mapping = new TypeMapping($this->profile, TestSourceClass::class, TestDestinationClass::class);
+        $mapping->forMember('name', function ($m): void {
+            $m->mapFrom('nonExistentSourceProperty');
+        });
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage("Source property 'nonExistentSourceProperty' does not exist");
+
+        $mapping->seal();
+    }
+
+    public function test_seal_skips_validation_for_dot_notation_source_properties(): void
+    {
+        $mapping = new TypeMapping($this->profile, TestSourceClass::class, TestDestinationClass::class);
+        $mapping->forMember('name', function ($m): void {
+            $m->mapFrom('nested.property.path');
+        });
+
+        // Should not throw exception for dot notation
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_seal_skips_validation_for_null_source_properties(): void
+    {
+        $mapping = new TypeMapping($this->profile, TestSourceClass::class, TestDestinationClass::class);
+        $mapping->forMember('name', function ($m): void {
+            $m->using(fn($v) => 'transformed');
+        });
+
+        // Should not throw exception for null source property
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_seal_validates_invalid_transformer(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', TestDestinationClass::class);
+
+        // Manually create a PropertyMapping with invalid transformer
+        $propertyMapping = new PropertyMapping();
+        $propertyMapping->mapFrom('source');
+
+        // Set an invalid transformer using reflection since there's no direct way
+        $reflection = new ReflectionClass($propertyMapping);
+        $transformerProperty = $reflection->getProperty('transformer');
+        $transformerProperty->setAccessible(true);
+        $transformerProperty->setValue($propertyMapping, 'invalid_transformer_string');
+
+        // Add the mapping directly to the profile
+        $this->profile->addPropertyMapping('array', TestDestinationClass::class, 'name', $propertyMapping);
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage('Invalid transformer for property');
+
+        $mapping->seal();
+    }
+
+    public function test_seal_handles_nonexistent_destination_class(): void
+    {
+        // Create a mapping with a class that doesn't exist
+        $mapping = new TypeMapping($this->profile, 'array', 'CompletelyNonExistentClass');
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage("Destination type 'CompletelyNonExistentClass' does not exist");
+
+        $mapping->seal();
+    }
+
+    public function test_seal_handles_nonexistent_source_class(): void
+    {
+        // Create a test class that simulates ReflectionException
+        $mapping = new TypeMapping($this->profile, 'CompletelyNonExistentSourceClass', TestDestinationClass::class);
+        $mapping->forMember('name', function ($m): void {
+            $m->mapFrom('sourceProperty');
+        });
+
+        // This should skip validation since the class doesn't exist
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_seal_wraps_generic_exceptions(): void
+    {
+        // Test error handling by creating a mock profile that throws an exception
+        $mockProfile = $this->createMock(MappingProfile::class);
+        $mockProfile->method('getMappingsForTypes')
+            ->willThrowException(new Exception('Generic error'));
+
+        $mapping = new TypeMapping($mockProfile, 'array', TestDestinationClass::class);
+
+        $this->expectException(\Ninja\Granite\Mapping\Exceptions\MappingException::class);
+        $this->expectExceptionMessage('Error while validating mapping: Generic error');
+
+        $mapping->seal();
+    }
+
+    public function test_seal_validates_transformer_instance(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', TestDestinationClass::class);
+        $transformer = new MockTransformer();
+
+        $mapping->forMember('name', function ($m) use ($transformer): void {
+            $m->mapFrom('source')->using($transformer);
+        });
+
+        // Should not throw - valid Transformer instance
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_seal_validates_callable_transformer(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', TestDestinationClass::class);
+
+        $mapping->forMember('name', function ($m): void {
+            $m->mapFrom('source')->using(fn($v) => 'transformed');
+        });
+
+        // Should not throw - valid callable
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_validateDestinationProperties_covers_all_paths(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', TestDestinationClass::class);
+
+        // Add mappings for all destination properties
+        $mapping->forMember('name', function ($m): void {
+            $m->mapFrom('sourceName');
+        });
+        $mapping->forMember('age', function ($m): void {
+            $m->mapFrom('sourceAge');
+        });
+
+        // Should validate successfully
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_validateSourceProperties_skips_non_class_source(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', TestDestinationClass::class);
+
+        $mapping->forMember('name', function ($m): void {
+            $m->mapFrom('anyProperty');
+        });
+
+        // Should not validate source properties for 'array' type
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+
+    public function test_detectConflicts_handles_ignored_properties(): void
+    {
+        $mapping = new TypeMapping($this->profile, 'array', TestDestinationClass::class);
+
+        $mapping->forMember('name', function ($m): void {
+            $m->ignore();
+        });
+        $mapping->forMember('age', function ($m): void {
+            $m->mapFrom('sourceAge');
+        });
+
+        // Should handle ignored properties correctly
+        $mapping->seal();
+        $this->assertTrue($mapping->isSealed());
+    }
+}
+
+class TestDestinationClass
+{
+    public string $name;
+    public int $age;
+}
+
+class TestSourceClass
+{
+    public string $sourceName;
+    public int $sourceAge;
+    public string $email;
+}
+
+class NonExistentClass
+{
+    // This class exists but simulates a class that can't be reflected
+}
+
+class MockTransformer implements \Ninja\Granite\Mapping\Contracts\Transformer
+{
+    public function transform(mixed $value, array $sourceData = []): mixed
+    {
+        return 'mock_transformed: ' . $value;
     }
 }
