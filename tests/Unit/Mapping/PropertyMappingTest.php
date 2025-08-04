@@ -353,4 +353,205 @@ class PropertyMappingTest extends TestCase
             $this->assertEquals($expected, $result);
         }
     }
+
+    public function test_only_if_condition_with_true_condition(): void
+    {
+        $condition = fn($sourceData) => isset($sourceData['enabled']) && $sourceData['enabled'];
+        $this->mapping->onlyIf($condition);
+
+        $result = $this->mapping->transform('test', ['enabled' => true]);
+        $this->assertEquals('test', $result);
+    }
+
+    public function test_only_if_condition_with_false_condition(): void
+    {
+        $condition = fn($sourceData) => isset($sourceData['enabled']) && $sourceData['enabled'];
+        $this->mapping->onlyIf($condition);
+
+        $result = $this->mapping->transform('test', ['enabled' => false]);
+        $this->assertNull($result);
+    }
+
+    public function test_only_if_condition_with_default_value(): void
+    {
+        $condition = fn($sourceData) => isset($sourceData['enabled']) && $sourceData['enabled'];
+        $this->mapping->onlyIf($condition)->defaultValue('default');
+
+        $result = $this->mapping->transform('test', ['enabled' => false]);
+        $this->assertEquals('default', $result);
+    }
+
+    public function test_default_value_when_value_is_null(): void
+    {
+        $this->mapping->defaultValue('fallback');
+
+        $result = $this->mapping->transform(null, []);
+        $this->assertEquals('fallback', $result);
+    }
+
+    public function test_default_value_when_value_is_not_null(): void
+    {
+        $this->mapping->defaultValue('fallback');
+
+        $result = $this->mapping->transform('actual', []);
+        $this->assertEquals('actual', $result);
+    }
+
+    public function test_default_value_after_transformation(): void
+    {
+        $this->mapping
+            ->using(fn($value) => null) // Transform to null
+            ->defaultValue('fallback');
+
+        $result = $this->mapping->transform('test', []);
+        $this->assertEquals('fallback', $result);
+    }
+
+    public function test_has_condition_returns_false_by_default(): void
+    {
+        $this->assertFalse($this->mapping->hasCondition());
+    }
+
+    public function test_has_condition_returns_true_after_setting(): void
+    {
+        $this->mapping->onlyIf(fn() => true);
+        $this->assertTrue($this->mapping->hasCondition());
+    }
+
+    public function test_get_condition_returns_null_by_default(): void
+    {
+        $this->assertNull($this->mapping->getCondition());
+    }
+
+    public function test_get_condition_returns_set_condition(): void
+    {
+        $condition = fn() => true;
+        $this->mapping->onlyIf($condition);
+        $this->assertSame($condition, $this->mapping->getCondition());
+    }
+
+    public function test_get_default_value_returns_null_by_default(): void
+    {
+        $this->assertNull($this->mapping->getDefaultValue());
+    }
+
+    public function test_get_default_value_returns_set_value(): void
+    {
+        $this->mapping->defaultValue('test');
+        $this->assertEquals('test', $this->mapping->getDefaultValue());
+    }
+
+    public function test_has_default_value_returns_false_by_default(): void
+    {
+        $this->assertFalse($this->mapping->hasDefaultValue());
+    }
+
+    public function test_has_default_value_returns_true_after_setting(): void
+    {
+        $this->mapping->defaultValue('test');
+        $this->assertTrue($this->mapping->hasDefaultValue());
+    }
+
+    public function test_get_transformer_returns_null_by_default(): void
+    {
+        $this->assertNull($this->mapping->getTransformer());
+    }
+
+    public function test_get_transformer_returns_set_transformer(): void
+    {
+        $transformer = fn($value) => $value;
+        $this->mapping->using($transformer);
+        $this->assertSame($transformer, $this->mapping->getTransformer());
+    }
+
+    public function test_as_collection_sets_collection_transformer(): void
+    {
+        $result = $this->mapping->asCollection('SimpleDTO');
+
+        $this->assertSame($this->mapping, $result);
+        $this->assertInstanceOf(\Ninja\Granite\Transformers\CollectionTransformer::class, $this->mapping->getTransformer());
+    }
+
+    public function test_as_collection_with_all_options(): void
+    {
+        $itemTransformer = fn($item) => $item;
+
+        $result = $this->mapping->asCollection(
+            'SimpleDTO',
+            preserveKeys: true,
+            recursive: true,
+            itemTransformer: $itemTransformer,
+        );
+
+        $this->assertSame($this->mapping, $result);
+        $this->assertInstanceOf(\Ninja\Granite\Transformers\CollectionTransformer::class, $this->mapping->getTransformer());
+    }
+
+    public function test_set_mapper_with_collection_transformer(): void
+    {
+        $mockMapper = $this->createMock(\Ninja\Granite\Mapping\Contracts\Mapper::class);
+
+        $this->mapping->asCollection('SimpleDTO');
+        $result = $this->mapping->setMapper($mockMapper);
+
+        $this->assertSame($this->mapping, $result);
+    }
+
+    public function test_set_mapper_with_non_collection_transformer(): void
+    {
+        $mockMapper = $this->createMock(\Ninja\Granite\Mapping\Contracts\Mapper::class);
+        $transformer = fn($value) => $value;
+
+        $this->mapping->using($transformer);
+        $result = $this->mapping->setMapper($mockMapper);
+
+        $this->assertSame($this->mapping, $result);
+    }
+
+    public function test_set_mapper_without_transformer(): void
+    {
+        $mockMapper = $this->createMock(\Ninja\Granite\Mapping\Contracts\Mapper::class);
+
+        $result = $this->mapping->setMapper($mockMapper);
+
+        $this->assertSame($this->mapping, $result);
+    }
+
+    public function test_complex_chaining_with_all_features(): void
+    {
+        $condition = fn($sourceData) => isset($sourceData['process']);
+        $transformer = fn($value) => strtoupper($value);
+
+        $result = $this->mapping
+            ->mapFrom('source_field')
+            ->onlyIf($condition)
+            ->using($transformer)
+            ->defaultValue('DEFAULT');
+
+        $this->assertSame($this->mapping, $result);
+        $this->assertEquals('source_field', $this->mapping->getSourceProperty());
+        $this->assertTrue($this->mapping->hasCondition());
+        $this->assertTrue($this->mapping->hasDefaultValue());
+        $this->assertEquals('DEFAULT', $this->mapping->getDefaultValue());
+        $this->assertSame($transformer, $this->mapping->getTransformer());
+    }
+
+    public function test_transform_with_condition_transformer_and_default(): void
+    {
+        $condition = fn($sourceData) => isset($sourceData['enabled']) && $sourceData['enabled'];
+        $transformer = fn($value) => 'TRANSFORMED: ' . $value;
+
+        $this->mapping
+            ->onlyIf($condition)
+            ->using($transformer)
+            ->defaultValue('DEFAULT');
+
+        // Condition true - should transform
+        $result1 = $this->mapping->transform('test', ['enabled' => true]);
+        $this->assertEquals('TRANSFORMED: test', $result1);
+
+        // Condition false - should use default
+        $result2 = $this->mapping->transform('test', ['enabled' => false]);
+        $this->assertEquals('DEFAULT', $result2);
+    }
 }

@@ -11,7 +11,7 @@
 [![Tests](https://github.com/diego-ninja/granite/actions/workflows/tests.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/tests.yml)
 [![Static Analysis](https://github.com/diego-ninja/granite/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/static-analysis.yml)
 [![Code Style](https://github.com/diego-ninja/granite/actions/workflows/code-style.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/code-style.yml)
-[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat)](https://coveralls.io/github/diego-ninja/granite)
+[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat&logo=coveralls)](https://coveralls.io/github/diego-ninja/granite)
 
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 
