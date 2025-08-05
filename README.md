@@ -1,17 +1,16 @@
 # 🪨 Granite
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
-[![Total Downloads](https://img.shields.io/packagist/dt/diego-ninja/granite.svg?style=flat&color=blue)](https://packagist.org/packages/diego-ninja/granite)
-![PHP Version](https://img.shields.io/packagist/php-v/diego-ninja/granite.svg?style=flat&color=blue)
-[![Code Style](https://img.shields.io/badge/code%20style-PER-blue.svg?style=flat)](https://www.php-fig.org/per/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?color=blue)
-[![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2.svg)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/455eea5b-8838-4d42-b60e-c79c75c63ca2)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/diego-ninja/granite.svg?style=flat-square&color=blue&logoColor=%23949ca4&labelColor=%233f4750)](https://packagist.org/packages/diego-ninja/granite)
+[![Total Downloads](https://img.shields.io/packagist/dt/diego-ninja/granite.svg?style=flat-square&color=blue&logoColor=%23949ca4&labelColor=%233f4750)](https://packagist.org/packages/diego-ninja/granite)
+![PHP Version](https://img.shields.io/packagist/php-v/diego-ninja/granite.svg?style=flat-square&color=blue&logoColor=%23949ca4&labelColor=%233f4750)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square&color=blue&logoColor=%23949ca4&labelColor=%233f4750)](https://opensource.org/licenses/MIT)
+![GitHub last commit](https://img.shields.io/github/last-commit/diego-ninja/granite?style=flat-square&color=blue&logoColor=%23949ca4&labelColor=%233f4750)
+[![wakatime](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/3cc2ec60-a8b4-4ddc-aeac-ea78e37a094b.svg?style=flat-square&color=blue&logoColor=%23949ca4&labelColor=%233f4750)](https://wakatime.com/badge/user/bd65f055-c9f3-4f73-92aa-3c9810f70cc3/project/3cc2ec60-a8b4-4ddc-aeac-ea78e37a094b)
 
-[![Tests](https://github.com/diego-ninja/granite/actions/workflows/tests.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/tests.yml)
-[![Static Analysis](https://github.com/diego-ninja/granite/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/static-analysis.yml)
-[![Code Style](https://github.com/diego-ninja/granite/actions/workflows/code-style.yml/badge.svg)](https://github.com/diego-ninja/granite/actions/workflows/code-style.yml)
-[![Coverage](https://img.shields.io/coveralls/github/diego-ninja/granite?style=flat&logo=coveralls)](https://coveralls.io/github/diego-ninja/granite)
+[![Tests](https://img.shields.io/github/actions/workflow/status/diego-ninja/granite/tests.yml?branch=main&style=flat-square&logo=github&label=tests&logoColor=%23949ca4&labelColor=%233f4750)]()
+[![Static Analysis](https://img.shields.io/github/actions/workflow/status/diego-ninja/granite/static-analysis.yml?branch=main&style=flat-square&logo=github&label=phpstan%2010&logoColor=%23949ca4&labelColor=%233f4750)]()
+[![Code Style](https://img.shields.io/github/actions/workflow/status/diego-ninja/granite/code-style.yml?branch=main&style=flat-square&logo=github&label=pint%3A%20PER&logoColor=%23949ca4&labelColor=%233f4750)]()
+[![Coveralls](https://img.shields.io/coverallsCoverage/github/diego-ninja/granite?branch=main&style=flat-square&logo=coveralls&logoColor=%23949ca4&labelColor=%233f4750&link=https%3A%2F%2Fcoveralls.io%2Fgithub%2Fdiego-ninja%2Fgranite)]()
 
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 
