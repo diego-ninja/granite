@@ -368,6 +368,13 @@ trait HasDeserialization
             $type = $property->getType();
             $convertedValue = self::convertValueToType($value, $type, $property, $classDateTimeProvider);
 
+            // Use default value only if no value was provided or property is not nullable
+            if (null === $convertedValue && $property->hasDefaultValue()) {
+                if ( ! self::hasValueSetInData($data, $phpName, $serializedName, $classConvention) || (null !== $type && ! $type->allowsNull())) {
+                    $convertedValue = $property->getDefaultValue();
+                }
+            }
+
             // In PHP 8.3, readonly properties can only be set by the declaring class
             // Check if this is a readonly property from a parent class
             if ($property->isReadOnly() && $property->getDeclaringClass()->getName() !== static::class) {

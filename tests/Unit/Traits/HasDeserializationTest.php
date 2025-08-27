@@ -10,6 +10,7 @@ use Ninja\Granite\Traits\HasDeserialization;
 use ReflectionProperty;
 use ReflectionType;
 use Tests\Helpers\TestCase;
+use Tests\Unit\Support\HydrationTestClass;
 
 class HasDeserializationTest extends TestCase
 {
@@ -216,6 +217,81 @@ class HasDeserializationTest extends TestCase
         $this->assertInstanceOf(TestDeserializationClass::class, $result);
         $this->assertEquals('Hydrated', $result->name);
         $this->assertEquals(99, $result->age);
+    }
+    public function test_case_non_nullable_with_default_null_applied(): void
+    {
+        $data = ['defaultNonNullable' => null];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals('defaultNonNullable', $result->defaultNonNullable);
+    }
+
+    public function test_case_non_nullable_with_default_undefined_applied(): void
+    {
+        $data = []; // undefined
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals('defaultNonNullable', $result->defaultNonNullable);
+    }
+
+    public function test_case_nullable_with_default_undefined_applied(): void
+    {
+        $data = []; // undefined
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals('defaultNullable', $result->defaultNullable);
+    }
+
+    public function test_case_nullable_without_default_null_respected(): void
+    {
+        $data = ['noDefaultNullable' => null];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertNull($result->noDefaultNullable);
+    }
+
+    public function test_case_nullable_without_default_undefined_respected(): void
+    {
+        $data = []; // undefined
+        $result = HydrationTestClass::testHydrate($data);
+
+        $reflection = new ReflectionProperty(HydrationTestClass::class, 'noDefaultNullable');
+        $this->assertFalse(
+            $reflection->isInitialized($result),
+            'Expected noDefaultNullable to remain uninitialized',
+        );
+    }
+
+    public function test_case_non_nullable_without_default_value_applied(): void
+    {
+        $data = ['noDefaultNonNullable' => 'value'];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals('value', $result->noDefaultNonNullable);
+    }
+
+    public function test_case_non_nullable_with_default_value_applied(): void
+    {
+        $data = ['defaultNonNullable' => 'custom'];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals('custom', $result->defaultNonNullable);
+    }
+
+    public function test_case_nullable_without_default_value_applied(): void
+    {
+        $data = ['noDefaultNullable' => 'something'];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals('something', $result->noDefaultNullable);
+    }
+
+    public function test_case_nullable_with_default_value_applied(): void
+    {
+        $data = ['defaultNullable' => 'customNullable'];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals('customNullable', $result->defaultNullable);
     }
 
     public function test_create_instance_with_constructor(): void
