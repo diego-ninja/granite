@@ -59,6 +59,57 @@ class HasNamingConventionsTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function test_has_value_set_in_data_direct_php_name_match(): void
+    {
+        $data = ['firstName' => 'John', 'last_name' => 'Doe'];
+        $result = $this->testClass->testHasValueSetInData($data, 'firstName', 'first_name', null);
+
+        $this->assertTrue($result);
+    }
+
+    public function test_has_value_set_in_data_serialized_name_match(): void
+    {
+        $data = ['first_name' => 'John', 'last_name' => 'Doe'];
+        $result = $this->testClass->testHasValueSetInData($data, 'firstName', 'first_name', null);
+
+        $this->assertTrue($result);
+    }
+
+    public function test_has_value_set_in_data_convention_based_lookup(): void
+    {
+        $data = ['first_name' => 'John', 'lastName' => 'Doe'];
+        $convention = new CamelCaseConvention();
+
+        $result = $this->testClass->testHasValueSetInData($data, 'firstName', 'first_name', $convention);
+
+        $this->assertTrue($result);
+    }
+
+    public function test_has_value_set_in_data_key_present_with_null_value(): void
+    {
+        $data = ['firstName' => null];
+        $result = $this->testClass->testHasValueSetInData($data, 'firstName', 'first_name', null);
+
+        // Should be true, because the key exists even if its value is null
+        $this->assertTrue($result);
+    }
+
+    public function test_has_value_set_in_data_not_found(): void
+    {
+        $data = ['age' => 30, 'email' => 'john@example.com'];
+        $result = $this->testClass->testHasValueSetInData($data, 'firstName', 'first_name', null);
+
+        $this->assertFalse($result);
+    }
+
+    public function test_has_value_set_in_data_empty_array(): void
+    {
+        $data = [];
+        $result = $this->testClass->testHasValueSetInData($data, 'firstName', 'first_name', null);
+
+        $this->assertFalse($result);
+    }
+
     public function test_get_class_convention_with_bidirectional(): void
     {
         $result = $this->testClass->testGetClassConvention(TestClassWithBidirectionalConvention::class);
@@ -95,6 +146,10 @@ class TestClassWithNamingConventions
     public function testFindValueInData($data, $phpName, $serializedName, $convention)
     {
         return self::findValueInData($data, $phpName, $serializedName, $convention);
+    }
+    public function testHasValueSetInData($data, $phpName, $serializedName, $convention)
+    {
+        return self::hasValueSetInData($data, $phpName, $serializedName, $convention);
     }
 
     public function testGetClassConvention($class)
