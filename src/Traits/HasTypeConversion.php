@@ -131,7 +131,11 @@ trait HasTypeConversion
             if (is_string($value) || is_int($value)) {
                 // For BackedEnum (with values)
                 if (is_subclass_of($typeName, BackedEnum::class)) {
-                    return $typeName::tryFrom($value);
+                    $enum = $typeName::tryFrom($value);
+                    if (null === $enum) {
+                        return self::defaultCase($typeName, 'Unknown');
+                    }
+                    return $enum;
                 }
 
                 // For UnitEnum (without values)
@@ -187,5 +191,22 @@ trait HasTypeConversion
         }
 
         return $value;
+    }
+
+    /**
+     * @template T of BackedEnum
+     * @param class-string<T> $enumClass
+     * @param string $caseName
+     * @return BackedEnum|null
+     */
+    private static function defaultCase(string $enumClass, string $caseName): ?BackedEnum
+    {
+        foreach ($enumClass::cases() as $case) {
+            if ($case->name === $caseName) {
+                return $case;
+            }
+        }
+
+        return null;
     }
 }
