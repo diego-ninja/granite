@@ -2,20 +2,28 @@
 
 namespace Tests\Unit\Support;
 
+use DateTimeInterface;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Traits\HasDeserialization;
+use Ninja\Granite\Traits\HasTypeConversion;
 use ReflectionProperty;
-use ReflectionType;
+use Tests\Data\StatusTestEnum;
 
 class HydrationTestClass
 {
     use HasDeserialization;
+    use HasTypeConversion;
 
     public string $noDefaultNonNullable;
     public string $defaultNonNullable = 'defaultNonNullable';
     public ?string $noDefaultNullable;
     public ?string $defaultNullable = 'defaultNullable';
+
+    public StatusTestEnum $requiredEnum;
+    public StatusTestEnum $defaultEnum = StatusTestEnum::Paused;
+    public ?StatusTestEnum $nullableEnum;
+    public ?StatusTestEnum $defaultNullableEnum = StatusTestEnum::Paused;
 
     public static function testHydrate(array $data): static
     {
@@ -52,12 +60,13 @@ class HydrationTestClass
         return array_key_exists($phpName, $data) ?? array_key_exists($serializedName, $data) ?? false;
     }
 
-    protected static function convertValueToType(
-        mixed $value,
-        ?ReflectionType $type,
-        ?ReflectionProperty $property = null,
-        ?DateTimeProvider $classProvider = null,
-    ): mixed {
-        return $value;
+    protected static function convertToCarbon(mixed $value, string $typeName, ?ReflectionProperty $property = null, ?DateTimeProvider $classProvider = null): ?DateTimeInterface
+    {
+        return null;
+    }
+
+    protected static function convertToDateTime(mixed $value, string $typeName, ?ReflectionProperty $property = null, ?DateTimeProvider $classProvider = null): ?DateTimeInterface
+    {
+        return null;
     }
 }

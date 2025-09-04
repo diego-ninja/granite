@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Traits;
 
+use Error;
 use InvalidArgumentException;
 use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
@@ -9,6 +10,7 @@ use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Traits\HasDeserialization;
 use ReflectionProperty;
 use ReflectionType;
+use Tests\Data\StatusTestEnum;
 use Tests\Helpers\TestCase;
 use Tests\Unit\Support\HydrationTestClass;
 
@@ -292,6 +294,68 @@ class HasDeserializationTest extends TestCase
         $result = HydrationTestClass::testHydrate($data);
 
         $this->assertEquals('customNullable', $result->defaultNullable);
+    }
+
+    public function test_required_enum_valid_value(): void
+    {
+        $data = ['requiredEnum' => StatusTestEnum::Active->value];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals(StatusTestEnum::Active->value, $result->requiredEnum->value);
+    }
+
+    public function test_required_enum_invalid_value_defaults_to_unknown(): void
+    {
+        $data = ['requiredEnum' => 'foo'];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals(StatusTestEnum::Unknown, $result->requiredEnum);
+    }
+
+    public function test_required_enum_missing_value_throws_error(): void
+    {
+        $this->expectException(Error::class);
+
+        $result = HydrationTestClass::testHydrate([]);
+        $result->noDefaultNonNullable;
+    }
+
+    public function test_default_enum_is_used_if_not_in_data(): void
+    {
+        $result = HydrationTestClass::testHydrate([]);
+        $this->assertEquals(StatusTestEnum::Paused, $result->defaultEnum);
+    }
+
+    public function test_nullable_enum_is_null_if_not_in_data(): void
+    {
+        $result = HydrationTestClass::testHydrate([]);
+        $reflection = new ReflectionProperty(HydrationTestClass::class, 'nullableEnum');
+        $this->assertFalse(
+            $reflection->isInitialized($result),
+            'Expected noDefaultNullable to remain uninitialized',
+        );
+    }
+
+    public function test_nullable_enum_with_value(): void
+    {
+        $data = ['nullableEnum' => StatusTestEnum::Inactive->value];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals(StatusTestEnum::Inactive, $result->nullableEnum);
+    }
+
+    public function test_default_nullable_enum_is_used_if_not_in_data(): void
+    {
+        $result = HydrationTestClass::testHydrate([]);
+        $this->assertEquals(StatusTestEnum::Paused, $result->defaultNullableEnum);
+    }
+
+    public function test_default_nullable_enum_with_invalid_value_falls_to_unknown(): void
+    {
+        $data = ['defaultNullableEnum' => 'foo'];
+        $result = HydrationTestClass::testHydrate($data);
+
+        $this->assertEquals(StatusTestEnum::Unknown, $result->defaultNullableEnum);
     }
 
     public function test_create_instance_with_constructor(): void
