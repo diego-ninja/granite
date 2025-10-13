@@ -4,6 +4,7 @@ namespace Ninja\Granite;
 
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Traits\HasCarbonSupport;
+use Ninja\Granite\Traits\HasComparison;
 use Ninja\Granite\Traits\HasDeserialization;
 use Ninja\Granite\Traits\HasNamingConventions;
 use Ninja\Granite\Traits\HasSerialization;
@@ -35,4 +36,5 @@ abstract readonly class Granite implements GraniteObject
     use HasSerialization;
     use HasTypeConversion;
     use HasValidation;
+    use HasComparison;
 }

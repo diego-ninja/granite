@@ -2,6 +2,16 @@
 
 Complete API reference for Granite classes, methods, and attributes.
 
+## ⚠️ Deprecation Notice
+
+**Important:** As of version 2.0.0, `GraniteDTO` and `GraniteVO` are **deprecated** in favor of the unified `Granite` base class.
+
+- ❌ **Deprecated:** `Ninja\Granite\GraniteDTO` (will be removed in v3.0.0)
+- ❌ **Deprecated:** `Ninja\Granite\GraniteVO` (will be removed in v3.0.0)
+- ✅ **Use instead:** `Ninja\Granite\Granite`
+
+All examples in this document use the new `Granite` class. Legacy classes remain functional for backward compatibility but should not be used in new code.
+
 ## Table of Contents
 
 - [Core Classes](#core-classes)
@@ -15,12 +25,12 @@ Complete API reference for Granite classes, methods, and attributes.
 
 ## Core Classes
 
-### GraniteDTO
+### Granite
 
-Base class for immutable Data Transfer Objects.
+Base class for immutable DTOs and Value Objects with full support for validation, serialization, and comparison.
 
 ```php
-abstract readonly class GraniteDTO implements GraniteObject
+abstract readonly class Granite implements GraniteObject
 ```
 
 #### Static Methods
@@ -39,23 +49,23 @@ Creates a new instance from various data sources with multiple invocation patter
 **Returns:** New instance of the DTO
 
 **Throws:**
-- `ValidationException` - If validation fails (GraniteVO only)
+- `ValidationException` - If validation fails (when validation attributes are used)
 - `SerializationException` - If deserialization fails
 - `InvalidArgumentException` - If invalid JSON provided
 
 ```php
 // Array data
-$user = UserDTO::from([
+$user = User::from([
     'id' => 1,
     'name' => 'John Doe',
     'email' => 'john@example.com'
 ]);
 
 // JSON string
-$user = UserDTO::from('{"id":1,"name":"John Doe","email":"john@example.com"}');
+$user = User::from('{"id":1,"name":"John Doe","email":"john@example.com"}');
 
 // Named parameters (NEW!)
-$user = UserDTO::from(
+$user = User::from(
     id: 1,
     name: 'John Doe',
     email: 'john@example.com'
@@ -63,13 +73,13 @@ $user = UserDTO::from(
 
 // Mixed usage (NEW!)
 $defaults = ['name' => 'Default', 'email' => 'default@example.com'];
-$user = UserDTO::from($defaults, id: 1, name: 'John Doe');
+$user = User::from($defaults, id: 1, name: 'John Doe');
 
 // From another Granite object
-$user = UserDTO::from($otherUser);
+$user = User::from($otherUser);
 
 // Empty object (partial initialization)
-$user = UserDTO::from();
+$user = User::from();
 ```
 
 #### Instance Methods
@@ -92,6 +102,135 @@ Converts the object to JSON.
 ```php
 $json = $user->json();
 // '{"id":1,"name":"John Doe","email":"john@example.com"}'
+```
+
+##### `equals(Granite $other): bool` ✨ ENHANCED
+Compares this Granite object with another for deep equality.
+
+**Parameters:**
+- `$other` - Another Granite object to compare against (must be same type)
+
+**Returns:** `true` if all initialized public properties are equal, `false` otherwise
+
+**Throws:**
+- `ReflectionException` - If reflection operation fails
+
+**Comparison behavior:**
+- Only compares **public properties**
+- Skips uninitialized properties
+- Performs **deep comparison** of nested Granite objects
+- Compares arrays **recursively** without JSON encoding
+- DateTime comparison includes **timezone** check
+- Enums compared by value (BackedEnum) or name (UnitEnum)
+- Objects of different types always return `false`
+
+```php
+$user1 = User::from(['name' => 'John', 'email' => 'john@example.com']);
+$user2 = User::from(['name' => 'John', 'email' => 'john@example.com']);
+$user3 = User::from(['name' => 'Jane', 'email' => 'jane@example.com']);
+
+$user1->equals($user2); // true - all properties match
+$user1->equals($user3); // false - different values
+
+// Works with nested objects
+$post1 = Post::from(['title' => 'My Post', 'author' => $user1]);
+$post2 = Post::from(['title' => 'My Post', 'author' => $user2]);
+$post1->equals($post2); // true - nested author is also compared
+
+// DateTime with timezone awareness
+$event1 = Event::from([
+    'name' => 'Conference',
+    'date' => new DateTime('2024-01-15 10:00:00', new DateTimeZone('UTC'))
+]);
+$event2 = Event::from([
+    'name' => 'Conference',
+    'date' => new DateTime('2024-01-15 11:00:00', new DateTimeZone('Europe/Madrid'))
+]);
+$event1->equals($event2); // false - different timezone
+```
+
+##### `differs(Granite $other): array` ✨ NEW
+Returns detailed differences between this object and another.
+
+**Parameters:**
+- `$other` - Another Granite object to compare against (must be same type)
+
+**Returns:**
+- Empty array if objects are equal
+- Associative array with differences in format:
+  ```php
+  [
+      'property_name' => [
+          'current' => <current_value>,
+          'new' => <new_value>
+      ]
+  ]
+  ```
+- For nested Granite objects, returns hierarchical differences
+
+**Throws:**
+- `ComparisonException` - If objects are of different types
+- `ReflectionException` - If reflection operation fails
+- `SerializationException` - If value cannot be serialized for comparison
+
+**Value formatting:**
+- `null` → `null`
+- Scalars → unchanged
+- `DateTime` → formatted with microseconds and timezone (e.g., `'2024-01-15 10:30:45.123456 +00:00'`)
+- Enums → scalar value (BackedEnum) or name (UnitEnum)
+- Granite objects → recursive array representation
+- Arrays → recursive value conversion
+- Other objects → `__toString()` if available, otherwise class name
+
+```php
+$user1 = User::from(['id' => 1, 'name' => 'John', 'email' => 'john@example.com']);
+$user2 = User::from(['id' => 1, 'name' => 'Jane', 'email' => 'jane@example.com']);
+
+$differences = $user1->differs($user2);
+// [
+//     'name' => ['current' => 'John', 'new' => 'Jane'],
+//     'email' => ['current' => 'john@example.com', 'new' => 'jane@example.com']
+// ]
+
+// Nested differences
+$company1 = Company::from([
+    'name' => 'Acme Inc',
+    'address' => ['street' => '123 Main St', 'city' => 'New York']
+]);
+$company2 = Company::from([
+    'name' => 'Acme Inc',
+    'address' => ['street' => '456 Oak Ave', 'city' => 'New York']
+]);
+
+$differences = $company1->differs($company2);
+// [
+//     'address' => [
+//         'street' => ['current' => '123 Main St', 'new' => '456 Oak Ave']
+//     ]
+// ]
+
+// Type mismatch throws exception
+try {
+    $user->differs($admin); // Different classes
+} catch (ComparisonException $e) {
+    echo $e->getMessage();
+    // "Cannot compare objects of different types: expected User, got Admin"
+}
+```
+
+##### `with(array $modifications): static`
+Creates a new instance with some properties modified.
+
+**Parameters:**
+- `$modifications` - Array of property names and new values
+
+**Returns:** New instance with modifications applied
+
+**Throws:**
+- `ValidationException` - If the modified data fails validation
+
+```php
+$updatedUser = $user->with(['name' => 'Jane Doe']);
 ```
 
 #### Protected Methods
@@ -123,53 +262,6 @@ protected static function hiddenProperties(): array
 }
 ```
 
----
-
-### GraniteVO
-
-Base class for immutable Value Objects with validation.
-
-```php
-abstract readonly class GraniteVO extends GraniteDTO
-```
-
-Inherits all methods from `GraniteDTO` and adds validation capabilities.
-
-#### Additional Methods
-
-##### `equals(mixed $other): bool`
-Compares this Value Object with another.
-
-**Parameters:**
-- `$other` - Value Object or array to compare with
-
-**Returns:** `true` if equal, `false` otherwise
-
-```php
-$user1 = User::from(['name' => 'John', 'email' => 'john@example.com']);
-$user2 = User::from(['name' => 'John', 'email' => 'john@example.com']);
-
-$user1->equals($user2); // true
-$user1->equals(['name' => 'John', 'email' => 'john@example.com']); // true
-```
-
-##### `with(array $modifications): static`
-Creates a new instance with some properties modified.
-
-**Parameters:**
-- `$modifications` - Array of property names and new values
-
-**Returns:** New instance with modifications applied
-
-**Throws:**
-- `ValidationException` - If the modified data fails validation
-
-```php
-$updatedUser = $user->with(['name' => 'Jane Doe']);
-```
-
-#### Protected Methods
-
 ##### `rules(): array`
 Override to define validation rules using method-based configuration.
 
@@ -184,6 +276,44 @@ protected static function rules(): array
     ];
 }
 ```
+
+---
+
+### Deprecated Classes
+
+#### GraniteDTO ⚠️ DEPRECATED
+
+**Deprecated since:** v2.0.0
+**Will be removed in:** v3.0.0
+**Use instead:** `Granite`
+
+Legacy base class for Data Transfer Objects. Functionality has been merged into the `Granite` class.
+
+```php
+// ❌ Old (deprecated)
+final readonly class User extends GraniteDTO { }
+
+// ✅ New (recommended)
+final readonly class User extends Granite { }
+```
+
+#### GraniteVO ⚠️ DEPRECATED
+
+**Deprecated since:** v2.0.0
+**Will be removed in:** v3.0.0
+**Use instead:** `Granite`
+
+Legacy base class for Value Objects with validation. All validation features are now available in the `Granite` class.
+
+```php
+// ❌ Old (deprecated)
+final readonly class Email extends GraniteVO { }
+
+// ✅ New (recommended)
+final readonly class Email extends Granite { }
+```
+
+---
 
 ## Validation Attributes
 
@@ -515,14 +645,14 @@ public Carbon $personalEvent;
 ```php
 <?php
 
-use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Validation\Rules\Carbon\Age;
 use Ninja\Granite\Validation\Rules\Carbon\BusinessDay;
 use Ninja\Granite\Validation\Rules\Carbon\Future;
 use Ninja\Granite\Validation\Rules\Carbon\Range;
 use Carbon\Carbon;
 
-final readonly class EventRegistration extends GraniteVO
+final readonly class EventRegistration extends Granite
 {
     public function __construct(
         public string $name,
@@ -594,7 +724,7 @@ Applies a naming convention to all properties in a class.
 use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
 
 #[SerializationConvention(SnakeCaseConvention::class)]
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public string $firstName,    // serialized as "first_name"
@@ -671,7 +801,7 @@ Configures default Carbon behavior at the class level.
     defaultFormat: 'Y-m-d H:i:s',
     parseFormats: ['Y-m-d H:i:s', 'Y-m-d\TH:i:s\Z', 'Y-m-d']
 )]
-final readonly class Event extends GraniteDTO
+final readonly class Event extends Granite
 {
     public function __construct(
         public string $title,
@@ -1061,6 +1191,64 @@ Gets the class name that caused the error.
 
 ##### `getOperation(): string`
 Gets the reflection operation that failed.
+
+---
+
+### ComparisonException ✨ NEW
+
+Thrown when object comparison operations fail.
+
+```php
+class ComparisonException extends GraniteException
+```
+
+#### Static Factory Methods
+
+##### `typeMismatch(string $expectedType, string $actualType): self`
+Creates exception for comparing objects of different types.
+
+**Parameters:**
+- `$expectedType` - The expected class name
+- `$actualType` - The actual class name provided
+
+**Returns:** New `ComparisonException` instance
+
+```php
+try {
+    $user = User::from(['id' => 1, 'name' => 'John']);
+    $admin = Admin::from(['id' => 1, 'name' => 'John']);
+
+    $user->differs($admin);
+} catch (ComparisonException $e) {
+    echo $e->getMessage();
+    // "Cannot compare objects of different types: expected User, got Admin"
+
+    $context = $e->getContext();
+    // ['expected_type' => 'User', 'actual_type' => 'Admin']
+}
+```
+
+##### `uncomparableValue(string $propertyName, mixed $value): self`
+Creates exception for values that cannot be compared.
+
+**Parameters:**
+- `$propertyName` - The property name
+- `$value` - The uncomparable value
+
+**Returns:** New `ComparisonException` instance
+
+```php
+try {
+    // Attempting to compare with an uncomparable resource
+    $obj->differs($otherObj);
+} catch (ComparisonException $e) {
+    echo $e->getMessage();
+    // "Property 'handle' contains uncomparable value of type 'resource'"
+
+    $context = $e->getContext();
+    // ['property_name' => 'handle', 'value_type' => 'resource']
+}
+```
 
 ## Utility Classes
 
