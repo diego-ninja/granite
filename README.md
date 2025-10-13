@@ -50,6 +50,13 @@ This documentation has been generated almost in its entirety using 🦠 Claude 4
 - DateTime and Enum handling
 - Nested object serialization
 
+### 🔍 **Object Comparison**
+- Deep equality comparison with `equals()` method
+- Detailed difference detection with `differs()` method
+- Recursive comparison of nested objects and arrays
+- Timezone-aware DateTime comparison
+- Efficient array comparison without JSON encoding
+
 ### ⚡ **Performance Optimized**
 - Reflection caching for improved performance
 - Memory-efficient object creation
@@ -246,7 +253,7 @@ final readonly class UserProfile extends GraniteVO
         public string $firstName,      // serialized as "first_name"
         public string $lastName,       // serialized as "last_name"
         public string $emailAddress,   // serialized as "email_address"
-        
+
         #[SerializedName('user_id')]   // explicit name takes precedence
         public int $id
     ) {}
@@ -257,6 +264,60 @@ $json = $profile->json();
 // {"first_name":"John","last_name":"Doe","email_address":"john@example.com","user_id":123}
 ```
 
+### 🔍 Object Comparison
+
+Compare Granite objects for equality or detect specific differences:
+
+```php
+use Ninja\Granite\GraniteDTO;
+
+final readonly class User extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $name,
+        public string $email,
+        public ?DateTime $lastLogin = null
+    ) {}
+}
+
+// Create two user instances
+$user1 = User::from(['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com']);
+$user2 = User::from(['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com']);
+$user3 = User::from(['id' => 1, 'name' => 'Jane Doe', 'email' => 'jane@example.com']);
+
+// Check equality
+$user1->equals($user2); // true - all properties match
+$user1->equals($user3); // false - name and email differ
+
+// Get detailed differences
+$differences = $user1->differs($user3);
+// [
+//     'name' => ['current' => 'John Doe', 'new' => 'Jane Doe'],
+//     'email' => ['current' => 'john@example.com', 'new' => 'jane@example.com']
+// ]
+
+// Works with nested objects
+$post1 = Post::from([
+    'title' => 'My Post',
+    'author' => User::from(['id' => 1, 'name' => 'John', 'email' => 'john@example.com'])
+]);
+
+$post2 = Post::from([
+    'title' => 'My Post',
+    'author' => User::from(['id' => 2, 'name' => 'Jane', 'email' => 'jane@example.com'])
+]);
+
+$differences = $post1->differs($post2);
+// [
+//     'author' => [
+//         'id' => ['current' => 1, 'new' => 2],
+//         'name' => ['current' => 'John', 'new' => 'Jane'],
+//         'email' => ['current' => 'john@example.com', 'new' => 'jane@example.com']
+//     ]
+// ]
+```
+
 ## 📖 Documentation
 
 ### Core Concepts
@@ -264,6 +325,7 @@ $json = $profile->json();
 - **[Enhanced from() Method](docs/hydration.md)** - Multiple invocation patterns for flexible object creation ✨ NEW
 - **[Validation](docs/validation.md)** - Comprehensive validation system with 30+ built-in rules including Carbon
 - **[Serialization](docs/serialization.md)** - Control how objects are converted to/from arrays and JSON with Carbon support
+- **[Object Comparison](docs/comparison.md)** - Deep equality checks and difference detection ✨ NEW
 - **[ObjectMapper](docs/automapper.md)** - Powerful object-to-object mapping with conventions
 - **[Advanced Usage](docs/advanced_usage.md)** - Patterns for complex applications
 - **[API Reference](docs/api_reference.md)** - Complete API documentation with new Carbon features

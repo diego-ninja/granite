@@ -1087,6 +1087,504 @@ class MappingTest extends PHPUnit\Framework\TestCase
 }
 ```
 
+### Testing Object Comparison ✨ NEW
+
+```php
+<?php
+
+class ObjectComparisonTest extends PHPUnit\Framework\TestCase
+{
+    public function testEqualsDetectsIdenticalObjects(): void
+    {
+        $user1 = UserEntity::from([
+            'id' => 1,
+            'name' => 'John Doe',
+            'email' => 'john@example.com',
+            'createdAt' => '2023-01-15T10:30:00Z'
+        ]);
+
+        $user2 = UserEntity::from([
+            'id' => 1,
+            'name' => 'John Doe',
+            'email' => 'john@example.com',
+            'createdAt' => '2023-01-15T10:30:00Z'
+        ]);
+
+        $this->assertTrue($user1->equals($user2));
+    }
+
+    public function testDiffersShowsChangedProperties(): void
+    {
+        $original = UserEntity::from([
+            'id' => 1,
+            'name' => 'John Doe',
+            'email' => 'john@example.com'
+        ]);
+
+        $modified = UserEntity::from([
+            'id' => 1,
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com'
+        ]);
+
+        $differences = $original->differs($modified);
+
+        $this->assertArrayHasKey('name', $differences);
+        $this->assertEquals('John Doe', $differences['name']['current']);
+        $this->assertEquals('Jane Doe', $differences['name']['new']);
+
+        $this->assertArrayHasKey('email', $differences);
+        $this->assertEquals('john@example.com', $differences['email']['current']);
+        $this->assertEquals('jane@example.com', $differences['email']['new']);
+    }
+
+    public function testDiffersWithNestedObjects(): void
+    {
+        $address1 = Address::from(['street' => '123 Main St', 'city' => 'New York']);
+        $address2 = Address::from(['street' => '456 Oak Ave', 'city' => 'New York']);
+
+        $company1 = Company::from(['name' => 'Acme', 'address' => $address1]);
+        $company2 = Company::from(['name' => 'Acme', 'address' => $address2]);
+
+        $differences = $company1->differs($company2);
+
+        $this->assertArrayHasKey('address', $differences);
+        $this->assertArrayHasKey('street', $differences['address']);
+        $this->assertEquals('123 Main St', $differences['address']['street']['current']);
+        $this->assertEquals('456 Oak Ave', $differences['address']['street']['new']);
+    }
+}
+```
+
+## Object Comparison Patterns ✨ NEW
+
+### Change Tracking and Auditing
+
+```php
+<?php
+
+final readonly class AuditLog extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $entityType,
+        public int $entityId,
+        public string $action,
+        public array $changes,
+        public int $userId,
+        public DateTime $createdAt
+    ) {}
+}
+
+final readonly class AuditService
+{
+    public function __construct(
+        private AuditLogRepository $auditLogRepository
+    ) {}
+
+    public function trackChanges(
+        string $entityType,
+        int $entityId,
+        Granite $original,
+        Granite $modified,
+        int $userId
+    ): ?AuditLog {
+        $differences = $original->differs($modified);
+
+        if (empty($differences)) {
+            return null; // No changes to track
+        }
+
+        $auditLog = new AuditLog(
+            id: null,
+            entityType: $entityType,
+            entityId: $entityId,
+            action: 'update',
+            changes: $differences,
+            userId: $userId,
+            createdAt: new DateTime()
+        );
+
+        return $this->auditLogRepository->save($auditLog);
+    }
+
+    public function getChangeHistory(string $entityType, int $entityId): array
+    {
+        return $this->auditLogRepository->findByEntity($entityType, $entityId);
+    }
+}
+
+// Usage in service layer
+final readonly class UserService
+{
+    public function __construct(
+        private UserRepositoryInterface $userRepository,
+        private AuditService $auditService
+    ) {}
+
+    public function updateUser(int $id, UpdateUserRequest $request, int $currentUserId): UserEntity
+    {
+        $original = $this->userRepository->findById($id);
+        if (!$original) {
+            throw NotFoundException::forResource('User', $id);
+        }
+
+        $modified = $original->with([
+            'name' => $request->name ?? $original->name,
+            'email' => $request->email ?? $original->email,
+            'updatedAt' => new DateTime()
+        ]);
+
+        // Track changes before saving
+        $this->auditService->trackChanges(
+            'User',
+            $id,
+            $original,
+            $modified,
+            $currentUserId
+        );
+
+        return $this->userRepository->save($modified);
+    }
+}
+```
+
+### Optimistic Locking with Version Comparison
+
+```php
+<?php
+
+final readonly class VersionedEntity extends GraniteVO
+{
+    public function __construct(
+        public int $id,
+        public string $data,
+        public int $version,
+        public DateTime $updatedAt
+    ) {}
+}
+
+final readonly class OptimisticLockException extends DomainException
+{
+    public function __construct(
+        public readonly array $conflicts
+    ) {
+        parent::__construct(
+            'Optimistic lock failed: data was modified by another process',
+            'OPTIMISTIC_LOCK_FAILED',
+            $conflicts
+        );
+    }
+}
+
+final readonly class VersionedRepository
+{
+    public function save(VersionedEntity $entity, VersionedEntity $originalEntity): VersionedEntity
+    {
+        // Load current version from database
+        $currentEntity = $this->findById($entity->id);
+
+        if (!$currentEntity->equals($originalEntity)) {
+            // Detect what changed
+            $conflicts = $originalEntity->differs($currentEntity);
+            throw new OptimisticLockException($conflicts);
+        }
+
+        // Increment version and save
+        $newEntity = $entity->with([
+            'version' => $entity->version + 1,
+            'updatedAt' => new DateTime()
+        ]);
+
+        return $this->persist($newEntity);
+    }
+}
+
+// Usage
+try {
+    $original = $repository->findById($id);
+    $modified = $original->with(['data' => 'new value']);
+
+    $saved = $repository->save($modified, $original);
+} catch (OptimisticLockException $e) {
+    // Handle conflicts
+    $conflicts = $e->conflicts;
+    // Show user what changed and let them resolve
+}
+```
+
+### State Machine with Transition Validation
+
+```php
+<?php
+
+enum OrderStatus: string
+{
+    case DRAFT = 'draft';
+    case PENDING = 'pending';
+    case CONFIRMED = 'confirmed';
+    case SHIPPED = 'shipped';
+    case DELIVERED = 'delivered';
+    case CANCELLED = 'cancelled';
+}
+
+final readonly class Order extends GraniteVO
+{
+    public function __construct(
+        public int $id,
+        public OrderStatus $status,
+        public array $items,
+        public Money $total,
+        public DateTime $createdAt,
+        public ?DateTime $updatedAt = null
+    ) {}
+}
+
+final readonly class InvalidStateTransitionException extends DomainException
+{
+    public static function create(OrderStatus $from, OrderStatus $to, array $changes): self
+    {
+        return new self(
+            message: "Invalid transition from {$from->value} to {$to->value}",
+            domainCode: 'INVALID_STATE_TRANSITION',
+            context: [
+                'from_status' => $from->value,
+                'to_status' => $to->value,
+                'changes' => $changes
+            ]
+        );
+    }
+}
+
+final readonly class OrderStateMachine
+{
+    private const ALLOWED_TRANSITIONS = [
+        'draft' => ['pending', 'cancelled'],
+        'pending' => ['confirmed', 'cancelled'],
+        'confirmed' => ['shipped', 'cancelled'],
+        'shipped' => ['delivered'],
+        'delivered' => [],
+        'cancelled' => []
+    ];
+
+    public function validateTransition(Order $from, Order $to): void
+    {
+        $differences = $from->differs($to);
+
+        // Ensure only status changed
+        if (count($differences) !== 1 || !isset($differences['status'])) {
+            throw new InvalidArgumentException('Only status should change during state transition');
+        }
+
+        $fromStatus = $differences['status']['current'];
+        $toStatus = $differences['status']['new'];
+
+        $allowedStates = self::ALLOWED_TRANSITIONS[$fromStatus] ?? [];
+
+        if (!in_array($toStatus, $allowedStates)) {
+            throw InvalidStateTransitionException::create(
+                OrderStatus::from($fromStatus),
+                OrderStatus::from($toStatus),
+                $differences
+            );
+        }
+    }
+
+    public function transition(Order $order, OrderStatus $newStatus): Order
+    {
+        $newOrder = $order->with([
+            'status' => $newStatus,
+            'updatedAt' => new DateTime()
+        ]);
+
+        $this->validateTransition($order, $newOrder);
+
+        return $newOrder;
+    }
+}
+
+// Usage
+$stateMachine = new OrderStateMachine();
+
+try {
+    $order = Order::from(['id' => 1, 'status' => OrderStatus::PENDING, ...]);
+    $confirmedOrder = $stateMachine->transition($order, OrderStatus::CONFIRMED);
+
+    // This would throw exception
+    $invalidOrder = $stateMachine->transition($order, OrderStatus::DELIVERED);
+} catch (InvalidStateTransitionException $e) {
+    echo $e->getMessage();
+    // "Invalid transition from pending to delivered"
+}
+```
+
+### Cache Invalidation Strategy
+
+```php
+<?php
+
+final readonly class CachedUserData extends GraniteDTO
+{
+    public function __construct(
+        public int $id,
+        public string $name,
+        public string $email,
+        public DateTime $cachedAt,
+        public int $ttl = 3600
+    ) {}
+
+    public function isExpired(): bool
+    {
+        $expiresAt = (clone $this->cachedAt)->modify("+{$this->ttl} seconds");
+        return new DateTime() > $expiresAt;
+    }
+}
+
+final readonly class SmartCacheService
+{
+    public function __construct(
+        private CacheInterface $cache,
+        private UserRepositoryInterface $userRepository
+    ) {}
+
+    public function getUser(int $id): UserEntity
+    {
+        $cacheKey = "user:{$id}";
+        $cached = $this->cache->get($cacheKey);
+
+        if ($cached !== null) {
+            $cachedData = CachedUserData::from($cached);
+
+            if (!$cachedData->isExpired()) {
+                // Load fresh data to compare
+                $fresh = $this->userRepository->findById($id);
+
+                if ($fresh === null) {
+                    $this->cache->delete($cacheKey);
+                    throw NotFoundException::forResource('User', $id);
+                }
+
+                // Check if data actually changed
+                $cachedUser = UserEntity::from([
+                    'id' => $cachedData->id,
+                    'name' => $cachedData->name,
+                    'email' => $cachedData->email
+                ]);
+
+                if ($cachedUser->equals($fresh)) {
+                    // Data unchanged, update cache timestamp only
+                    $refreshedCache = $cachedData->with([
+                        'cachedAt' => new DateTime()
+                    ]);
+                    $this->cache->set($cacheKey, $refreshedCache->array(), $cachedData->ttl);
+                    return $fresh;
+                }
+
+                // Data changed, update cache with new data
+                $newCachedData = new CachedUserData(
+                    id: $fresh->id,
+                    name: $fresh->name,
+                    email: $fresh->email,
+                    cachedAt: new DateTime(),
+                    ttl: 3600
+                );
+                $this->cache->set($cacheKey, $newCachedData->array(), $newCachedData->ttl);
+
+                return $fresh;
+            }
+        }
+
+        // Cache miss or expired, load from repository
+        $user = $this->userRepository->findById($id);
+        if ($user !== null) {
+            $cacheData = new CachedUserData(
+                id: $user->id,
+                name: $user->name,
+                email: $user->email,
+                cachedAt: new DateTime(),
+                ttl: 3600
+            );
+            $this->cache->set($cacheKey, $cacheData->array(), $cacheData->ttl);
+        }
+
+        return $user;
+    }
+}
+```
+
+### Conflict Resolution in Distributed Systems
+
+```php
+<?php
+
+final readonly class ConflictResolution extends GraniteDTO
+{
+    public function __construct(
+        public string $strategy, // 'client_wins', 'server_wins', 'merge', 'manual'
+        public array $conflicts,
+        public ?array $resolution = null
+    ) {}
+}
+
+final readonly class DistributedDataService
+{
+    public function syncData(Granite $clientData, Granite $serverData): ConflictResolution
+    {
+        if ($clientData->equals($serverData)) {
+            return new ConflictResolution(
+                strategy: 'no_conflict',
+                conflicts: []
+            );
+        }
+
+        $differences = $clientData->differs($serverData);
+
+        // Auto-resolve simple cases
+        if ($this->canAutoResolve($differences)) {
+            $resolved = $this->autoResolve($clientData, $serverData, $differences);
+            return new ConflictResolution(
+                strategy: 'merge',
+                conflicts: $differences,
+                resolution: $resolved->array()
+            );
+        }
+
+        // Require manual resolution
+        return new ConflictResolution(
+            strategy: 'manual',
+            conflicts: $differences
+        );
+    }
+
+    private function canAutoResolve(array $differences): bool
+    {
+        // Only non-overlapping changes can be auto-merged
+        foreach ($differences as $field => $change) {
+            if (is_array($change) && isset($change['current']) && isset($change['new'])) {
+                // Simple field change - can't auto-resolve
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function autoResolve(Granite $client, Granite $server, array $differences): Granite
+    {
+        // Merge non-conflicting changes
+        $mergedData = $server->array();
+
+        foreach ($differences as $field => $change) {
+            // Apply client changes that don't conflict
+            if (!isset($change['current'])) {
+                $mergedData[$field] = $client->array()[$field];
+            }
+        }
+
+        return $client::from($mergedData);
+    }
+}
+```
+
 ## Error Handling Strategies
 
 ### Comprehensive Error Handling
