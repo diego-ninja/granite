@@ -2,6 +2,10 @@
 
 Granite provides powerful object comparison capabilities through the `HasComparation` trait. This feature allows you to compare objects for equality or detect specific differences between them.
 
+## ⚠️ Note
+
+All examples in this document use the `Granite` base class. As of version 2.0.0, the legacy `GraniteDTO` and `GraniteVO` classes are deprecated and will be removed in v3.0.0.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -33,9 +37,9 @@ These methods perform deep, recursive comparison including:
 ### Equality Checking
 
 ```php
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -96,7 +100,7 @@ $user->equals($admin); // false - different classes
 Null values are properly handled:
 
 ```php
-final readonly class Profile extends GraniteDTO
+final readonly class Profile extends Granite
 {
     public function __construct(
         public string $name,
@@ -117,7 +121,7 @@ $profile1->equals($profile3); // false - one null, one not
 Arrays are compared recursively:
 
 ```php
-final readonly class Post extends GraniteDTO
+final readonly class Post extends Granite
 {
     public function __construct(
         public string $title,
@@ -141,7 +145,7 @@ DateTime objects are compared with timezone awareness:
 use DateTime;
 use DateTimeZone;
 
-final readonly class Event extends GraniteDTO
+final readonly class Event extends Granite
 {
     public function __construct(
         public string $name,
@@ -171,7 +175,7 @@ enum Status: string
     case INACTIVE = 'inactive';
 }
 
-final readonly class Account extends GraniteDTO
+final readonly class Account extends Granite
 {
     public function __construct(
         public int $id,
@@ -210,7 +214,7 @@ $differences = $user1->differs($user2);
 When comparing nested Granite objects, differences are shown hierarchically:
 
 ```php
-final readonly class Address extends GraniteDTO
+final readonly class Address extends Granite
 {
     public function __construct(
         public string $street,
@@ -219,7 +223,7 @@ final readonly class Address extends GraniteDTO
     ) {}
 }
 
-final readonly class Company extends GraniteDTO
+final readonly class Company extends Granite
 {
     public function __construct(
         public string $name,
@@ -317,7 +321,7 @@ Only **public properties** are compared. This aligns with Granite's readonly obj
 Uninitialized properties are skipped during comparison:
 
 ```php
-final readonly class OptionalFields extends GraniteDTO
+final readonly class OptionalFields extends Granite
 {
     public function __construct(
         public string $required,
@@ -348,7 +352,7 @@ The comparison uses efficient algorithms:
 Track changes to domain objects:
 
 ```php
-final readonly class Product extends GraniteDTO
+final readonly class Product extends Granite
 {
     public function __construct(
         public int $id,
@@ -404,7 +408,7 @@ auditChanges($original, $updated);
 Determine if cached data needs refreshing:
 
 ```php
-final readonly class CachedResponse extends GraniteDTO
+final readonly class CachedResponse extends Granite
 {
     public function __construct(
         public array $data,
@@ -437,7 +441,7 @@ enum OrderStatus: string
     case DELIVERED = 'delivered';
 }
 
-final readonly class Order extends GraniteDTO
+final readonly class Order extends Granite
 {
     public function __construct(
         public int $id,
@@ -472,7 +476,7 @@ function validateTransition(Order $old, Order $new): bool
 ### Complex Nested Comparison
 
 ```php
-final readonly class Permission extends GraniteDTO
+final readonly class Permission extends Granite
 {
     public function __construct(
         public string $resource,
@@ -480,7 +484,7 @@ final readonly class Permission extends GraniteDTO
     ) {}
 }
 
-final readonly class Role extends GraniteDTO
+final readonly class Role extends Granite
 {
     public function __construct(
         public string $name,
@@ -488,7 +492,7 @@ final readonly class Role extends GraniteDTO
     ) {}
 }
 
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,

@@ -75,7 +75,7 @@ composer require diego-ninja/granite
 ```php
 <?php
 
-use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
 use Ninja\Granite\Validation\Attributes\Min;
@@ -85,23 +85,23 @@ use Ninja\Granite\Serialization\Attributes\Hidden;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Carbon\Carbon;
 
-// Create a Value Object with validation
-final readonly class User extends GraniteVO
+// Create a Granite object with validation
+final readonly class User extends Granite
 {
     public function __construct(
         public ?int $id,
-        
+
         #[Required]
         #[Min(2)]
         public string $name,
-        
+
         #[Required]
         #[Email]
         public string $email,
-        
+
         #[Hidden] // Won't appear in JSON
         public ?string $password = null,
-        
+
         #[SerializedName('created_at')]
         #[CarbonDate(format: 'Y-m-d H:i:s')]
         public Carbon $createdAt = new Carbon()
@@ -150,13 +150,13 @@ $array = $user->array();
 Granite's `from()` method supports multiple invocation patterns **transparently** - no need to override methods in child classes!
 
 ```php
-final readonly class Product extends GraniteDTO
+final readonly class Product extends Granite
 {
     public function __construct(
         public string $name,
         public float $price,
         public ?string $description = null,
-        #[CarbonDate] 
+        #[CarbonDate]
         public Carbon $createdAt = new Carbon()
     ) {}
 }
@@ -200,7 +200,7 @@ use Ninja\Granite\Validation\Rules\Carbon\Age;
 use Ninja\Granite\Validation\Rules\Carbon\Future;
 use Ninja\Granite\Validation\Rules\Carbon\BusinessDay;
 
-final readonly class Event extends GraniteVO  
+final readonly class Event extends Granite  
 {
     public function __construct(
         public string $title,
@@ -247,7 +247,7 @@ use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 
 #[SerializationConvention(SnakeCaseConvention::class)]
-final readonly class UserProfile extends GraniteVO
+final readonly class UserProfile extends Granite
 {
     public function __construct(
         public string $firstName,      // serialized as "first_name"
@@ -269,9 +269,9 @@ $json = $profile->json();
 Compare Granite objects for equality or detect specific differences:
 
 ```php
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -342,7 +342,7 @@ $differences = $post1->differs($post2);
 
 ```php
 // Request validation
-final readonly class CreateUserRequest extends GraniteVO
+final readonly class CreateUserRequest extends Granite
 {
     public function __construct(
         #[Required]
@@ -362,7 +362,7 @@ final readonly class CreateUserRequest extends GraniteVO
 }
 
 // API Response
-final readonly class UserResponse extends GraniteDTO
+final readonly class UserResponse extends Granite
 {
     public function __construct(
         public int $id,
@@ -389,7 +389,7 @@ final readonly class UserResponse extends GraniteDTO
 
 ```php
 // Value Objects
-final readonly class Money extends GraniteVO
+final readonly class Money extends Granite
 {
     public function __construct(
         #[Required]
@@ -415,7 +415,7 @@ final readonly class Money extends GraniteVO
 }
 
 // Aggregates
-final readonly class Order extends GraniteVO
+final readonly class Order extends Granite
 {
     public function __construct(
         public ?int $id,
@@ -451,7 +451,7 @@ use Ninja\Granite\Mapping\ObjectMapperConfig;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 
 // Source entity
-final readonly class UserEntity extends GraniteDTO
+final readonly class UserEntity extends Granite
 {
     public function __construct(
         public int $userId,
@@ -462,7 +462,7 @@ final readonly class UserEntity extends GraniteDTO
 }
 
 // Destination DTO with mapping attributes
-final readonly class UserSummary extends GraniteDTO
+final readonly class UserSummary extends Granite
 {
     public function __construct(
         #[MapFrom('userId')]
@@ -575,7 +575,7 @@ class UserMappingProfile extends MappingProfile
 ### Complex Validation
 
 ```php
-final readonly class CreditCard extends GraniteVO
+final readonly class CreditCard extends Granite
 {
     public function __construct(
         #[Required]
@@ -733,6 +733,26 @@ class UserTest extends PHPUnit\Framework\TestCase
     }
 }
 ```
+
+## ⚠️ Deprecation Notice
+
+**Important:** As of version 2.0.0, `GraniteDTO` and `GraniteVO` are **deprecated** in favor of the unified `Granite` base class.
+
+- ❌ **Deprecated:** `Ninja\Granite\GraniteDTO` (will be removed in v3.0.0)
+- ❌ **Deprecated:** `Ninja\Granite\GraniteVO` (will be removed in v3.0.0)
+- ✅ **Use instead:** `Ninja\Granite\Granite`
+
+**Migration:**
+```php
+// ❌ Old (deprecated)
+final readonly class User extends GraniteVO { }
+final readonly class UserDTO extends GraniteDTO { }
+
+// ✅ New (recommended)
+final readonly class User extends Granite { }
+```
+
+Both deprecated classes currently extend `Granite` for backward compatibility, so your existing code will continue to work. However, please migrate to `Granite` before version 3.0.0.
 
 ## 🔧 Requirements
 

@@ -2,6 +2,10 @@
 
 This guide covers advanced patterns, best practices, and architectural considerations when using Granite in complex applications.
 
+## ⚠️ Note
+
+All examples in this document use the `Granite` base class. As of version 2.0.0, the legacy `GraniteDTO` and `GraniteVO` classes are deprecated and will be removed in v3.0.0.
+
 ## Table of Contents
 
 - [Architectural Patterns](#architectural-patterns)
@@ -28,7 +32,7 @@ interface UserRepositoryInterface
     public function delete(int $id): bool;
 }
 
-final readonly class UserEntity extends GraniteVO
+final readonly class UserEntity extends Granite
 {
     public function __construct(
         public ?int $id,
@@ -92,7 +96,7 @@ final readonly class UserRepository implements UserRepositoryInterface
 ```php
 <?php
 
-final readonly class CreateUserRequest extends GraniteVO
+final readonly class CreateUserRequest extends Granite
 {
     public function __construct(
         #[Required]
@@ -177,7 +181,7 @@ final readonly class UserService
 <?php
 
 // Commands
-final readonly class CreateUserCommand extends GraniteVO
+final readonly class CreateUserCommand extends Granite
 {
     public function __construct(
         #[Required]
@@ -192,7 +196,7 @@ final readonly class CreateUserCommand extends GraniteVO
     ) {}
 }
 
-final readonly class UpdateUserCommand extends GraniteVO
+final readonly class UpdateUserCommand extends Granite
 {
     public function __construct(
         #[Required]
@@ -228,7 +232,7 @@ final readonly class CreateUserCommandHandler
 }
 
 // Queries
-final readonly class GetUserQuery extends GraniteVO
+final readonly class GetUserQuery extends Granite
 {
     public function __construct(
         #[Required]
@@ -236,7 +240,7 @@ final readonly class GetUserQuery extends GraniteVO
     ) {}
 }
 
-final readonly class GetUsersByRoleQuery extends GraniteVO
+final readonly class GetUsersByRoleQuery extends Granite
 {
     public function __construct(
         #[Required]
@@ -266,7 +270,7 @@ final readonly class GetUserQueryHandler
 ```php
 <?php
 
-final readonly class Email extends GraniteVO
+final readonly class Email extends Granite
 {
     public function __construct(
         #[Required]
@@ -291,7 +295,7 @@ final readonly class Email extends GraniteVO
     }
 }
 
-final readonly class Money extends GraniteVO
+final readonly class Money extends Granite
 {
     public function __construct(
         #[Required]
@@ -326,7 +330,7 @@ final readonly class Money extends GraniteVO
     }
 }
 
-final readonly class Address extends GraniteVO
+final readonly class Address extends Granite
 {
     public function __construct(
         #[Required]
@@ -369,7 +373,7 @@ final readonly class Address extends GraniteVO
 ```php
 <?php
 
-final readonly class Customer extends GraniteVO
+final readonly class Customer extends Granite
 {
     public function __construct(
         public ?int $id,
@@ -433,7 +437,7 @@ enum OrderStatus: string
     case COMPLETED = 'completed';
 }
 
-final readonly class OrderItem extends GraniteVO
+final readonly class OrderItem extends Granite
 {
     public function __construct(
         #[Required]
@@ -457,7 +461,7 @@ final readonly class OrderItem extends GraniteVO
     }
 }
 
-final readonly class Order extends GraniteVO
+final readonly class Order extends Granite
 {
     public function __construct(
         public ?int $id,
@@ -536,7 +540,7 @@ final readonly class Order extends GraniteVO
 <?php
 
 // API Request DTOs
-final readonly class CreateProductRequest extends GraniteVO
+final readonly class CreateProductRequest extends Granite
 {
     public function __construct(
         #[Required]
@@ -568,7 +572,7 @@ final readonly class CreateProductRequest extends GraniteVO
     ) {}
 }
 
-final readonly class UpdateProductRequest extends GraniteVO
+final readonly class UpdateProductRequest extends Granite
 {
     public function __construct(
         #[StringType]
@@ -590,7 +594,7 @@ final readonly class UpdateProductRequest extends GraniteVO
 }
 
 // API Response DTOs
-final readonly class ProductResponse extends GraniteDTO
+final readonly class ProductResponse extends Granite
 {
     public function __construct(
         public int $id,
@@ -614,7 +618,7 @@ final readonly class ProductResponse extends GraniteDTO
     }
 }
 
-final readonly class ApiResponse extends GraniteDTO
+final readonly class ApiResponse extends Granite
 {
     public function __construct(
         public bool $success,
@@ -645,7 +649,7 @@ final readonly class ApiResponse extends GraniteDTO
     }
 }
 
-final readonly class PaginatedResponse extends GraniteDTO
+final readonly class PaginatedResponse extends Granite
 {
     public function __construct(
         public array $data,
@@ -761,7 +765,7 @@ final readonly class ProductController
 ```php
 <?php
 
-final readonly class LazyUserResponse extends GraniteDTO
+final readonly class LazyUserResponse extends Granite
 {
     public function __construct(
         public int $id,
@@ -823,7 +827,7 @@ $user = LazyUserResponse::create(
 ```php
 <?php
 
-final readonly class BulkCreateUsersRequest extends GraniteVO
+final readonly class BulkCreateUsersRequest extends Granite
 {
     public function __construct(
         #[Required]
@@ -836,7 +840,7 @@ final readonly class BulkCreateUsersRequest extends GraniteVO
     ) {}
 }
 
-final readonly class BulkOperationResult extends GraniteDTO
+final readonly class BulkOperationResult extends Granite
 {
     public function __construct(
         #[SerializedName('total_requested')]
@@ -1163,7 +1167,7 @@ class ObjectComparisonTest extends PHPUnit\Framework\TestCase
 ```php
 <?php
 
-final readonly class AuditLog extends GraniteDTO
+final readonly class AuditLog extends Granite
 {
     public function __construct(
         public int $id,
@@ -1254,7 +1258,7 @@ final readonly class UserService
 ```php
 <?php
 
-final readonly class VersionedEntity extends GraniteVO
+final readonly class VersionedEntity extends Granite
 {
     public function __construct(
         public int $id,
@@ -1328,7 +1332,7 @@ enum OrderStatus: string
     case CANCELLED = 'cancelled';
 }
 
-final readonly class Order extends GraniteVO
+final readonly class Order extends Granite
 {
     public function __construct(
         public int $id,
@@ -1423,7 +1427,7 @@ try {
 ```php
 <?php
 
-final readonly class CachedUserData extends GraniteDTO
+final readonly class CachedUserData extends Granite
 {
     public function __construct(
         public int $id,
@@ -1517,7 +1521,7 @@ final readonly class SmartCacheService
 ```php
 <?php
 
-final readonly class ConflictResolution extends GraniteDTO
+final readonly class ConflictResolution extends Granite
 {
     public function __construct(
         public string $strategy, // 'client_wins', 'server_wins', 'merge', 'manual'
@@ -1592,7 +1596,7 @@ final readonly class DistributedDataService
 ```php
 <?php
 
-final readonly class ErrorResponse extends GraniteDTO
+final readonly class ErrorResponse extends Granite
 {
     public function __construct(
         public string $type,
@@ -1605,7 +1609,7 @@ final readonly class ErrorResponse extends GraniteDTO
     ) {}
 }
 
-final readonly class ValidationErrorDetail extends GraniteDTO
+final readonly class ValidationErrorDetail extends Granite
 {
     public function __construct(
         public string $field,
@@ -1759,7 +1763,7 @@ final class BusinessRuleViolationException extends DomainException
 ```php
 <?php
 
-abstract readonly class DomainEvent extends GraniteDTO
+abstract readonly class DomainEvent extends Granite
 {
     public function __construct(
         #[Required]

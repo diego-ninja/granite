@@ -13,7 +13,7 @@ use Tests\Fixtures\DTOs\UserDTO;
 use Tests\Fixtures\Enums\UserStatus;
 use Tests\Helpers\TestCase;
 
-final class HasComparationTest extends TestCase
+final class HasComparisonTest extends TestCase
 {
     public function test_equals_returns_true_for_identical_objects(): void
     {

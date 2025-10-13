@@ -11,7 +11,7 @@ use Ninja\Granite\Granite;
 use Ninja\Granite\Support\ReflectionCache;
 use UnitEnum;
 
-trait HasComparation
+trait HasComparison
 {
     /**
      * Check if this DTO is equal to another DTO of the same type.

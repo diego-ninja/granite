@@ -2,6 +2,16 @@
 
 Complete API reference for Granite classes, methods, and attributes.
 
+## ⚠️ Deprecation Notice
+
+**Important:** As of version 2.0.0, `GraniteDTO` and `GraniteVO` are **deprecated** in favor of the unified `Granite` base class.
+
+- ❌ **Deprecated:** `Ninja\Granite\GraniteDTO` (will be removed in v3.0.0)
+- ❌ **Deprecated:** `Ninja\Granite\GraniteVO` (will be removed in v3.0.0)
+- ✅ **Use instead:** `Ninja\Granite\Granite`
+
+All examples in this document use the new `Granite` class. Legacy classes remain functional for backward compatibility but should not be used in new code.
+
 ## Table of Contents
 
 - [Core Classes](#core-classes)
@@ -15,12 +25,12 @@ Complete API reference for Granite classes, methods, and attributes.
 
 ## Core Classes
 
-### GraniteDTO
+### Granite
 
-Base class for immutable Data Transfer Objects.
+Base class for immutable DTOs and Value Objects with full support for validation, serialization, and comparison.
 
 ```php
-abstract readonly class GraniteDTO implements GraniteObject
+abstract readonly class Granite implements GraniteObject
 ```
 
 #### Static Methods
@@ -39,23 +49,23 @@ Creates a new instance from various data sources with multiple invocation patter
 **Returns:** New instance of the DTO
 
 **Throws:**
-- `ValidationException` - If validation fails (GraniteVO only)
+- `ValidationException` - If validation fails (when validation attributes are used)
 - `SerializationException` - If deserialization fails
 - `InvalidArgumentException` - If invalid JSON provided
 
 ```php
 // Array data
-$user = UserDTO::from([
+$user = User::from([
     'id' => 1,
     'name' => 'John Doe',
     'email' => 'john@example.com'
 ]);
 
 // JSON string
-$user = UserDTO::from('{"id":1,"name":"John Doe","email":"john@example.com"}');
+$user = User::from('{"id":1,"name":"John Doe","email":"john@example.com"}');
 
 // Named parameters (NEW!)
-$user = UserDTO::from(
+$user = User::from(
     id: 1,
     name: 'John Doe',
     email: 'john@example.com'
@@ -63,13 +73,13 @@ $user = UserDTO::from(
 
 // Mixed usage (NEW!)
 $defaults = ['name' => 'Default', 'email' => 'default@example.com'];
-$user = UserDTO::from($defaults, id: 1, name: 'John Doe');
+$user = User::from($defaults, id: 1, name: 'John Doe');
 
 // From another Granite object
-$user = UserDTO::from($otherUser);
+$user = User::from($otherUser);
 
 // Empty object (partial initialization)
-$user = UserDTO::from();
+$user = User::from();
 ```
 
 #### Instance Methods
@@ -94,50 +104,7 @@ $json = $user->json();
 // '{"id":1,"name":"John Doe","email":"john@example.com"}'
 ```
 
-#### Protected Methods
-
-##### `serializedNames(): array`
-Override to define custom property names for serialization.
-
-**Returns:** Array mapping PHP property names to serialized names
-
-```php
-protected static function serializedNames(): array
-{
-    return [
-        'createdAt' => 'created_at',
-        'firstName' => 'first_name'
-    ];
-}
-```
-
-##### `hiddenProperties(): array`
-Override to define properties that should be hidden during serialization.
-
-**Returns:** Array of property names to hide
-
-```php
-protected static function hiddenProperties(): array
-{
-    return ['password', 'apiKey'];
-}
-```
-
----
-
-### GraniteVO
-
-Base class for immutable Value Objects with validation.
-
-```php
-abstract readonly class GraniteVO extends GraniteDTO
-```
-
-Inherits all methods from `GraniteDTO` and adds validation capabilities.
-
-#### Additional Methods
-
-##### `equals(Granite $other): bool` ✨ UPDATED
+##### `equals(Granite $other): bool` ✨ ENHANCED
 Compares this Granite object with another for deep equality.
 
 **Parameters:**
@@ -181,8 +148,6 @@ $event2 = Event::from([
 ]);
 $event1->equals($event2); // false - different timezone
 ```
-
----
 
 ##### `differs(Granite $other): array` ✨ NEW
 Returns detailed differences between this object and another.
@@ -270,6 +235,33 @@ $updatedUser = $user->with(['name' => 'Jane Doe']);
 
 #### Protected Methods
 
+##### `serializedNames(): array`
+Override to define custom property names for serialization.
+
+**Returns:** Array mapping PHP property names to serialized names
+
+```php
+protected static function serializedNames(): array
+{
+    return [
+        'createdAt' => 'created_at',
+        'firstName' => 'first_name'
+    ];
+}
+```
+
+##### `hiddenProperties(): array`
+Override to define properties that should be hidden during serialization.
+
+**Returns:** Array of property names to hide
+
+```php
+protected static function hiddenProperties(): array
+{
+    return ['password', 'apiKey'];
+}
+```
+
 ##### `rules(): array`
 Override to define validation rules using method-based configuration.
 
@@ -284,6 +276,44 @@ protected static function rules(): array
     ];
 }
 ```
+
+---
+
+### Deprecated Classes
+
+#### GraniteDTO ⚠️ DEPRECATED
+
+**Deprecated since:** v2.0.0
+**Will be removed in:** v3.0.0
+**Use instead:** `Granite`
+
+Legacy base class for Data Transfer Objects. Functionality has been merged into the `Granite` class.
+
+```php
+// ❌ Old (deprecated)
+final readonly class User extends GraniteDTO { }
+
+// ✅ New (recommended)
+final readonly class User extends Granite { }
+```
+
+#### GraniteVO ⚠️ DEPRECATED
+
+**Deprecated since:** v2.0.0
+**Will be removed in:** v3.0.0
+**Use instead:** `Granite`
+
+Legacy base class for Value Objects with validation. All validation features are now available in the `Granite` class.
+
+```php
+// ❌ Old (deprecated)
+final readonly class Email extends GraniteVO { }
+
+// ✅ New (recommended)
+final readonly class Email extends Granite { }
+```
+
+---
 
 ## Validation Attributes
 
@@ -615,14 +645,14 @@ public Carbon $personalEvent;
 ```php
 <?php
 
-use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Validation\Rules\Carbon\Age;
 use Ninja\Granite\Validation\Rules\Carbon\BusinessDay;
 use Ninja\Granite\Validation\Rules\Carbon\Future;
 use Ninja\Granite\Validation\Rules\Carbon\Range;
 use Carbon\Carbon;
 
-final readonly class EventRegistration extends GraniteVO
+final readonly class EventRegistration extends Granite
 {
     public function __construct(
         public string $name,
@@ -694,7 +724,7 @@ Applies a naming convention to all properties in a class.
 use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
 
 #[SerializationConvention(SnakeCaseConvention::class)]
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public string $firstName,    // serialized as "first_name"
@@ -771,7 +801,7 @@ Configures default Carbon behavior at the class level.
     defaultFormat: 'Y-m-d H:i:s',
     parseFormats: ['Y-m-d H:i:s', 'Y-m-d\TH:i:s\Z', 'Y-m-d']
 )]
-final readonly class Event extends GraniteDTO
+final readonly class Event extends Granite
 {
     public function __construct(
         public string $title,
