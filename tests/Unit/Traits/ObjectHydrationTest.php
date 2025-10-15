@@ -4,6 +4,10 @@ namespace Tests\Unit\Traits;
 
 use JsonSerializable;
 use Ninja\Granite\Granite;
+use ReflectionMethod;
+use ReflectionProperty;
+use ReflectionType;
+use RuntimeException;
 use stdClass;
 use Tests\Helpers\TestCase;
 
@@ -396,7 +400,7 @@ class ObjectHydrationTest extends TestCase
 
     public function test_getter_patterns_for_boolean_type(): void
     {
-        $reflection = new \ReflectionProperty(TestBooleanTarget::class, 'active');
+        $reflection = new ReflectionProperty(TestBooleanTarget::class, 'active');
         $type = $reflection->getType();
 
         $patterns = TestHydrationTarget::testBuildGetterPatterns('active', $type);
@@ -412,7 +416,7 @@ class ObjectHydrationTest extends TestCase
 
         $result = TestHydrationTarget::from(
             $source,
-            age: 99  // Override age from getter
+            age: 99,  // Override age from getter
         );
 
         $this->assertEquals('Base Name', $result->name);
@@ -701,7 +705,7 @@ class ClassWithThrowingGetter
 {
     public function getName(): string
     {
-        throw new \RuntimeException('Getter failed');
+        throw new RuntimeException('Getter failed');
     }
 }
 
@@ -807,10 +811,10 @@ final readonly class TestHydrationTarget extends Granite
         return $hydrator->extractViaGetters($source, $existingData, self::class);
     }
 
-    public static function testBuildGetterPatterns(string $propertyName, ?\ReflectionType $type): array
+    public static function testBuildGetterPatterns(string $propertyName, ?ReflectionType $type): array
     {
         $hydrator = new \Ninja\Granite\Hydration\Hydrators\GetterHydrator();
-        $reflection = new \ReflectionMethod($hydrator, 'buildGetterPatterns');
+        $reflection = new ReflectionMethod($hydrator, 'buildGetterPatterns');
         $reflection->setAccessible(true);
         return $reflection->invoke($hydrator, $propertyName, $type);
     }
@@ -818,7 +822,7 @@ final readonly class TestHydrationTarget extends Granite
     public static function testSnakeToCamel(string $string): string
     {
         $hydrator = new \Ninja\Granite\Hydration\Hydrators\GetterHydrator();
-        $reflection = new \ReflectionMethod($hydrator, 'snakeToCamel');
+        $reflection = new ReflectionMethod($hydrator, 'snakeToCamel');
         $reflection->setAccessible(true);
         return $reflection->invoke($hydrator, $string);
     }

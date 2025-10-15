@@ -15,7 +15,7 @@ class JsonHydrator extends AbstractHydrator
 
     public function supports(mixed $data, string $targetClass): bool
     {
-        if (!is_string($data)) {
+        if ( ! is_string($data)) {
             return false;
         }
 
@@ -30,7 +30,7 @@ class JsonHydrator extends AbstractHydrator
     {
         /** @var string $data */
         // Validate the JSON string
-        if (!json_validate($data)) {
+        if ( ! json_validate($data)) {
             throw new InvalidArgumentException('Invalid JSON string provided');
         }
 

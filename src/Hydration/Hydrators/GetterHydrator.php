@@ -4,8 +4,10 @@ namespace Ninja\Granite\Hydration\Hydrators;
 
 use Ninja\Granite\Hydration\AbstractHydrator;
 use Ninja\Granite\Support\ReflectionCache;
+use ReflectionException;
 use ReflectionNamedType;
 use ReflectionType;
+use Throwable;
 
 /**
  * Hydrator for extracting data via getter methods (Phase 2).
@@ -50,7 +52,7 @@ class GetterHydrator extends AbstractHydrator
         try {
             /** @var class-string $targetClass */
             $targetProperties = ReflectionCache::getPublicProperties($targetClass);
-        } catch (\ReflectionException $e) {
+        } catch (ReflectionException $e) {
             // If we can't get reflection, just return empty
             return $data;
         }
@@ -69,10 +71,10 @@ class GetterHydrator extends AbstractHydrator
             foreach ($getterPatterns as $getter) {
                 if (method_exists($source, $getter)) {
                     try {
-                        $value = $source->$getter();
+                        $value = $source->{$getter}();
                         $data[$propertyName] = $value;
                         break; // Found a matching getter, stop trying
-                    } catch (\Throwable $e) {
+                    } catch (Throwable $e) {
                         // Getter threw exception, try next pattern
                         continue;
                     }
@@ -95,8 +97,8 @@ class GetterHydrator extends AbstractHydrator
         $patterns = [];
 
         // Check if it's a boolean property
-        $isBool = $type && !$type->allowsNull() &&
-                  ($type instanceof ReflectionNamedType && $type->getName() === 'bool');
+        $isBool = $type && ! $type->allowsNull() &&
+                  ($type instanceof ReflectionNamedType && 'bool' === $type->getName());
 
         // Pattern 1: Standard camelCase getter - getName()
         $camelCase = $this->snakeToCamel($propertyName);

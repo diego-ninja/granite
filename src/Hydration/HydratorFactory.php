@@ -45,16 +45,11 @@ class HydratorFactory
     }
 
     /**
-     * Register default hydrators.
+     * Reset the factory to its default state (useful for testing).
      */
-    private function registerDefaultHydrators(): void
+    public static function reset(): void
     {
-        $this->register(new GraniteHydrator());
-        $this->register(new JsonHydrator());
-        $this->register(new ArrayHydrator());
-        $this->register(new ObjectHydrator());
-        $this->register(new GetterHydrator());
-        $this->register(new StringHydrator()); // Catch-all for invalid strings
+        self::$instance = null;
     }
 
     /**
@@ -78,7 +73,7 @@ class HydratorFactory
      */
     public function getHydrators(): array
     {
-        if (!$this->sorted) {
+        if ( ! $this->sorted) {
             usort($this->hydrators, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
             $this->sorted = true;
         }
@@ -119,12 +114,12 @@ class HydratorFactory
     public function hydrateWith(mixed $data, string $targetClass): array
     {
         // For non-objects, use single hydrator
-        if (!is_object($data)) {
+        if ( ! is_object($data)) {
             $hydrator = $this->resolve($data, $targetClass);
 
             if (null === $hydrator) {
                 throw new RuntimeException(
-                    sprintf('No hydrator found for data type: %s', get_debug_type($data))
+                    sprintf('No hydrator found for data type: %s', get_debug_type($data)),
                 );
             }
 
@@ -133,6 +128,19 @@ class HydratorFactory
 
         // For objects, use chain of hydrators to extract maximum data
         return $this->hydrateObjectWithChain($data, $targetClass);
+    }
+
+    /**
+     * Register default hydrators.
+     */
+    private function registerDefaultHydrators(): void
+    {
+        $this->register(new GraniteHydrator());
+        $this->register(new JsonHydrator());
+        $this->register(new ArrayHydrator());
+        $this->register(new ObjectHydrator());
+        $this->register(new GetterHydrator());
+        $this->register(new StringHydrator()); // Catch-all for invalid strings
     }
 
     /**
@@ -151,7 +159,7 @@ class HydratorFactory
         $extractedData = [];
 
         foreach ($this->getHydrators() as $hydrator) {
-            if (!$hydrator->supports($data, $targetClass)) {
+            if ( ! $hydrator->supports($data, $targetClass)) {
                 continue;
             }
 
@@ -167,13 +175,5 @@ class HydratorFactory
         }
 
         return $extractedData;
-    }
-
-    /**
-     * Reset the factory to its default state (useful for testing).
-     */
-    public static function reset(): void
-    {
-        self::$instance = null;
     }
 }
