@@ -1,10 +1,10 @@
 # Object Comparison
 
-Granite provides powerful object comparison capabilities through the `HasComparation` trait. This feature allows you to compare objects for equality or detect specific differences between them.
+Granite provides powerful object comparison capabilities through the `HasComparison` trait. This feature allows you to compare objects for equality or detect specific differences between them.
 
 ## ⚠️ Note
 
-All examples in this document use the `Granite` base class. As of version 2.0.0, the legacy `GraniteDTO` and `GraniteVO` classes are deprecated and will be removed in v3.0.0.
+All examples in this document use the `Granite` base class. As of version 2.0.0, the legacy `Granite` and `Granite` classes are deprecated and will be removed.
 
 ## Table of Contents
 

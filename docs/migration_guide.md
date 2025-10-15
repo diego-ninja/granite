@@ -8,8 +8,6 @@ This guide helps you migrate from other libraries and patterns to Granite, provi
 - [From stdClass Objects](#from-stdclass-objects)
 - [From Doctrine Entities](#from-doctrine-entities)
 - [From Laravel Eloquent](#from-laravel-eloquent)
-- [From Symfony Serializer](#from-symfony-serializer)
-- [From AutoMapper.NET](#from-automappernet)
 - [From Custom DTOs](#from-custom-dtos)
 - [Migration Strategies](#migration-strategies)
 - [Common Challenges](#common-challenges)
@@ -29,53 +27,42 @@ function createUser(array $userData): array
         'email' => $userData['email'] ?? '',
         'created_at' => date('Y-m-d H:i:s')
     ];
-    
+
     // Manual validation
     if (empty($user['name'])) {
         throw new InvalidArgumentException('Name is required');
     }
-    
+
     if (!filter_var($user['email'], FILTER_VALIDATE_EMAIL)) {
         throw new InvalidArgumentException('Invalid email');
     }
-    
-    return $user;
-}
 
-function serializeUser(array $user): string
-{
-    // Manual serialization
-    return json_encode([
-        'id' => $user['id'],
-        'display_name' => $user['name'],
-        'email_address' => $user['email'],
-        'member_since' => $user['created_at']
-    ]);
+    return $user;
 }
 ```
 
 ### After: Using Granite
 
 ```php
-use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
 use Ninja\Granite\Validation\Attributes\StringType;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public ?int $id,
-        
+
         #[Required]
         #[StringType]
         public string $name,
-        
+
         #[Required]
         #[Email]
         public string $email,
-        
+
         #[SerializedName('member_since')]
         public DateTime $createdAt = new DateTime()
     ) {}
@@ -97,9 +84,9 @@ function serializeUser(User $user): string
 ### Migration Steps
 
 1. **Identify Data Structures**: List all arrays that represent data entities
-2. **Create VO Classes**: Convert each array structure to a Granite VO
+2. **Create Granite Classes**: Convert each array structure to a Granite object
 3. **Add Validation**: Replace manual validation with attributes
-4. **Update Function Signatures**: Change array parameters to VO types
+4. **Update Function Signatures**: Change array parameters to Granite types
 5. **Test Thoroughly**: Ensure all validation and serialization works
 
 ## From stdClass Objects
@@ -110,18 +97,18 @@ function serializeUser(User $user): string
 function processApiResponse(string $json): stdClass
 {
     $data = json_decode($json);
-    
+
     // No type safety, no validation
     if (!isset($data->user_id) || !is_int($data->user_id)) {
         throw new InvalidArgumentException('Invalid user ID');
     }
-    
+
     // Manual property access with null checks
     $processed = new stdClass();
     $processed->id = $data->user_id;
     $processed->name = $data->full_name ?? 'Unknown';
     $processed->email = $data->email_address ?? '';
-    
+
     return $processed;
 }
 ```
@@ -129,18 +116,18 @@ function processApiResponse(string $json): stdClass
 ### After: Using Granite
 
 ```php
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 
-final readonly class ApiUserResponse extends GraniteDTO
+final readonly class ApiUserResponse extends Granite
 {
     public function __construct(
         #[SerializedName('user_id')]
         public int $id,
-        
+
         #[SerializedName('full_name')]
         public string $name,
-        
+
         #[SerializedName('email_address')]
         public string $email
     ) {}
@@ -168,21 +155,16 @@ class User
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
     private ?int $id = null;
-    
+
     #[ORM\Column(type: 'string', length: 100)]
     private string $name;
-    
+
     #[ORM\Column(type: 'string', length: 255)]
     private string $email;
-    
-    #[ORM\Column(type: 'datetime')]
-    private DateTime $createdAt;
-    
+
     // Getters and setters...
     public function getId(): ?int { return $this->id; }
-    public function setId(?int $id): void { $this->id = $id; }
     public function getName(): string { return $this->name; }
-    public function setName(string $name): void { $this->name = $name; }
     // ... more boilerplate
 }
 ```
@@ -191,26 +173,22 @@ class User
 
 ```php
 // Domain Entity (immutable)
-use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
-use Ninja\Granite\Validation\Attributes\StringType;
-use Ninja\Granite\Validation\Attributes\Min;
 
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public ?int $id,
-        
+
         #[Required]
-        #[StringType]
-        #[Min(2)]
         public string $name,
-        
+
         #[Required]
         #[Email]
         public string $email,
-        
+
         public DateTime $createdAt = new DateTime()
     ) {}
 }
@@ -219,7 +197,7 @@ final readonly class User extends GraniteVO
 final readonly class UserRepository
 {
     public function __construct(private PDO $pdo) {}
-    
+
     public function save(User $user): User
     {
         if ($user->id === null) {
@@ -232,25 +210,25 @@ final readonly class UserRepository
                 $user->email,
                 $user->createdAt->format('Y-m-d H:i:s')
             ]);
-            
+
             return $user->with(['id' => $this->pdo->lastInsertId()]);
-        } else {
-            // Update
-            $stmt = $this->pdo->prepare(
-                'UPDATE users SET name = ?, email = ? WHERE id = ?'
-            );
-            $stmt->execute([$user->name, $user->email, $user->id]);
-            
-            return $user;
         }
+
+        // Update
+        $stmt = $this->pdo->prepare(
+            'UPDATE users SET name = ?, email = ? WHERE id = ?'
+        );
+        $stmt->execute([$user->name, $user->email, $user->id]);
+
+        return $user;
     }
-    
+
     public function findById(int $id): ?User
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE id = ?');
         $stmt->execute([$id]);
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return $data ? User::from($data) : null;
     }
 }
@@ -258,7 +236,7 @@ final readonly class UserRepository
 
 ### Migration Strategy
 
-1. **Create Granite Entities**: Convert Doctrine entities to immutable VOs
+1. **Create Granite Entities**: Convert Doctrine entities to immutable Granite objects
 2. **Extract Repository Logic**: Move persistence logic to repository classes
 3. **Update Service Layer**: Change services to work with immutable objects
 4. **Replace Getters/Setters**: Use public readonly properties
@@ -274,19 +252,13 @@ use Illuminate\Database\Eloquent\Model;
 class User extends Model
 {
     protected $fillable = ['name', 'email', 'password'];
-    
+
     protected $hidden = ['password'];
-    
+
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
-    
-    protected $rules = [
-        'name' => 'required|string|min:2',
-        'email' => 'required|email|unique:users',
-        'password' => 'required|string|min:8',
-    ];
-    
+
     public function orders()
     {
         return $this->hasMany(Order::class);
@@ -303,30 +275,30 @@ $user->save();
 ### After: Granite with Repository
 
 ```php
+use Ninja\Granite\Granite;
+use Ninja\Granite\Validation\Attributes\Required;
+use Ninja\Granite\Validation\Attributes\Email;
+use Ninja\Granite\Serialization\Attributes\Hidden;
+
 // Domain Entity
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public ?int $id,
-        
+
         #[Required]
-        #[StringType]
-        #[Min(2)]
         public string $name,
-        
+
         #[Required]
         #[Email]
         public string $email,
-        
+
         #[Required]
-        #[StringType]
-        #[Min(8)]
-        #[Hidden] // Hide from serialization
+        #[Hidden]
         public string $password,
-        
+
         public ?DateTime $emailVerifiedAt = null,
-        public DateTime $createdAt = new DateTime(),
-        public ?DateTime $updatedAt = null
+        public DateTime $createdAt = new DateTime()
     ) {}
 }
 
@@ -337,189 +309,26 @@ final readonly class UserRepository
         private PDO $pdo,
         private OrderRepository $orderRepository
     ) {}
-    
+
     public function save(User $user): User
     {
         // Implementation similar to Doctrine example
     }
-    
+
     public function findByEmail(string $email): ?User
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE email = ?');
         $stmt->execute([$email]);
         $data = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         return $data ? User::from($data) : null;
     }
-    
+
     public function getOrdersForUser(int $userId): array
     {
         return $this->orderRepository->findByUserId($userId);
     }
 }
-
-// Service layer
-final readonly class UserService
-{
-    public function __construct(
-        private UserRepository $userRepository,
-        private PasswordHasher $passwordHasher
-    ) {}
-    
-    public function createUser(string $name, string $email, string $password): User
-    {
-        // Check uniqueness
-        if ($this->userRepository->findByEmail($email)) {
-            throw new DomainException('Email already exists');
-        }
-        
-        $user = User::from([
-            'id' => null,
-            'name' => $name,
-            'email' => $email,
-            'password' => $this->passwordHasher->hash($password)
-        ]);
-        
-        return $this->userRepository->save($user);
-    }
-}
-```
-
-## From Symfony Serializer
-
-### Before: Symfony Serializer
-
-```php
-use Symfony\Component\Serializer\Annotation\Groups;
-use Symfony\Component\Serializer\Annotation\SerializedName;
-
-class User
-{
-    #[Groups(['user:read', 'user:write'])]
-    private int $id;
-    
-    #[Groups(['user:read', 'user:write'])]
-    #[SerializedName('full_name')]
-    private string $name;
-    
-    #[Groups(['user:read', 'user:write'])]
-    private string $email;
-    
-    #[Groups(['admin:read'])]
-    private string $password;
-    
-    // Getters and setters...
-}
-
-// Usage
-$serializer = new Serializer([new ObjectNormalizer()], [new JsonEncoder()]);
-$json = $serializer->serialize($user, 'json', ['groups' => 'user:read']);
-$user = $serializer->deserialize($json, User::class, 'json');
-```
-
-### After: Granite
-
-```php
-use Ninja\Granite\GraniteDTO;
-use Ninja\Granite\Serialization\Attributes\SerializedName;
-use Ninja\Granite\Serialization\Attributes\Hidden;
-
-// Public API response
-final readonly class UserResponse extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        
-        #[SerializedName('full_name')]
-        public string $name,
-        
-        public string $email
-        
-        // password is simply not included
-    ) {}
-}
-
-// Internal/Admin response
-final readonly class AdminUserResponse extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        
-        #[SerializedName('full_name')]
-        public string $name,
-        
-        public string $email,
-        
-        #[Hidden] // Still hidden even in admin context
-        public string $password
-    ) {}
-}
-
-// Usage
-$userResponse = UserResponse::fromEntity($user);
-$json = $userResponse->json(); // Automatic serialization
-
-$adminResponse = AdminUserResponse::fromEntity($user);
-$adminJson = $adminResponse->json(); // password still hidden
-```
-
-## From AutoMapper.NET
-
-### Before: AutoMapper.NET (conceptual PHP equivalent)
-
-```php
-// Manual mapping configuration
-class MappingProfile
-{
-    public function configure(AutoMapperInterface $mapper): void
-    {
-        $mapper->createMap(UserEntity::class, UserDto::class)
-            ->forMember('displayName', function($opt) {
-                $opt->mapFrom(function($src) {
-                    return $src->getFirstName() . ' ' . $src->getLastName();
-                });
-            })
-            ->forMember('isActive', function($opt) {
-                $opt->mapFrom('status');
-            });
-    }
-}
-
-// Usage
-$mapper = new AutoMapper();
-$profile = new MappingProfile();
-$profile->configure($mapper);
-
-$dto = $mapper->map($entity, UserDto::class);
-```
-
-### After: Granite AutoMapper
-
-```php
-use Ninja\Granite\Mapping\MappingProfile;
-use Ninja\Granite\Mapping\ObjectMapper;
-
-class UserMappingProfile extends MappingProfile
-{
-    protected function configure(): void
-    {
-        $this->createMap(UserEntity::class, UserDto::class)
-            ->forMember('displayName', fn($m) => 
-                $m->using(function($value, $sourceData) {
-                    return $sourceData['firstName'] . ' ' . $sourceData['lastName'];
-                })
-            )
-            ->forMember('isActive', fn($m) => $m->mapFrom('status'))
-            ->seal();
-    }
-}
-
-// Usage
-$mapper = new ObjectMapper([
-    new UserMappingProfile()
-]);
-
-$dto = $mapper->map($entity, UserDto::class);
 ```
 
 ## From Custom DTOs
@@ -532,18 +341,18 @@ class UserDto
     private int $id;
     private string $name;
     private string $email;
-    
+
     public function __construct(int $id, string $name, string $email)
     {
         $this->id = $id;
         $this->name = $name;
         $this->email = $email;
     }
-    
+
     public function getId(): int { return $this->id; }
     public function getName(): string { return $this->name; }
     public function getEmail(): string { return $this->email; }
-    
+
     public function toArray(): array
     {
         return [
@@ -552,7 +361,7 @@ class UserDto
             'email' => $this->email
         ];
     }
-    
+
     public static function fromArray(array $data): self
     {
         return new self(
@@ -561,7 +370,7 @@ class UserDto
             $data['email'] ?? throw new InvalidArgumentException('Email required')
         );
     }
-    
+
     public function toJson(): string
     {
         return json_encode($this->toArray());
@@ -572,24 +381,24 @@ class UserDto
 ### After: Granite DTO
 
 ```php
-use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
 
-final readonly class UserDto extends GraniteVO
+final readonly class UserDto extends Granite
 {
     public function __construct(
         #[Required]
         public int $id,
-        
+
         #[Required]
         public string $name,
-        
+
         #[Required]
         #[Email]
         public string $email
     ) {}
-    
+
     // toArray(), fromArray(), and toJson() are inherited
     // Validation is automatic
     // Immutability is guaranteed
@@ -612,7 +421,7 @@ class LegacyUserService
 
 class ModernUserService
 {
-    public function createUser(CreateUserRequest $request): UserEntity
+    public function createUser(CreateUserRequest $request): User
     {
         // Granite implementation
     }
@@ -626,7 +435,7 @@ class UserServiceAdapter
         private ModernUserService $modernService,
         private bool $useModern = false
     ) {}
-    
+
     public function createUser(array $userData): array
     {
         if ($this->useModern) {
@@ -634,7 +443,7 @@ class UserServiceAdapter
             $user = $this->modernService->createUser($request);
             return $user->array();
         }
-        
+
         return $this->legacyService->createUser($userData);
     }
 }
@@ -649,7 +458,7 @@ class FeatureFlaggedUserService
                 CreateUserRequest::from($userData)
             )->array();
         }
-        
+
         return $this->legacyService->createUser($userData);
     }
 }
@@ -664,15 +473,15 @@ class VerifyingUserService
     public function createUser(array $userData): array
     {
         $legacyResult = $this->legacyService->createUser($userData);
-        
+
         try {
             $modernResult = $this->modernService->createUser(
                 CreateUserRequest::from($userData)
             )->array();
-            
+
             // Compare results and log differences
             $this->compareResults($legacyResult, $modernResult);
-            
+
         } catch (Exception $e) {
             // Log modern implementation errors
             $this->logger->error('Modern implementation failed', [
@@ -680,7 +489,7 @@ class VerifyingUserService
                 'data' => $userData
             ]);
         }
-        
+
         return $legacyResult; // Return legacy result for now
     }
 }
@@ -697,7 +506,7 @@ class DatabaseMigration
         // Add columns that Granite expects
         $this->addColumn('users', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
         $this->addColumn('users', 'updated_at', 'TIMESTAMP NULL');
-        
+
         // Convert existing data
         $users = $this->selectAll('users');
         foreach ($users as $userData) {
@@ -708,22 +517,6 @@ class DatabaseMigration
             } catch (ValidationException $e) {
                 // Fix invalid data
                 $this->fixUserData($userData['id'], $e->getErrors());
-            }
-        }
-    }
-    
-    private function fixUserData(int $userId, array $errors): void
-    {
-        foreach ($errors as $field => $messages) {
-            switch ($field) {
-                case 'email':
-                    // Fix invalid emails
-                    $this->updateUser($userId, ['email' => 'invalid@example.com']);
-                    break;
-                case 'name':
-                    // Fix empty names
-                    $this->updateUser($userId, ['name' => 'Unknown User']);
-                    break;
             }
         }
     }
@@ -745,14 +538,14 @@ $user = [
 ];
 
 // Granite: Explicit about requirements
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public ?int $id, // OK to be null (new users)
-        
+
         #[Required] // This will fail if null
         public string $name,
-        
+
         #[Required]
         public string $email
     ) {}
@@ -788,17 +581,13 @@ $user->name = 'John';
 if ($includeEmail) {
     $user->email = 'john@example.com';
 }
-
-if ($isAdmin) {
-    $user->permissions = ['admin'];
-}
 ```
 
-**Solution**: Use different DTOs for different contexts.
+**Solution**: Use different Granite classes for different contexts.
 
 ```php
 // Base user
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -807,7 +596,7 @@ final readonly class User extends GraniteDTO
 }
 
 // User with email
-final readonly class UserWithEmail extends GraniteDTO
+final readonly class UserWithEmail extends Granite
 {
     public function __construct(
         public int $id,
@@ -816,30 +605,15 @@ final readonly class UserWithEmail extends GraniteDTO
     ) {}
 }
 
-// Admin user
-final readonly class AdminUser extends GraniteDTO
-{
-    public function __construct(
-        public int $id,
-        public string $name,
-        public string $email,
-        public array $permissions
-    ) {}
-}
-
 // Factory to create appropriate type
 class UserFactory
 {
-    public static function create(array $data, bool $includeEmail = false, bool $isAdmin = false): GraniteDTO
+    public static function create(array $data, bool $includeEmail = false): Granite
     {
-        if ($isAdmin) {
-            return AdminUser::from($data);
-        }
-        
         if ($includeEmail) {
             return UserWithEmail::from($data);
         }
-        
+
         return User::from($data);
     }
 }
@@ -866,7 +640,7 @@ class Order
 
 ```php
 // Use IDs to break cycles
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -875,7 +649,7 @@ final readonly class User extends GraniteVO
     ) {}
 }
 
-final readonly class Order extends GraniteVO
+final readonly class Order extends Granite
 {
     public function __construct(
         public int $id,
@@ -885,7 +659,7 @@ final readonly class Order extends GraniteVO
 }
 
 // Or create view-specific DTOs
-final readonly class UserWithOrders extends GraniteDTO
+final readonly class UserWithOrders extends Granite
 {
     public function __construct(
         public int $id,
@@ -895,7 +669,7 @@ final readonly class UserWithOrders extends GraniteDTO
     ) {}
 }
 
-final readonly class OrderSummary extends GraniteDTO
+final readonly class OrderSummary extends Granite
 {
     public function __construct(
         public int $id,
@@ -909,18 +683,18 @@ final readonly class OrderSummary extends GraniteDTO
 
 **Problem**: Creating many objects impacts performance.
 
-**Solution**: Use lazy loading and object pooling.
+**Solution**: Use lazy loading and caching.
 
 ```php
 // Lazy loading
-final readonly class UserWithProfile extends GraniteDTO
+final readonly class UserWithProfile extends Granite
 {
     public function __construct(
         public int $id,
         public string $name,
         private ?Closure $profileLoader = null
     ) {}
-    
+
     public function getProfile(): ?UserProfile
     {
         if ($this->profileLoader !== null) {
@@ -930,22 +704,8 @@ final readonly class UserWithProfile extends GraniteDTO
     }
 }
 
-// Object pooling for frequently created objects
-class DTOPool
-{
-    private array $pool = [];
-    
-    public function get(string $class, array $data): GraniteObject
-    {
-        $key = $class . ':' . md5(serialize($data));
-        
-        if (!isset($this->pool[$key])) {
-            $this->pool[$key] = $class::from($data);
-        }
-        
-        return $this->pool[$key];
-    }
-}
+// Use Granite's reflection caching
+// Metadata is automatically cached for better performance
 ```
 
 This migration guide provides a comprehensive roadmap for adopting Granite in existing projects while minimizing risk and maintaining functionality during the transition.
