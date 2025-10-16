@@ -14,6 +14,55 @@
 
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 
+## 🪶 Peeble - NEW! Lightweight Immutable Snapshots
+
+Need a quick immutable snapshot without validation overhead? Meet **Peeble** - a lightweight alternative perfect for:
+- Creating immutable snapshots of Eloquent models
+- Fast DTOs without validation or type definitions
+- Caching and comparison use cases
+- High-performance object comparisons with fingerprinting
+
+```php
+use Ninja\Granite\Pebble;
+
+// Create an immutable snapshot from any object
+$user = User::query()->first();
+$snapshot = Pebble::from($user);
+
+// Access properties dynamically (both styles work!)
+echo $snapshot->name;        // Magic __get
+echo $snapshot['email'];     // ArrayAccess interface
+$count = count($snapshot);   // Countable interface
+
+// Fast O(1) comparisons with fingerprinting
+$snapshot1 = Pebble::from($user1);
+$snapshot2 = Pebble::from($user2);
+if ($snapshot1->equals($snapshot2)) {
+    // Uses cached hash for instant comparison!
+}
+
+// Get unique fingerprint for caching/comparison
+$hash = $snapshot->fingerprint(); // xxh3 hash
+
+// Immutable transformations
+$publicData = $snapshot->except(['password'])->merge(['status' => 'active']);
+```
+
+**Key Features:**
+- ⚡ **Fast comparisons** - O(1) equality checks using xxh3 fingerprinting
+- 🔑 **ArrayAccess** - Use both `$pebble->name` and `$pebble['name']` syntax
+- 📊 **Countable** - Native `count($pebble)` support
+- 🔒 **Immutable** - Cannot be modified after creation
+- 🚀 **Zero overhead** - No validation or type checking
+
+**When to use which:**
+- **Peeble** → Quick snapshots, no validation needed, dynamic properties, maximum performance, fast comparisons
+- **Granite** → Full DTOs with validation, type safety, custom serialization, advanced features
+
+📖 **[Read Peeble Documentation](docs/peeble.md)**
+
+---
+
 This documentation has been generated almost in its entirety using 🦠 Claude 4 Sonnet based on source code analysis. Some sections may be incomplete, outdated or may contain documentation for planned or not-released features. For the most accurate information, please refer to the source code or open an issue on the package repository.
 
 ## ✨ Features
