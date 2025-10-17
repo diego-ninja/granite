@@ -4,10 +4,10 @@ Complete API reference for Granite classes, methods, and attributes.
 
 ## ⚠️ Deprecation Notice
 
-**Important:** As of version 2.0.0, `GraniteDTO` and `GraniteVO` are **deprecated** in favor of the unified `Granite` base class.
+**Important:** As of version 2.0.0, `Granite` and `Granite` are **deprecated** and will be removed in favor of the unified `Granite` base class.
 
-- ❌ **Deprecated:** `Ninja\Granite\GraniteDTO` (will be removed in v3.0.0)
-- ❌ **Deprecated:** `Ninja\Granite\GraniteVO` (will be removed in v3.0.0)
+- ❌ **Deprecated:** `Ninja\Granite\Granite` (will be removed in v2.0.0)
+- ❌ **Deprecated:** `Ninja\Granite\Granite` (will be removed in v2.0.0)
 - ✅ **Use instead:** `Ninja\Granite\Granite`
 
 All examples in this document use the new `Granite` class. Legacy classes remain functional for backward compatibility but should not be used in new code.
@@ -281,7 +281,7 @@ protected static function rules(): array
 
 ### Deprecated Classes
 
-#### GraniteDTO ⚠️ DEPRECATED
+#### Granite ⚠️ DEPRECATED
 
 **Deprecated since:** v2.0.0
 **Will be removed in:** v3.0.0
@@ -291,13 +291,13 @@ Legacy base class for Data Transfer Objects. Functionality has been merged into 
 
 ```php
 // ❌ Old (deprecated)
-final readonly class User extends GraniteDTO { }
+final readonly class User extends Granite { }
 
 // ✅ New (recommended)
 final readonly class User extends Granite { }
 ```
 
-#### GraniteVO ⚠️ DEPRECATED
+#### Granite ⚠️ DEPRECATED
 
 **Deprecated since:** v2.0.0
 **Will be removed in:** v3.0.0
@@ -307,7 +307,7 @@ Legacy base class for Value Objects with validation. All validation features are
 
 ```php
 // ❌ Old (deprecated)
-final readonly class Email extends GraniteVO { }
+final readonly class Email extends Granite { }
 
 // ✅ New (recommended)
 final readonly class Email extends Granite { }

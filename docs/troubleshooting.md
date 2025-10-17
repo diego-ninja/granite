@@ -46,7 +46,7 @@ try {
 
 1. **Check validation rules**:
 ```php
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         #[Required('Name is required')] // Custom message
@@ -75,19 +75,19 @@ var_dump($rules); // See all validation rules for the class
 
 **Diagnosis**:
 ```php
-// Check if you're using GraniteDTO instead of GraniteVO
-class User extends GraniteDTO // ❌ No validation
+// Check if you're using Granite instead of Granite
+class User extends Granite // ❌ No validation
 {
     // Validation attributes here won't work
 }
 
-class User extends GraniteVO // ✅ Validation enabled
+class User extends Granite // ✅ Validation enabled
 {
     // Validation attributes work here
 }
 ```
 
-**Solution**: Always use `GraniteVO` for objects that need validation.
+**Solution**: Always use `Granite` for objects that need validation.
 
 ### Problem: Custom Validation Rules Not Triggering
 
@@ -160,7 +160,7 @@ var_dump($metadata->debug()); // See hidden properties and name mappings
 
 1. **Check for Hidden attribute**:
 ```php
-class User extends GraniteDTO
+class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -175,7 +175,7 @@ class User extends GraniteDTO
 
 2. **Check property visibility**:
 ```php
-class User extends GraniteDTO
+class User extends Granite
 {
     public function __construct(
         public int $id, // ✅ Public - will serialize
@@ -219,7 +219,7 @@ $user = User::from([
 
 2. **Handle invalid dates gracefully**:
 ```php
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public string $name,
@@ -359,7 +359,7 @@ $mapper->setConventionConfidenceThreshold(0.7); // Lower threshold
 ```php
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 
-final readonly class Destination extends GraniteDTO
+final readonly class Destination extends Granite
 {
     public function __construct(
         #[MapFrom('userId')]
@@ -444,7 +444,7 @@ class Order {
 
 1. **Use IDs instead of full objects**:
 ```php
-final readonly class UserResponse extends GraniteDTO
+final readonly class UserResponse extends Granite
 {
     public function __construct(
         public int $id,
@@ -456,7 +456,7 @@ final readonly class UserResponse extends GraniteDTO
 
 2. **Create specific mapping DTOs**:
 ```php
-final readonly class OrderSummary extends GraniteDTO
+final readonly class OrderSummary extends Granite
 {
     public function __construct(
         public int $id,
@@ -466,7 +466,7 @@ final readonly class OrderSummary extends GraniteDTO
     ) {}
 }
 
-final readonly class UserWithOrders extends GraniteDTO
+final readonly class UserWithOrders extends Granite
 {
     public function __construct(
         public int $id,
@@ -532,7 +532,7 @@ if ($processedCount % 10000 === 0) {
 3. **Use simpler DTOs when possible**:
 ```php
 // Instead of complex nested objects
-final readonly class ComplexUser extends GraniteVO
+final readonly class ComplexUser extends Granite
 {
     public function __construct(
         public int $id,
@@ -545,7 +545,7 @@ final readonly class ComplexUser extends GraniteVO
 }
 
 // Use simpler version
-final readonly class SimpleUser extends GraniteDTO
+final readonly class SimpleUser extends Granite
 {
     public function __construct(
         public int $id,
@@ -577,8 +577,8 @@ echo "Creation time: " . ($end - $start) . " seconds\n";
 
 1. **Minimize validation for DTOs**:
 ```php
-// Use GraniteDTO for simple data transfer (no validation)
-final readonly class UserResponse extends GraniteDTO
+// Use Granite for simple data transfer (no validation)
+final readonly class UserResponse extends Granite
 {
     public function __construct(
         public int $id,
@@ -587,8 +587,8 @@ final readonly class UserResponse extends GraniteDTO
     ) {}
 }
 
-// Use GraniteVO only when validation is needed
-final readonly class CreateUserRequest extends GraniteVO
+// Use Granite only when validation is needed
+final readonly class CreateUserRequest extends Granite
 {
     public function __construct(
         #[Required]
@@ -636,7 +636,7 @@ var_dump($user->createdAt); // Should be DateTime object
 
 1. **Use explicit conversion**:
 ```php
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -657,7 +657,7 @@ final readonly class User extends GraniteVO
 
 2. **Add validation for expected types**:
 ```php
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         #[IntegerType]
@@ -689,7 +689,7 @@ $user = User::from([
 
 1. **Make properties nullable when appropriate**:
 ```php
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -701,7 +701,7 @@ final readonly class User extends GraniteDTO
 
 2. **Use validation to handle nulls**:
 ```php
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         #[Required] // Will fail if null
@@ -761,7 +761,7 @@ foreach ($largeDataset as $data) {
 
 ```php
 // Add debugging to your objects
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,

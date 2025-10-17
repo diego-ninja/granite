@@ -1,6 +1,6 @@
 # Validation
 
-Granite provides a comprehensive validation system that can be used with Value Objects (VOs) to ensure data integrity. The system supports both attribute-based validation (recommended) and method-based validation for complex scenarios.
+Granite provides a comprehensive validation system to ensure data integrity. The system supports both attribute-based validation (recommended) and method-based validation for complex scenarios.
 
 ## Table of Contents
 
@@ -15,19 +15,19 @@ Granite provides a comprehensive validation system that can be used with Value O
 
 ## Basic Validation
 
-To add validation to your objects, extend `GraniteVO` instead of `GraniteDTO` and use validation attributes:
+Use validation attributes on your Granite objects to ensure data integrity:
 
 ```php
 <?php
 
-use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Validation\Attributes\Required;
 use Ninja\Granite\Validation\Attributes\Email;
 use Ninja\Granite\Validation\Attributes\Min;
 use Ninja\Granite\Validation\Attributes\Max;
 use Ninja\Granite\Validation\Attributes\StringType;
 
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         #[Required]
@@ -277,7 +277,7 @@ public string $email;
 For complex validation scenarios, you can use method-based rules:
 
 ```php
-final readonly class ComplexUser extends GraniteVO
+final readonly class ComplexUser extends Granite
 {
     public function __construct(
         public string $username,
@@ -421,7 +421,7 @@ public array $addresses;
 ### Complex Collection Validation
 
 ```php
-final readonly class OrderItem extends GraniteVO
+final readonly class OrderItem extends Granite
 {
     public function __construct(
         #[Required]
@@ -440,7 +440,7 @@ final readonly class OrderItem extends GraniteVO
     ) {}
 }
 
-final readonly class Order extends GraniteVO
+final readonly class Order extends Granite
 {
     public function __construct(
         #[Required]
@@ -581,7 +581,7 @@ public ?string $requiredField = null;
 ### 3. Use Custom Messages for User-Facing Validation
 
 ```php
-final readonly class UserRegistration extends GraniteVO
+final readonly class UserRegistration extends Granite
 {
     public function __construct(
         #[Required('Please enter your full name')]
@@ -603,7 +603,7 @@ final readonly class UserRegistration extends GraniteVO
 ### 4. Group Related Validations
 
 ```php
-final readonly class Address extends GraniteVO
+final readonly class Address extends Granite
 {
     public function __construct(
         #[Required]
@@ -627,4 +627,4 @@ final readonly class Address extends GraniteVO
 }
 ```
 
-This validation system ensures that your Value Objects maintain data integrity while providing clear, actionable error messages to help users correct their input.
+This validation system ensures that your Granite objects maintain data integrity while providing clear, actionable error messages to help users correct their input.

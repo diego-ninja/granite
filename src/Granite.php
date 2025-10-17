@@ -31,10 +31,10 @@ use Ninja\Granite\Traits\HasValidation;
 abstract readonly class Granite implements GraniteObject
 {
     use HasCarbonSupport;
+    use HasComparison;
     use HasDeserialization;
     use HasNamingConventions;
     use HasSerialization;
     use HasTypeConversion;
     use HasValidation;
-    use HasComparison;
 }
