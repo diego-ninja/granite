@@ -146,19 +146,17 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Create an immutable Pebble from various data sources.
+     * Create a new immutable Pebble from an array, object, or JSON string.
      *
-     * Supports:
-     * - Arrays: ['key' => 'value']
-     * - Objects: Eloquent models, stdClass, any object with public properties
-     * - JSON strings: '{"key": "value"}'
-     * - Granite objects: User::from([...])
+     * Supports arrays, objects (including Granite objects, objects with public properties,
+     * objects exposing toArray()/jsonSerialize(), and objects with public no-arg getters),
+     * and JSON-encoded strings.
      *
-     * @param array<string, mixed>|object|string $source Data source
-     * @return self Immutable Pebble instance
-     * @throws Exceptions\ReflectionException
-     * @throws SerializationException
-     * @throws JsonException
+     * @param array<string, mixed>|object|string $source Source data to convert into a Pebble
+     * @return self A new immutable Pebble containing the extracted data
+     * @throws Exceptions\ReflectionException If reflection fails while extracting getters
+     * @throws SerializationException If an object cannot be serialized during extraction
+     * @throws JsonException If JSON decoding or encoding fails during extraction or fingerprinting
      */
     public static function from(array|object|string $source): self
     {
@@ -208,13 +206,16 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Compare this Pebble with another Pebble or array.
-     * Uses fingerprint comparison for Pebble-to-Pebble comparisons for O(1) performance.
-     *
-     * @param mixed $other Comparison target
-     * @return bool True if equal
-     * @throws JsonException
-     */
+         * Determine whether this Pebble's data equals another Pebble or an array.
+         *
+         * Compares two Pebbles by their precomputed fingerprints for constant-time comparison.
+         * When given an array, the array is canonicalized and fingerprinted using the same
+         * normalization rules before comparison.
+         *
+         * @param mixed $other A Pebble or an associative array to compare against.
+         * @return bool `true` if the underlying data are equal, `false` otherwise.
+         * @throws JsonException If normalization or fingerprinting of an array fails.
+         */
     public function equals(mixed $other): bool
     {
         if ($this === $other) {
@@ -280,12 +281,15 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Get only specified properties.
-     *
-     * @param array<string> $keys Property names to extract
-     * @return self New Pebble with only specified properties
-     * @throws JsonException
-     */
+         * Create a new Pebble containing only the specified keys.
+         *
+         * Missing keys are ignored; only keys present in the current Pebble will appear
+         * in the resulting Pebble.
+         *
+         * @param array<string> $keys Property names to extract
+         * @return self A new Pebble containing only the specified properties
+         * @throws JsonException
+         */
     public function only(array $keys): self
     {
         $filtered = array_intersect_key(
@@ -296,11 +300,11 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Get all properties except specified ones.
+     * Create a new Pebble containing all properties except the specified keys.
      *
-     * @param array<string> $keys Property names to exclude
-     * @return self New Pebble without specified properties
-     * @throws JsonException
+     * @param array<string> $keys Property names to exclude from the resulting Pebble.
+     * @return self A new Pebble instance that excludes the given properties.
+     * @throws JsonException If serialization or fingerprint computation fails during construction.
      */
     public function except(array $keys): self
     {
@@ -312,12 +316,12 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Create a new Pebble with merged data.
-     *
-     * @param array<string, mixed> $data Additional data to merge
-     * @return self New Pebble with merged data
-     * @throws JsonException
-     */
+         * Create a new Pebble containing this Pebble's data merged with the provided array.
+         *
+         * @param array<string, mixed> $data Additional data to merge; values in this array overwrite existing keys.
+         * @return self A new Pebble whose data is the result of merging the original data with `$data`.
+         * @throws JsonException If the merged data cannot be serialized when computing the fingerprint.
+         */
     public function merge(array $data): self
     {
         return new self(array_merge($this->data, $data));
@@ -416,19 +420,14 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Extract data from an object using various strategies.
+     * Produce an associative array of property names to values extracted from an object.
      *
-     * Priority order:
-     * 1. Granite objects - use array() method
-     * 2. Objects with toArray() method
-     * 3. Objects implementing JsonSerializable
-     * 4. Public properties extraction
-     * 5. Getter methods (getName() -> name)
+     * Extraction follows this priority: Granite objects via array(), objects with toArray(), JsonSerializable objects via jsonSerialize(), public properties, then public no-argument getters (getX/isX/hasX) to populate missing keys.
      *
-     * @param object $source Source object
-     * @return array<string, mixed> Extracted data
-     * @throws Exceptions\ReflectionException
-     * @throws SerializationException
+     * @param object $source Source object to extract data from
+     * @return array<string, mixed> Associative array of extracted data keyed by property name
+     * @throws Exceptions\ReflectionException If reflection inspection of getters fails
+     * @throws SerializationException If serialization-related operations fail during extraction
      */
     private static function extractFromObject(object $source): array
     {
@@ -480,14 +479,14 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Extract data from getter methods.
+     * Extracts public no-argument getter values from an object and returns them as an associative array.
      *
-     * Converts methods like getName() to 'name' property.
-     * Only extracts getters that don't already exist in the data.
+     * Only methods matching getX(), isX(), or hasX() are considered; each is converted to a lower-cased property name (e.g., getName() -> name).
+     * Getters already present in $existingData are skipped. Methods that are non-public, require parameters, throw during invocation, or cannot be reflected are ignored.
      *
-     * @param object $source Source object
-     * @param array<string, mixed> $existingData Existing extracted data
-     * @return array<string, mixed> Data from getters
+     * @param object $source Source object to extract getters from.
+     * @param array<string, mixed> $existingData Previously extracted data used to avoid overwriting existing keys.
+     * @return array<string, mixed> Associative array of property names to values extracted from getters.
      */
     private static function extractGetters(object $source, array $existingData): array
     {
@@ -544,11 +543,11 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Compute a stable fingerprint from array data.
+     * Produce a stable fingerprint for the given data array by normalizing it and hashing its JSON representation.
      *
-     * @param array<string, mixed> $data Data to hash
-     * @return string Hash fingerprint
-     * @throws JsonException
+     * @param array<string, mixed> $data The data to normalize and hash; normalization ensures stable ordering for associative arrays and consistent representation for DateTimeInterface, JsonSerializable, enums, objects, and resources.
+     * @return string The resulting hash fingerprint.
+     * @throws JsonException If the data cannot be JSON-encoded.
      * @internal
      */
     private static function computeFingerprint(array $data): string
@@ -568,12 +567,15 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     }
 
     /**
-     * Normalize values and sort assoc keys to make hashing order-insensitive.
-     *
-     * @internal
-     * @param mixed $value Value to normalize
-     * @return mixed Normalized value
-     */
+         * Produce a stable, comparable representation of a value suitable for fingerprinting.
+         *
+         * Converts/normalizes supported types and recursively normalizes arrays so that semantically
+         * identical values produce the same structure regardless of insertion order for associative arrays.
+         *
+         * @internal
+         * @param mixed $value Value to normalize for hashing
+         * @return mixed Normalized value (scalars unchanged; arrays with associative keys sorted; JsonSerializable converted via jsonSerialize; DateTimeInterface to DATE_ATOM string; UnitEnum to its `value` or `name`; objects to their public properties; resources replaced by their type)
+         */
     private static function normalizeForHash(mixed $value): mixed
     {
         if (is_array($value)) {
