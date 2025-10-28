@@ -22,9 +22,9 @@ All Granite objects (DTOs and VOs) can be easily converted to arrays and JSON:
 ```php
 <?php
 
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 
-final readonly class User extends GraniteDTO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -57,10 +57,10 @@ Use the `#[SerializedName]` attribute to customize property names in the seriali
 ```php
 <?php
 
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 
-final readonly class ApiUser extends GraniteDTO
+final readonly class ApiUser extends Granite
 {
     public function __construct(
         public int $id,
@@ -122,7 +122,7 @@ The `#[SerializationConvention]` attribute allows you to apply a naming conventi
 ```php
 <?php
 
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
@@ -130,7 +130,7 @@ use Ninja\Granite\Mapping\Conventions\CamelCaseConvention;
 use Ninja\Granite\Mapping\Conventions\PascalCaseConvention;
 
 #[SerializationConvention(SnakeCaseConvention::class)]
-final readonly class UserProfile extends GraniteDTO
+final readonly class UserProfile extends Granite
 {
     public function __construct(
         public int $id,
@@ -192,7 +192,7 @@ By default, conventions are applied bidirectionally (both serialization and dese
     convention: SnakeCaseConvention::class,
     bidirectional: true  // Default: applies to both directions
 )]
-final readonly class ApiResponse extends GraniteDTO
+final readonly class ApiResponse extends Granite
 {
     public function __construct(
         public string $userId,        // accepts both "userId" and "user_id"
@@ -224,7 +224,7 @@ You can also pass a convention instance instead of a class string:
 use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
 
 #[SerializationConvention(new SnakeCaseConvention())]
-final readonly class ConfiguredClass extends GraniteDTO
+final readonly class ConfiguredClass extends Granite
 {
     // ...
 }
@@ -240,7 +240,7 @@ When multiple serialization configurations are present, they follow this precede
 
 ```php
 #[SerializationConvention(SnakeCaseConvention::class)]
-final readonly class MixedConfig extends GraniteDTO
+final readonly class MixedConfig extends Granite
 {
     public function __construct(
         public string $firstName,           // uses convention: "first_name"
@@ -268,11 +268,11 @@ Use the `#[Hidden]` attribute to exclude sensitive properties from serialization
 ```php
 <?php
 
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 
-final readonly class UserAccount extends GraniteDTO
+final readonly class UserAccount extends Granite
 {
     public function __construct(
         public int $id,
@@ -319,9 +319,9 @@ For complex scenarios or when you prefer method-based configuration, override th
 ```php
 <?php
 
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 
-final readonly class LegacyUser extends GraniteDTO
+final readonly class LegacyUser extends Granite
 {
     public function __construct(
         public int $id,
@@ -382,7 +382,7 @@ $publicData = $user->array();
 Attributes take precedence over method-based configuration:
 
 ```php
-final readonly class HybridUser extends GraniteDTO
+final readonly class HybridUser extends Granite
 {
     public function __construct(
         public int $id,
@@ -420,7 +420,7 @@ final readonly class HybridUser extends GraniteDTO
 DateTime objects are automatically serialized to ISO 8601 format:
 
 ```php
-final readonly class Event extends GraniteDTO
+final readonly class Event extends Granite
 {
     public function __construct(
         public string $name,
@@ -453,13 +453,13 @@ Granite includes comprehensive support for Carbon dates with specialized attribu
 ```php
 <?php
 
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\CarbonRange;
 use Ninja\Granite\Serialization\Attributes\CarbonRelative;
 use Carbon\Carbon;
 
-final readonly class EventSchedule extends GraniteDTO
+final readonly class EventSchedule extends Granite
 {
     public function __construct(
         public string $title,
@@ -543,7 +543,7 @@ public Carbon $fiscalYear;  // Must be within 2024
 #### Carbon with Multiple Formats
 
 ```php
-final readonly class FlexibleEvent extends GraniteDTO
+final readonly class FlexibleEvent extends Granite
 {
     public function __construct(
         public string $name,
@@ -585,7 +585,7 @@ use Carbon\Carbon;
     defaultFormat: 'Y-m-d H:i:s',
     parseFormats: ['Y-m-d H:i:s', 'Y-m-d\TH:i:s\Z', 'Y-m-d']
 )]
-final readonly class GlobalEvent extends GraniteDTO
+final readonly class GlobalEvent extends Granite
 {
     public function __construct(
         public string $title,
@@ -601,7 +601,7 @@ final readonly class GlobalEvent extends GraniteDTO
 #### Carbon Timezone Handling
 
 ```php
-final readonly class TimezoneEvent extends GraniteDTO
+final readonly class TimezoneEvent extends Granite
 {
     public function __construct(
         public string $name,
@@ -657,7 +657,7 @@ enum Priority {
     case HIGH;
 }
 
-final readonly class Task extends GraniteDTO
+final readonly class Task extends Granite
 {
     public function __construct(
         public string $title,
@@ -687,7 +687,7 @@ Granite automatically handles nested objects:
 ```php
 <?php
 
-final readonly class Address extends GraniteDTO
+final readonly class Address extends Granite
 {
     public function __construct(
         public string $street,
@@ -699,7 +699,7 @@ final readonly class Address extends GraniteDTO
     ) {}
 }
 
-final readonly class Company extends GraniteDTO
+final readonly class Company extends Granite
 {
     public function __construct(
         public string $name,
@@ -742,7 +742,7 @@ $array = $company->array();
 ### Arrays of Objects
 
 ```php
-final readonly class Team extends GraniteDTO
+final readonly class Team extends Granite
 {
     public function __construct(
         public string $name,
@@ -782,14 +782,14 @@ Create DTOs specifically designed for API responses:
 ```php
 <?php
 
-use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 use Ninja\Granite\Mapping\Conventions\SnakeCaseConvention;
 
 #[SerializationConvention(SnakeCaseConvention::class)]
-final readonly class UserProfileResponse extends GraniteDTO
+final readonly class UserProfileResponse extends Granite
 {
     public function __construct(
         public int $id,                        // convention: "id" (no change)
@@ -857,7 +857,7 @@ $apiData = $response->array();
 Handle database entities with computed properties:
 
 ```php
-final readonly class ProductSummary extends GraniteDTO
+final readonly class ProductSummary extends Granite
 {
     public function __construct(
         public int $id,
@@ -912,7 +912,7 @@ final readonly class ProductSummary extends GraniteDTO
 Create configuration objects that can be serialized to files:
 
 ```php
-final readonly class AppConfig extends GraniteDTO
+final readonly class AppConfig extends Granite
 {
     public function __construct(
         #[SerializedName('app_name')]
@@ -958,7 +958,7 @@ Granite throws `SerializationException` when it encounters unsupported types:
 ```php
 use Ninja\Granite\Exceptions\SerializationException;
 
-final readonly class InvalidExample extends GraniteDTO
+final readonly class InvalidExample extends Granite
 {
     public function __construct(
         public string $name,
@@ -1014,7 +1014,7 @@ public string $password;  // Will be serialized!
 
 ```php
 // Internal entity
-final readonly class User extends GraniteVO
+final readonly class User extends Granite
 {
     public function __construct(
         public int $id,
@@ -1027,7 +1027,7 @@ final readonly class User extends GraniteVO
 }
 
 // Public API response
-final readonly class PublicUser extends GraniteDTO
+final readonly class PublicUser extends Granite
 {
     public function __construct(
         public int $id,
@@ -1047,7 +1047,7 @@ final readonly class PublicUser extends GraniteDTO
 }
 
 // Admin response
-final readonly class AdminUser extends GraniteDTO
+final readonly class AdminUser extends Granite
 {
     public function __construct(
         public int $id,
@@ -1075,7 +1075,7 @@ final readonly class AdminUser extends GraniteDTO
  * - Internal IDs and permissions are hidden
  * - Dates are in ISO 8601 format
  */
-final readonly class UserProfile extends GraniteDTO
+final readonly class UserProfile extends Granite
 {
     // ... implementation
 }

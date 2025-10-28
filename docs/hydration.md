@@ -11,6 +11,8 @@ Granite's `from()` method has been enhanced to support multiple invocation patte
 - [Named Parameters](#named-parameters)
 - [Mixed Usage](#mixed-usage)
 - [Granite Object Cloning](#granite-object-cloning)
+- [Object Hydration](#object-hydration) ✨ NEW!
+- [Custom Hydrators](#custom-hydrators) 🔧 EXTENSIBLE!
 - [Partial Data](#partial-data)
 - [Type Safety](#type-safety)
 - [Advanced Examples](#advanced-examples)
@@ -81,6 +83,21 @@ $product = Product::from(
 ```php
 $originalProduct = Product::from(['name' => 'Laptop', 'price' => 999.99]);
 $clonedProduct = Product::from($originalProduct);
+```
+
+### 6. Any Object (Laravel, Doctrine, etc.) ✨ NEW!
+```php
+// From Laravel Eloquent Model
+$eloquentUser = User::find(1);
+$graniteUser = UserDTO::from($eloquentUser);
+
+// From Doctrine Entity
+$entity = $entityManager->find(Product::class, 1);
+$productDTO = ProductDTO::from($entity);
+
+// From stdClass
+$stdObject = json_decode($json);
+$graniteObject = SomeDTO::from($stdObject);
 ```
 
 ## Array Data
@@ -392,6 +409,802 @@ $audit = CustomerAudit::from([
     'modifiedBy' => 'admin'
 ]);
 ```
+
+## Object Hydration ✨ NEW!
+
+Granite can now extract data from **any object**, not just Granite objects. This makes it incredibly easy to integrate with frameworks, libraries, and external APIs.
+
+### Supported Object Types
+
+Granite automatically extracts data using multiple strategies (in priority order):
+
+1. **`toArray()` method** - Common in Laravel models, Doctrine entities, etc.
+2. **`JsonSerializable` interface** - Calls `jsonSerialize()`
+3. **Public properties** - Direct extraction using `get_object_vars()`
+
+```php
+<?php
+
+use Ninja\Granite\Granite;
+
+final readonly class User extends Granite
+{
+    public function __construct(
+        public string $name,
+        public string $email,
+        public int $age
+    ) {}
+}
+```
+
+### From Laravel/Eloquent Models
+
+```php
+// Laravel Eloquent Model
+$eloquentUser = \App\Models\User::find(1);
+// Has toArray() method
+
+// Automatically extracts data
+$graniteUser = User::from($eloquentUser);
+
+echo $graniteUser->name;  // Works!
+echo $graniteUser->email; // Works!
+```
+
+### From Doctrine Entities
+
+```php
+// Doctrine Entity with toArray() method
+class DoctrineUser
+{
+    private string $name;
+    private string $email;
+    private int $age;
+
+    // ... getters and setters ...
+
+    public function toArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'email' => $this->email,
+            'age' => $this->age
+        ];
+    }
+}
+
+$doctrineUser = $entityManager->find(DoctrineUser::class, 1);
+$graniteUser = User::from($doctrineUser);
+```
+
+### From Framework Request Objects
+
+```php
+// Symfony Request
+use Symfony\Component\HttpFoundation\Request;
+
+$request = Request::createFromGlobals();
+// Request implements ArrayAccess and has public properties
+
+$user = User::from($request); // Extracts request parameters
+
+// Laravel Request
+use Illuminate\Http\Request;
+
+class UserController
+{
+    public function store(Request $request)
+    {
+        // If Request had toArray() or public properties, it would work directly
+        // But typically you'd extract the data first:
+        $validated = $request->validate([...]);
+        $user = User::from($validated);
+
+        return $user->json();
+    }
+}
+```
+
+### From API Response Objects
+
+```php
+// Guzzle HTTP Response
+$response = $client->get('https://api.example.com/users/1');
+$data = json_decode($response->getBody(), true);
+
+$user = User::from($data);
+
+// Or with an API client that returns objects
+class ApiUser implements JsonSerializable
+{
+    public function __construct(
+        private array $data
+    ) {}
+
+    public function jsonSerialize(): array
+    {
+        return $this->data;
+    }
+}
+
+$apiUser = $apiClient->getUser(1);
+$graniteUser = User::from($apiUser); // Automatically extracts via jsonSerialize()
+```
+
+### From stdClass Objects
+
+```php
+// From JSON decode
+$json = '{"name": "John Doe", "email": "john@example.com", "age": 30}';
+$stdObject = json_decode($json);
+
+// Extracts public properties
+$user = User::from($stdObject);
+
+echo $user->name; // "John Doe"
+```
+
+### From Custom Objects with Public Properties
+
+```php
+class LegacyUser
+{
+    public string $name;
+    public string $email;
+    public int $age;
+
+    public function __construct()
+    {
+        $this->name = 'John Doe';
+        $this->email = 'john@example.com';
+        $this->age = 30;
+    }
+}
+
+$legacyUser = new LegacyUser();
+$modernUser = User::from($legacyUser); // Extracts public properties
+```
+
+### Mixed Object and Named Parameters
+
+```php
+// Combine object extraction with named parameter overrides
+$eloquentUser = \App\Models\User::find(1);
+
+$updatedUser = User::from(
+    $eloquentUser,
+    email: 'newemail@example.com',  // Override email
+    age: 31                          // Override age
+);
+```
+
+### Object Priority and Fallbacks
+
+```php
+class HybridObject implements JsonSerializable
+{
+    public string $publicProp = 'from public';
+
+    public function toArray(): array
+    {
+        return ['source' => 'from toArray()'];
+    }
+
+    public function jsonSerialize(): array
+    {
+        return ['source' => 'from jsonSerialize()'];
+    }
+}
+
+$obj = new HybridObject();
+$result = TestClass::from($obj);
+
+// Priority: toArray() > jsonSerialize() > public properties
+// Result will use toArray() method
+```
+
+### Real-World Example: Data Migration
+
+```php
+// Migrating from old system to new system
+class OldSystemUser
+{
+    public function toArray(): array
+    {
+        return [
+            'full_name' => $this->getFullName(),
+            'email_address' => $this->getEmail(),
+            'registration_date' => $this->getCreatedAt()
+        ];
+    }
+}
+
+final readonly class NewSystemUser extends Granite
+{
+    public function __construct(
+        public string $full_name,
+        public string $email_address,
+        public DateTime $registration_date
+    ) {}
+}
+
+// Migration script
+$oldUsers = $oldSystem->getAllUsers();
+foreach ($oldUsers as $oldUser) {
+    $newUser = NewSystemUser::from($oldUser); // Automatic conversion!
+    $newSystem->saveUser($newUser);
+}
+```
+
+### Real-World Example: Testing with Mocks
+
+```php
+class MockUser
+{
+    public string $name = 'Test User';
+    public string $email = 'test@example.com';
+    public int $age = 25;
+}
+
+class UserServiceTest extends TestCase
+{
+    public function testUserCreation(): void
+    {
+        $mock = new MockUser();
+        $user = User::from($mock);
+
+        $this->assertEquals('Test User', $user->name);
+        $this->assertEquals('test@example.com', $user->email);
+    }
+}
+```
+
+### Benefits of Object Hydration
+
+1. **Framework Agnostic** - Works with Laravel, Symfony, Doctrine, and custom code
+2. **Zero Configuration** - No mapping needed, works automatically
+3. **Type Safe** - Maintains Granite's type conversion and validation
+4. **Flexible** - Combines with all other `from()` patterns
+5. **Migration Friendly** - Easy to migrate from legacy systems
+6. **Test Friendly** - Simple mock objects work out of the box
+
+### Limitations
+
+- Only **public properties** are extracted when using property extraction
+- Private/protected properties require `toArray()` or `jsonSerialize()`
+- Object must have compatible property names
+
+```php
+class UserWithPrivateProps
+{
+    private string $name = 'John';  // Won't be extracted
+    public string $email = 'john@example.com';  // Will be extracted
+}
+
+$source = new UserWithPrivateProps();
+$user = User::from($source);
+
+// Only email is extracted, name property remains uninitialized
+```
+
+## Custom Hydrators 🔧 EXTENSIBLE!
+
+Granite's hydration system is **fully extensible**. You can create custom hydrators to support any data source imaginable - databases, APIs, file formats, or even custom protocols.
+
+### How Hydrators Work
+
+Granite uses a **Chain of Responsibility** pattern with prioritized hydrators. Each hydrator:
+
+1. Checks if it `supports()` the given data type
+2. If yes, `hydrate()` extracts and returns normalized array data
+3. Higher priority hydrators are tried first
+
+### Built-in Hydrators
+
+Granite includes these hydrators out of the box (in priority order):
+
+| Priority | Hydrator | Handles |
+|----------|----------|---------|
+| 100 | `GraniteHydrator` | Granite objects → `array()` method |
+| 90 | `JsonHydrator` | JSON strings → parsed array |
+| 80 | `ArrayHydrator` | Arrays → pass through |
+| 70 | `ObjectHydrator` | Objects → `toArray()`, `JsonSerializable`, public props |
+| 60 | `GetterHydrator` | Objects → smart getter extraction |
+| 10 | `StringHydrator` | Invalid strings → throws exception |
+
+### Creating a Custom Hydrator
+
+Implement the `Hydrator` interface:
+
+```php
+<?php
+
+namespace App\Hydrators;
+
+use Ninja\Granite\Hydration\AbstractHydrator;
+
+class XmlHydrator extends AbstractHydrator
+{
+    // Higher priority = tried first
+    protected int $priority = 85;
+
+    public function supports(mixed $data, string $targetClass): bool
+    {
+        // Check if this hydrator can handle the data
+        return is_string($data) && str_starts_with(trim($data), '<?xml');
+    }
+
+    public function hydrate(mixed $data, string $targetClass): array
+    {
+        // Extract data and return as array
+        $xml = simplexml_load_string($data);
+        return json_decode(json_encode($xml), true);
+    }
+}
+```
+
+### Registering Custom Hydrators
+
+Register your hydrator with the factory:
+
+```php
+<?php
+
+use Ninja\Granite\Hydration\HydratorFactory;
+use App\Hydrators\XmlHydrator;
+
+// Register once at application bootstrap
+HydratorFactory::getInstance()->register(new XmlHydrator());
+
+// Now all Granite objects can hydrate from XML!
+$xml = '<?xml version="1.0"?><user><name>John</name><email>john@example.com</email></user>';
+$user = User::from($xml); // Automatically uses XmlHydrator
+```
+
+### Real-World Example: CSV Hydrator
+
+```php
+<?php
+
+namespace App\Hydrators;
+
+use Ninja\Granite\Hydration\AbstractHydrator;
+
+/**
+ * Hydrates Granite objects from CSV strings.
+ */
+class CsvHydrator extends AbstractHydrator
+{
+    protected int $priority = 85;
+
+    public function supports(mixed $data, string $targetClass): bool
+    {
+        // Support CSV strings (simplified detection)
+        if (!is_string($data)) {
+            return false;
+        }
+
+        // Check if it looks like CSV (has commas and no JSON/XML markers)
+        return str_contains($data, ',') &&
+               !str_starts_with(trim($data), '{') &&
+               !str_starts_with(trim($data), '<?xml');
+    }
+
+    public function hydrate(mixed $data, string $targetClass): array
+    {
+        $lines = explode("\n", trim($data));
+
+        if (count($lines) < 2) {
+            return [];
+        }
+
+        // First line = headers
+        $headers = str_getcsv($lines[0]);
+
+        // Second line = values
+        $values = str_getcsv($lines[1]);
+
+        // Combine into associative array
+        return array_combine($headers, $values) ?: [];
+    }
+}
+
+// Register the hydrator
+HydratorFactory::getInstance()->register(new CsvHydrator());
+
+// Use it!
+$csv = "name,email,age\nJohn Doe,john@example.com,30";
+$user = User::from($csv); // Works!
+```
+
+### Real-World Example: Database Row Hydrator
+
+```php
+<?php
+
+namespace App\Hydrators;
+
+use Ninja\Granite\Hydration\AbstractHydrator;
+use PDOStatement;
+
+/**
+ * Hydrates from PDO statement results.
+ */
+class PdoHydrator extends AbstractHydrator
+{
+    protected int $priority = 75;
+
+    public function supports(mixed $data, string $targetClass): bool
+    {
+        return $data instanceof PDOStatement;
+    }
+
+    public function hydrate(mixed $data, string $targetClass): array
+    {
+        /** @var PDOStatement $data */
+        $row = $data->fetch(\PDO::FETCH_ASSOC);
+        return $this->ensureArray($row);
+    }
+}
+
+// Register the hydrator
+HydratorFactory::getInstance()->register(new PdoHydrator());
+
+// Use it!
+$stmt = $pdo->query("SELECT * FROM users WHERE id = 1");
+$user = User::from($stmt); // Hydrates directly from DB result!
+```
+
+### Real-World Example: API Response Hydrator
+
+```php
+<?php
+
+namespace App\Hydrators;
+
+use Ninja\Granite\Hydration\AbstractHydrator;
+use Psr\Http\Message\ResponseInterface;
+
+/**
+ * Hydrates from PSR-7 HTTP responses.
+ */
+class Psr7ResponseHydrator extends AbstractHydrator
+{
+    protected int $priority = 75;
+
+    public function supports(mixed $data, string $targetClass): bool
+    {
+        return $data instanceof ResponseInterface;
+    }
+
+    public function hydrate(mixed $data, string $targetClass): array
+    {
+        /** @var ResponseInterface $data */
+        $body = (string) $data->getBody();
+
+        // Try to decode as JSON
+        $decoded = json_decode($body, true);
+        return $this->ensureArray($decoded);
+    }
+}
+
+// Register the hydrator
+HydratorFactory::getInstance()->register(new Psr7ResponseHydrator());
+
+// Use it with Guzzle!
+$response = $guzzle->get('https://api.example.com/users/1');
+$user = User::from($response); // Direct hydration from HTTP response!
+```
+
+### Real-World Example: Encrypted Data Hydrator
+
+```php
+<?php
+
+namespace App\Hydrators;
+
+use Ninja\Granite\Hydration\AbstractHydrator;
+use App\Services\EncryptionService;
+
+/**
+ * Hydrates from encrypted JSON strings.
+ */
+class EncryptedJsonHydrator extends AbstractHydrator
+{
+    protected int $priority = 95; // Higher priority than regular JSON
+
+    public function __construct(
+        private EncryptionService $encryption
+    ) {}
+
+    public function supports(mixed $data, string $targetClass): bool
+    {
+        // Check for our encryption marker
+        return is_string($data) && str_starts_with($data, 'ENC:');
+    }
+
+    public function hydrate(mixed $data, string $targetClass): array
+    {
+        // Remove marker and decrypt
+        $encrypted = substr($data, 4);
+        $decrypted = $this->encryption->decrypt($encrypted);
+
+        // Parse as JSON
+        $decoded = json_decode($decrypted, true);
+        return $this->ensureArray($decoded);
+    }
+}
+
+// Register with dependency
+$encryptionService = new EncryptionService($key);
+HydratorFactory::getInstance()->register(
+    new EncryptedJsonHydrator($encryptionService)
+);
+
+// Use it!
+$encrypted = 'ENC:' . $encryptionService->encrypt(json_encode(['name' => 'John']));
+$user = User::from($encrypted); // Automatically decrypts and hydrates!
+```
+
+### Real-World Example: YAML Hydrator
+
+```php
+<?php
+
+namespace App\Hydrators;
+
+use Ninja\Granite\Hydration\AbstractHydrator;
+use Symfony\Component\Yaml\Yaml;
+
+/**
+ * Hydrates from YAML strings.
+ */
+class YamlHydrator extends AbstractHydrator
+{
+    protected int $priority = 85;
+
+    public function supports(mixed $data, string $targetClass): bool
+    {
+        if (!is_string($data)) {
+            return false;
+        }
+
+        // Simple YAML detection (starts with --- or has : markers)
+        $trimmed = trim($data);
+        return str_starts_with($trimmed, '---') ||
+               (str_contains($trimmed, ':') && str_contains($trimmed, "\n"));
+    }
+
+    public function hydrate(mixed $data, string $targetClass): array
+    {
+        $parsed = Yaml::parse($data);
+        return $this->ensureArray($parsed);
+    }
+}
+
+// Register the hydrator
+HydratorFactory::getInstance()->register(new YamlHydrator());
+
+// Use it!
+$yaml = <<<YAML
+name: John Doe
+email: john@example.com
+age: 30
+YAML;
+
+$user = User::from($yaml); // Works with YAML!
+```
+
+### Hydrator Priority System
+
+Higher priority hydrators are checked first. This allows you to:
+
+1. **Override built-in behavior** - Use priority > 100 to override Granite's defaults
+2. **Add new formats** - Use priority 50-90 for new data formats
+3. **Fallback handlers** - Use priority < 50 for catch-all logic
+
+```php
+class HighPriorityHydrator extends AbstractHydrator
+{
+    protected int $priority = 150; // Checked before everything else
+
+    // ...
+}
+```
+
+### Chain of Responsibility
+
+For objects, Granite uses multiple hydrators in sequence:
+
+1. `ObjectHydrator` extracts data via `toArray()`, `JsonSerializable`, or public props
+2. `GetterHydrator` enriches the data by extracting via getters
+3. Results are merged (public properties take precedence)
+
+This allows objects with both public properties AND getters to have all data extracted automatically!
+
+### Best Practices for Custom Hydrators
+
+#### 1. Make `supports()` Fast
+
+```php
+// Good: Quick checks
+public function supports(mixed $data, string $targetClass): bool
+{
+    return is_string($data) && str_starts_with($data, 'CSV:');
+}
+
+// Bad: Expensive parsing in supports()
+public function supports(mixed $data, string $targetClass): bool
+{
+    try {
+        $this->parse($data); // Don't do heavy work here!
+        return true;
+    } catch (\Exception $e) {
+        return false;
+    }
+}
+```
+
+#### 2. Use Appropriate Priority
+
+```php
+// Format-specific hydrators: 50-90
+class CsvHydrator extends AbstractHydrator {
+    protected int $priority = 85;
+}
+
+// Framework integration: 70-80
+class EloquentHydrator extends AbstractHydrator {
+    protected int $priority = 75;
+}
+
+// Catch-all/fallback: < 50
+class GenericHydrator extends AbstractHydrator {
+    protected int $priority = 20;
+}
+```
+
+#### 3. Handle Errors Gracefully
+
+```php
+public function hydrate(mixed $data, string $targetClass): array
+{
+    try {
+        return $this->parseData($data);
+    } catch (\Exception $e) {
+        // Log error but return empty array instead of throwing
+        error_log("Hydration failed: " . $e->getMessage());
+        return [];
+    }
+}
+```
+
+#### 4. Leverage `ensureArray()`
+
+```php
+public function hydrate(mixed $data, string $targetClass): array
+{
+    $result = $this->someOperation($data);
+
+    // Safely ensure result is array
+    return $this->ensureArray($result);
+}
+```
+
+### Testing Custom Hydrators
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+use App\Hydrators\XmlHydrator;
+use App\DTOs\User;
+
+class XmlHydratorTest extends TestCase
+{
+    private XmlHydrator $hydrator;
+
+    protected function setUp(): void
+    {
+        $this->hydrator = new XmlHydrator();
+    }
+
+    public function test_supports_xml_strings(): void
+    {
+        $xml = '<?xml version="1.0"?><root></root>';
+        $this->assertTrue($this->hydrator->supports($xml, User::class));
+    }
+
+    public function test_does_not_support_json(): void
+    {
+        $json = '{"name": "John"}';
+        $this->assertFalse($this->hydrator->supports($json, User::class));
+    }
+
+    public function test_hydrates_xml_to_array(): void
+    {
+        $xml = '<?xml version="1.0"?><user><name>John</name></user>';
+        $result = $this->hydrator->hydrate($xml, User::class);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('John', $result['name']);
+    }
+}
+```
+
+### Integration Example: Bootstrap
+
+Register all your custom hydrators at application bootstrap:
+
+```php
+<?php
+
+// config/bootstrap.php
+
+use Ninja\Granite\Hydration\HydratorFactory;
+use App\Hydrators\{
+    XmlHydrator,
+    CsvHydrator,
+    YamlHydrator,
+    PdoHydrator,
+    Psr7ResponseHydrator
+};
+
+$factory = HydratorFactory::getInstance();
+
+// Register all custom hydrators
+$factory->register(new XmlHydrator());
+$factory->register(new CsvHydrator());
+$factory->register(new YamlHydrator());
+$factory->register(new PdoHydrator());
+$factory->register(new Psr7ResponseHydrator(new EncryptionService()));
+
+// Now all Granite objects support these formats automatically!
+```
+
+### Benefits of Custom Hydrators
+
+1. **Separation of Concerns** - Hydration logic is isolated
+2. **Reusable** - One hydrator works for all Granite objects
+3. **Testable** - Easy to unit test in isolation
+4. **Composable** - Multiple hydrators can work together
+5. **Zero Coupling** - Granite classes don't need to know about custom formats
+
+### Advanced: Context-Aware Hydration
+
+You can make hydrators aware of the target class:
+
+```php
+class SmartHydrator extends AbstractHydrator
+{
+    protected int $priority = 75;
+
+    public function supports(mixed $data, string $targetClass): bool
+    {
+        // Only support specific classes
+        return $data instanceof SomeType &&
+               is_subclass_of($targetClass, BaseDTO::class);
+    }
+
+    public function hydrate(mixed $data, string $targetClass): array
+    {
+        // Use reflection to adapt to target class structure
+        $reflection = new \ReflectionClass($targetClass);
+        $properties = $reflection->getProperties();
+
+        // Custom mapping based on target class
+        $result = [];
+        foreach ($properties as $property) {
+            $name = $property->getName();
+            $result[$name] = $this->extractValue($data, $name);
+        }
+
+        return $result;
+    }
+}
+```
+
+Custom hydrators unlock infinite possibilities for data integration! 🚀
 
 ## Partial Data
 

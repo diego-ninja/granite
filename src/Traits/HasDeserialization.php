@@ -3,9 +3,9 @@
 namespace Ninja\Granite\Traits;
 
 use DateMalformedStringException;
-use InvalidArgumentException;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions;
+use Ninja\Granite\Hydration\HydratorFactory;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\MetadataCache;
@@ -79,8 +79,15 @@ trait HasDeserialization
      * - from(['key' => 'value']) - Array data
      * - from('{"key": "value"}') - JSON string
      * - from($graniteObject) - Another Granite object
+     * - from($anyObject) - Any object (extracts data via toArray(), jsonSerialize(), or public properties)
      * - from(key: 'value', anotherKey: 'anotherValue') - Named parameters
      * - from($baseData, key: 'override') - Base data with named parameter overrides
+     *
+     * Object extraction strategies (in order):
+     * 1. If Granite object - uses array() method
+     * 2. If has toArray() method - calls it
+     * 3. If implements JsonSerializable - calls jsonSerialize()
+     * 4. Extracts public properties directly
      *
      * @param mixed ...$args Variable arguments supporting all patterns
      * @return static New instance
@@ -108,8 +115,8 @@ trait HasDeserialization
             foreach ($args as $key => $value) {
                 if (is_numeric($key)) {
                     // Positional argument - should be structured data
-                    if (self::looksLikeStructuredData($value)
-                        && (is_array($value) || is_string($value) || $value instanceof GraniteObject)) {
+                    if (self::looksLikeStructuredData($value) &&
+                        (is_array($value) || is_string($value) || is_object($value))) {
                         $normalized = self::normalizeInputData($value);
                         $baseData = array_merge($baseData, $normalized);
                     }
@@ -148,8 +155,8 @@ trait HasDeserialization
             $firstArg = $args[0];
 
             // Single argument - check if it looks like structured data
-            if (self::looksLikeStructuredData($firstArg)
-                && (is_array($firstArg) || is_string($firstArg) || $firstArg instanceof GraniteObject)) {
+            if (self::looksLikeStructuredData($firstArg) &&
+                (is_array($firstArg) || is_string($firstArg) || is_object($firstArg))) {
                 return self::normalizeInputData($firstArg);
             }
 
@@ -175,8 +182,8 @@ trait HasDeserialization
         $baseData = [];
         $startIndex = 0;
 
-        if ( ! empty($args) && self::looksLikeStructuredData($args[0])
-            && (is_array($args[0]) || is_string($args[0]) || $args[0] instanceof GraniteObject)) {
+        if ( ! empty($args) && self::looksLikeStructuredData($args[0]) &&
+            (is_array($args[0]) || is_string($args[0]) || is_object($args[0]))) {
             $baseData = self::normalizeInputData($args[0]);
             $startIndex = 1;
         }
@@ -204,13 +211,18 @@ trait HasDeserialization
 
 
     /**
-     * Check if a value looks like structured data (array, JSON, or GraniteObject).
+     * Check if a value looks like structured data (array, JSON, GraniteObject, or any object).
      * This helps distinguish between scalar values and actual data sources.
      */
     protected static function looksLikeStructuredData(mixed $value): bool
     {
         // Arrays and GraniteObjects are clearly structured data
         if (is_array($value) || $value instanceof GraniteObject) {
+            return true;
+        }
+
+        // Any object can be used as structured data source
+        if (is_object($value)) {
             return true;
         }
 
@@ -276,9 +288,9 @@ trait HasDeserialization
     protected static function fromNamedParameters(array $namedParams): static
     {
         // If 'data' parameter is provided and not empty, use it as primary source
-        if ( ! empty($namedParams['data'])
-            && (is_array($namedParams['data']) || is_string($namedParams['data'])
-             || $namedParams['data'] instanceof GraniteObject)) {
+        if ( ! empty($namedParams['data']) &&
+            (is_array($namedParams['data']) || is_string($namedParams['data']) ||
+             is_object($namedParams['data']))) {
             $data = self::normalizeInputData($namedParams['data']);
             // Merge with other named parameters (named params take precedence)
             unset($namedParams['data']);
@@ -296,28 +308,14 @@ trait HasDeserialization
     }
 
     /**
-     * Normalize input data to array format.
+     * Normalize input data to array format using HydratorFactory.
      *
-     * @param array|string|GraniteObject $data Input data
+     * @param array|string|object $data Input data
      * @return array Normalized data
      */
-    protected static function normalizeInputData(array|string|GraniteObject $data): array
+    protected static function normalizeInputData(array|string|object $data): array
     {
-        if ($data instanceof GraniteObject) {
-            return $data->array();
-        }
-
-        if (is_string($data)) {
-            if (json_validate($data)) {
-                $decoded = json_decode($data, true);
-                return is_array($decoded) ? $decoded : [];
-            }
-            throw new InvalidArgumentException('Invalid JSON string provided');
-
-        }
-
-        // If we reach here, $data must be an array due to union type
-        return $data;
+        return HydratorFactory::getInstance()->hydrateWith($data, static::class);
     }
 
     /**
@@ -360,8 +358,8 @@ trait HasDeserialization
             $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
 
             // Skip if property is not found in data
-            if (null === $value && ! array_key_exists($phpName, $data)
-                && ! array_key_exists($serializedName, $data)) {
+            if (null === $value && ! array_key_exists($phpName, $data) &&
+                ! array_key_exists($serializedName, $data)) {
                 continue;
             }
 
@@ -501,8 +499,8 @@ trait HasDeserialization
             $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
 
             // Skip if property is not found in data
-            if (null === $value && ! array_key_exists($phpName, $data)
-                && ! array_key_exists($serializedName, $data)) {
+            if (null === $value && ! array_key_exists($phpName, $data) &&
+                ! array_key_exists($serializedName, $data)) {
                 continue;
             }
 
