@@ -43,7 +43,7 @@ $json = $userSnapshot->json();
 Pebble objects are completely immutable. Once created, their properties cannot be modified:
 
 ```php
-$pebble = Peeble::from(['name' => 'John', 'age' => 30]);
+$pebble = Pebble::from(['name' => 'John', 'age' => 30]);
 
 // This will throw an InvalidArgumentException
 $pebble->name = 'Jane';
@@ -58,24 +58,24 @@ Pebble can extract data from various sources:
 
 ```php
 // From arrays
-$pebble = Peeble::from(['name' => 'John', 'email' => 'john@example.com']);
+$pebble = Pebble::from(['name' => 'John', 'email' => 'john@example.com']);
 
 // From JSON strings
-$pebble = Peeble::from('{"name": "John", "email": "john@example.com"}');
+$pebble = Pebble::from('{"name": "John", "email": "john@example.com"}');
 
 // From objects with public properties
 $stdClass = new stdClass();
 $stdClass->name = 'John';
 $stdClass->email = 'john@example.com';
-$pebble = Peeble::from($stdClass);
+$pebble = Pebble::from($stdClass);
 
 // From Eloquent models (with toArray method)
 $user = User::find(1);
-$pebble = Peeble::from($user);
+$pebble = Pebble::from($user);
 
 // From Granite objects
 $graniteUser = UserDTO::from(['name' => 'John', 'email' => 'john@example.com']);
-$pebble = Peeble::from($graniteUser);
+$pebble = Pebble::from($graniteUser);
 ```
 
 ### Smart Property Extraction
@@ -113,7 +113,7 @@ class User
 }
 
 $user = new User();
-$pebble = Peeble::from($user);
+$pebble = Pebble::from($user);
 
 echo $pebble->name;     // 'John'
 echo $pebble->email;    // 'john@example.com'
@@ -123,45 +123,45 @@ echo $pebble->password; // null (not extracted)
 
 ### Property Access Methods
 
-Peeble implements **ArrayAccess** and **Countable** interfaces for maximum flexibility:
+Pebble implements **ArrayAccess** and **Countable** interfaces for maximum flexibility:
 
 ```php
-$peeble = Peeble::from([
+$pebble = Pebble::from([
     'name' => 'John',
     'age' => 30,
     'email' => 'john@example.com',
 ]);
 
 // Magic __get
-echo $peeble->name; // 'John'
+echo $pebble->name; // 'John'
 
 // ArrayAccess interface - use array syntax!
-echo $peeble['name'];  // 'John'
-echo $peeble['age'];   // 30
+echo $pebble['name'];  // 'John'
+echo $pebble['age'];   // 30
 
 // Check existence (both syntaxes work)
-if (isset($peeble->name)) { }
-if (isset($peeble['name'])) { }
+if (isset($pebble->name)) { }
+if (isset($pebble['name'])) { }
 
 // Countable interface - native count() support
-$count = count($peeble); // 3
-$count = $peeble->count(); // 3 (also works)
+$count = count($pebble); // 3
+$count = $pebble->count(); // 3 (also works)
 
 // Get with default value
-$city = $peeble->get('city', 'Unknown'); // 'Unknown'
+$city = $pebble->get('city', 'Unknown'); // 'Unknown'
 
 // Check if property exists (even if null)
-$peeble->has('name'); // true
-$peeble->has('city'); // false
+$pebble->has('name'); // true
+$pebble->has('city'); // false
 
 // Check if empty
-$peeble->isEmpty(); // false
+$pebble->isEmpty(); // false
 ```
 
 ### Filtering and Transformation
 
 ```php
-$user = Peeble::from([
+$user = Pebble::from([
     'id' => 1,
     'name' => 'John',
     'email' => 'john@example.com',
@@ -189,12 +189,12 @@ $apiResponse = $user
 
 ### Fast Comparison with Fingerprinting
 
-Peeble uses **O(1) fingerprint comparison** for blazing-fast equality checks:
+Pebble uses **O(1) fingerprint comparison** for blazing-fast equality checks:
 
 ```php
-$user1 = Peeble::from(['name' => 'John', 'age' => 30]);
-$user2 = Peeble::from(['name' => 'John', 'age' => 30]);
-$user3 = Peeble::from(['name' => 'Jane', 'age' => 25]);
+$user1 = Pebble::from(['name' => 'John', 'age' => 30]);
+$user2 = Pebble::from(['name' => 'John', 'age' => 30]);
+$user3 = Pebble::from(['name' => 'Jane', 'age' => 25]);
 
 // O(1) comparison using cached xxh3 hash
 $user1->equals($user2); // true - instant comparison!
@@ -227,19 +227,19 @@ foreach ($objects as $obj) {
 ### Serialization
 
 ```php
-$peeble = Peeble::from(['name' => 'John', 'age' => 30]);
+$pebble = Pebble::from(['name' => 'John', 'age' => 30]);
 
 // To array
-$array = $peeble->array();
+$array = $pebble->array();
 
 // To JSON
-$json = $peeble->json();
+$json = $pebble->json();
 
 // JsonSerializable interface
-$json = json_encode($peeble); // Works automatically
+$json = json_encode($pebble); // Works automatically
 
 // String conversion
-echo $peeble; // JSON representation
+echo $pebble; // JSON representation
 ```
 
 ## Common Use Cases
@@ -249,7 +249,7 @@ echo $peeble; // JSON representation
 ```php
 // Create a snapshot before modification
 $originalUser = User::find(1);
-$snapshot = Peeble::from($originalUser);
+$snapshot = Pebble::from($originalUser);
 
 // Modify the model
 $originalUser->name = 'Jane';
@@ -268,7 +268,7 @@ if (!$snapshot->equals($originalUser->toArray())) {
 // Create a safe API response without sensitive data
 $user = User::find(1);
 
-$response = Peeble::from($user)
+$response = Pebble::from($user)
     ->except(['password', 'remember_token', 'two_factor_secret'])
     ->merge(['generated_at' => now()->toIso8601String()]);
 
@@ -280,13 +280,13 @@ return response()->json($response);
 ```php
 // Cache an immutable snapshot
 $user = User::find(1);
-$userSnapshot = Peeble::from($user);
+$userSnapshot = Pebble::from($user);
 
 Cache::put("user:{$user->id}", $userSnapshot->array(), now()->addHour());
 
 // Retrieve and recreate
 $cached = Cache::get("user:{$user->id}");
-$userSnapshot = Peeble::from($cached);
+$userSnapshot = Pebble::from($cached);
 ```
 
 ### 4. Creating Multiple Views
@@ -295,17 +295,17 @@ $userSnapshot = Peeble::from($cached);
 $user = User::find(1);
 
 // Public profile view
-$publicProfile = Peeble::from($user)->only([
+$publicProfile = Pebble::from($user)->only([
     'id',
     'name',
     'avatar',
 ]);
 
 // Admin view
-$adminView = Peeble::from($user); // All data
+$adminView = Pebble::from($user); // All data
 
 // API view with enrichment
-$apiView = Peeble::from($user)
+$apiView = Pebble::from($user)
     ->except(['password'])
     ->merge([
         'links' => [
@@ -321,24 +321,24 @@ $apiView = Peeble::from($user)
 class UserUpdated
 {
     public function __construct(
-        public readonly Peeble $before,
-        public readonly Peeble $after,
+        public readonly Pebble $before,
+        public readonly Pebble $after,
     ) {}
 }
 
 // In your service
-$before = Peeble::from($user);
+$before = Pebble::from($user);
 
 $user->update($data);
 
-$after = Peeble::from($user->fresh());
+$after = Pebble::from($user->fresh());
 
 event(new UserUpdated($before, $after));
 ```
 
 ## Performance Characteristics
 
-Peeble is designed for maximum performance:
+Pebble is designed for maximum performance:
 
 - **No validation overhead** - Data is accepted as-is
 - **No type conversion** - Properties are stored as provided
@@ -361,7 +361,7 @@ $start = microtime(true);
 for ($i = 0; $i < 10000; $i++) {
     Pebble::from($data);
 }
-$peebleTime = microtime(true) - $start;
+$pebbleTime = microtime(true) - $start;
 
 // Granite - Slower (with validation)
 $start = microtime(true);
@@ -371,38 +371,38 @@ for ($i = 0; $i < 10000; $i++) {
 $graniteTime = microtime(true) - $start;
 
 // Pebble is typically 3-5x faster than Granite
-echo "Pebble: {$peebleTime}s\n";
+echo "Pebble: {$pebbleTime}s\n";
 echo "Granite: {$graniteTime}s\n";
 ```
 
 ## Limitations
 
 ### 1. No Validation
-Peeble does not validate input data. If you need validation, use Granite:
+Pebble does not validate input data. If you need validation, use Granite:
 
 ```php
 // Pebble accepts anything
-$peeble = Peeble::from(['email' => 'not-an-email']); // ✓ Works
+$pebble = Pebble::from(['email' => 'not-an-email']); // ✓ Works
 
 // Granite validates
 $dto = UserDTO::from(['email' => 'not-an-email']); // ✗ Throws exception
 ```
 
 ### 2. No Type Safety
-Peeble properties are dynamic and not type-safe:
+Pebble properties are dynamic and not type-safe:
 
 ```php
-$peeble = Peeble::from(['age' => '30']); // String
-echo $peeble->age; // '30' (string, not int)
+$pebble = Pebble::from(['age' => '30']); // String
+echo $pebble->age; // '30' (string, not int)
 ```
 
 ### 3. No Custom Serialization
-Peeble cannot customize property names during serialization:
+Pebble cannot customize property names during serialization:
 
 ```php
 // Pebble
-$peeble = Peeble::from(['firstName' => 'John']);
-$peeble->json(); // {"firstName": "John"}
+$pebble = Pebble::from(['firstName' => 'John']);
+$pebble->json(); // {"firstName": "John"}
 
 // Granite with SerializedName
 final readonly class User extends Granite
@@ -417,7 +417,7 @@ $user->json(); // {"first_name": "John"}
 ```
 
 ### 4. No Nested Object Handling
-Peeble doesn't automatically convert nested objects:
+Pebble doesn't automatically convert nested objects:
 
 ```php
 $data = [
@@ -425,20 +425,20 @@ $data = [
     'address' => ['street' => '123 Main St', 'city' => 'NY'],
 ];
 
-$peeble = Peeble::from($data);
-$peeble->address; // array (not a Pebble)
+$pebble = Pebble::from($data);
+$pebble->address; // array (not a Pebble)
 ```
 
 ## Best Practices
 
-### 1. Use Peeble for Simple Snapshots
+### 1. Use Pebble for Simple Snapshots
 
 ```php
 // Good - Simple data snapshot
-$snapshot = Peeble::from($user);
+$snapshot = Pebble::from($user);
 
 // Bad - Complex DTO with validation needs
-$dto = Peeble::from($complexUserData); // Use Granite instead
+$dto = Pebble::from($complexUserData); // Use Granite instead
 ```
 
 ### 2. Combine with Granite
@@ -448,18 +448,18 @@ $dto = Peeble::from($complexUserData); // Use Granite instead
 $validatedUser = UserDTO::from($request->all()); // Validates
 
 // Use Pebble for internal snapshots
-$snapshot = Peeble::from($validatedUser); // Fast, immutable
+$snapshot = Pebble::from($validatedUser); // Fast, immutable
 ```
 
 ### 3. Filter Sensitive Data Early
 
 ```php
 // Good - Filter once
-$safeData = Peeble::from($user)->except(['password']);
+$safeData = Pebble::from($user)->except(['password']);
 
 // Bad - Repeatedly filtering
-$data1 = Peeble::from($user);
-$data2 = Peeble::from($data1->except(['password']));
+$data1 = Pebble::from($user);
+$data2 = Pebble::from($data1->except(['password']));
 ```
 
 ### 4. Use for Event Data
@@ -467,7 +467,7 @@ $data2 = Peeble::from($data1->except(['password']));
 ```php
 // Good - Immutable event data
 event(new UserCreated(
-    Peeble::from($user)
+    Pebble::from($user)
 ));
 
 // Bad - Mutable model reference
@@ -478,8 +478,8 @@ event(new UserCreated($user)); // Model can be changed
 
 ### Static Methods
 
-#### `Peeble::from(array|object|string $source): self`
-Create a new Peeble from various data sources.
+#### `Pebble::from(array|object|string $source): self`
+Create a new Pebble from various data sources.
 
 ### Instance Methods
 
@@ -520,7 +520,7 @@ Get the number of properties. Works with native `count()` function.
 Create new Pebble with only specified properties.
 
 #### `except(array $keys): self`
-Create new Peeble without specified properties.
+Create new Pebble without specified properties.
 
 #### `merge(array $data): self`
 Create new Pebble with merged data.
@@ -533,7 +533,7 @@ Create new Pebble with merged data.
 
 ## Conclusion
 
-Peeble is perfect for scenarios where you need:
+Pebble is perfect for scenarios where you need:
 - Fast, lightweight immutable objects
 - Quick snapshots for caching or comparison
 - Simple data containers without validation overhead
