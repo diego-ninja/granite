@@ -115,8 +115,8 @@ trait HasDeserialization
             foreach ($args as $key => $value) {
                 if (is_numeric($key)) {
                     // Positional argument - should be structured data
-                    if (self::looksLikeStructuredData($value) &&
-                        (is_array($value) || is_string($value) || is_object($value))) {
+                    if (self::looksLikeStructuredData($value)
+                        && (is_array($value) || is_string($value) || is_object($value))) {
                         $normalized = self::normalizeInputData($value);
                         $baseData = array_merge($baseData, $normalized);
                     }
@@ -155,8 +155,8 @@ trait HasDeserialization
             $firstArg = $args[0];
 
             // Single argument - check if it looks like structured data
-            if (self::looksLikeStructuredData($firstArg) &&
-                (is_array($firstArg) || is_string($firstArg) || is_object($firstArg))) {
+            if (self::looksLikeStructuredData($firstArg)
+                && (is_array($firstArg) || is_string($firstArg) || is_object($firstArg))) {
                 return self::normalizeInputData($firstArg);
             }
 
@@ -182,8 +182,8 @@ trait HasDeserialization
         $baseData = [];
         $startIndex = 0;
 
-        if ( ! empty($args) && self::looksLikeStructuredData($args[0]) &&
-            (is_array($args[0]) || is_string($args[0]) || is_object($args[0]))) {
+        if ( ! empty($args) && self::looksLikeStructuredData($args[0])
+            && (is_array($args[0]) || is_string($args[0]) || is_object($args[0]))) {
             $baseData = self::normalizeInputData($args[0]);
             $startIndex = 1;
         }
@@ -288,9 +288,9 @@ trait HasDeserialization
     protected static function fromNamedParameters(array $namedParams): static
     {
         // If 'data' parameter is provided and not empty, use it as primary source
-        if ( ! empty($namedParams['data']) &&
-            (is_array($namedParams['data']) || is_string($namedParams['data']) ||
-             is_object($namedParams['data']))) {
+        if ( ! empty($namedParams['data'])
+            && (is_array($namedParams['data']) || is_string($namedParams['data'])
+             || is_object($namedParams['data']))) {
             $data = self::normalizeInputData($namedParams['data']);
             // Merge with other named parameters (named params take precedence)
             unset($namedParams['data']);
@@ -358,8 +358,8 @@ trait HasDeserialization
             $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
 
             // Skip if property is not found in data
-            if (null === $value && ! array_key_exists($phpName, $data) &&
-                ! array_key_exists($serializedName, $data)) {
+            if (null === $value && ! array_key_exists($phpName, $data)
+                && ! array_key_exists($serializedName, $data)) {
                 continue;
             }
 
@@ -499,8 +499,8 @@ trait HasDeserialization
             $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
 
             // Skip if property is not found in data
-            if (null === $value && ! array_key_exists($phpName, $data) &&
-                ! array_key_exists($serializedName, $data)) {
+            if (null === $value && ! array_key_exists($phpName, $data)
+                && ! array_key_exists($serializedName, $data)) {
                 continue;
             }
 

@@ -15,8 +15,8 @@ class ClassTransformerProfile extends MappingProfile
         $this->createMap('array', ClassTransformerDTO::class)
             ->forMember(
                 'value',
-                fn($mapping) =>
-                $mapping->using(fn($value) => mb_strtoupper($value) . '_TRANSFORMED'),
+                fn($mapping)
+                => $mapping->using(fn($value) => mb_strtoupper($value) . '_TRANSFORMED'),
             );
     }
 }

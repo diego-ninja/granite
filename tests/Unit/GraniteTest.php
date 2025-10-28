@@ -110,9 +110,9 @@ class GraniteTest extends TestCase
     public function test_granite_object_has_type_conversion_capabilities(): void
     {
         // Test that it has conversion methods from HasTypeConversion trait
-        $hasConversionMethod = method_exists(TestGraniteClass::class, 'convertValue') ||
-                              method_exists(TestGraniteClass::class, 'convert') ||
-                              method_exists(TestGraniteClass::class, 'transformValue');
+        $hasConversionMethod = method_exists(TestGraniteClass::class, 'convertValue')
+                              || method_exists(TestGraniteClass::class, 'convert')
+                              || method_exists(TestGraniteClass::class, 'transformValue');
 
         // If no conversion method exists, just test object creation
         if ( ! $hasConversionMethod) {

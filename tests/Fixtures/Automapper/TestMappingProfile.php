@@ -12,16 +12,16 @@ class TestMappingProfile extends MappingProfile
         $this->createMap('array', ProfileMappedDTO::class)
             ->forMember(
                 'fullName',
-                fn($mapping) =>
-            $mapping->using(
-                fn($value, $source) =>
-                ($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? ''),
+                fn($mapping)
+            => $mapping->using(
+                fn($value, $source)
+                => ($source['first_name'] ?? '') . ' ' . ($source['last_name'] ?? ''),
             ),
             )
             ->forMember(
                 'birthYear',
-                fn($mapping) =>
-            $mapping->mapFrom('birth_date')
+                fn($mapping)
+            => $mapping->mapFrom('birth_date')
                 ->using(fn($value) => date('Y', strtotime($value))),
             );
     }

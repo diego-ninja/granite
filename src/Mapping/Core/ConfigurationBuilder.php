@@ -235,9 +235,9 @@ final class ConfigurationBuilder
         foreach ($conventionMappings as $destProperty => $sourceProperty) {
             // Only apply if no explicit mapping exists
             if ( ! isset($config[$destProperty]) || (
-                is_array($config[$destProperty]) &&
-                isset($config[$destProperty]['source']) &&
-                $config[$destProperty]['source'] === $destProperty
+                is_array($config[$destProperty])
+                && isset($config[$destProperty]['source'])
+                && $config[$destProperty]['source'] === $destProperty
             )) {
                 if ( ! is_array($config[$destProperty])) {
                     $config[$destProperty] = [];

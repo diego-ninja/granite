@@ -97,8 +97,8 @@ class GetterHydrator extends AbstractHydrator
         $patterns = [];
 
         // Check if it's a boolean property
-        $isBool = $type && ! $type->allowsNull() &&
-                  ($type instanceof ReflectionNamedType && 'bool' === $type->getName());
+        $isBool = $type && ! $type->allowsNull()
+                  && ($type instanceof ReflectionNamedType && 'bool' === $type->getName());
 
         // Pattern 1: Standard camelCase getter - getName()
         $camelCase = $this->snakeToCamel($propertyName);

@@ -267,8 +267,8 @@ class CallbackTest extends TestCase
             $processed = mb_strtolower(StringHelper::mbTrim($value));
             $words = explode(' ', $processed);
 
-            return count($words) >= 2 && count($words) <= 10 &&
-                array_reduce($words, fn($carry, $word) => $carry && mb_strlen($word) >= 2, true);
+            return count($words) >= 2 && count($words) <= 10
+                && array_reduce($words, fn($carry, $word) => $carry && mb_strlen($word) >= 2, true);
         });
 
         $start = microtime(true);
@@ -297,11 +297,11 @@ class CallbackTest extends TestCase
 
     public function test_callback_with_multiple_conditions(): void
     {
-        $rule = new Callback(fn($value) => is_string($value) &&
-                mb_strlen($value) >= 5 &&
-                mb_strlen($value) <= 20 &&
-                preg_match('/^[a-zA-Z0-9_]+$/', $value) &&
-                ! is_numeric($value[0]));
+        $rule = new Callback(fn($value) => is_string($value)
+                && mb_strlen($value) >= 5
+                && mb_strlen($value) <= 20
+                && preg_match('/^[a-zA-Z0-9_]+$/', $value)
+                && ! is_numeric($value[0]));
 
         $this->assertTrue($rule->validate('valid_username'));
         $this->assertTrue($rule->validate('user123'));

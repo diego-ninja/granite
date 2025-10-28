@@ -91,9 +91,9 @@ class WhenTest extends TestCase
 
     public function test_validates_with_complex_condition(): void
     {
-        $condition = fn($value, $allData) => isset($allData['subscription_type']) &&
-                'enterprise' === $allData['subscription_type'] &&
-                ($allData['user_count'] ?? 0) > 100;
+        $condition = fn($value, $allData) => isset($allData['subscription_type'])
+                && 'enterprise' === $allData['subscription_type']
+                && ($allData['user_count'] ?? 0) > 100;
 
         $rule = new When($condition, new Required());
 
@@ -274,9 +274,9 @@ class WhenTest extends TestCase
     public function test_realistic_subscription_scenario(): void
     {
         // Real-world scenario: API key required for paid plans
-        $condition = fn($value, $allData) =>
-            isset($allData['plan']) &&
-            in_array($allData['plan'], ['pro', 'enterprise']);
+        $condition = fn($value, $allData)
+            => isset($allData['plan'])
+            && in_array($allData['plan'], ['pro', 'enterprise']);
 
         $rule = new When($condition, new Required());
 

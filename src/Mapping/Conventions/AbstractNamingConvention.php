@@ -157,10 +157,10 @@ abstract class AbstractNamingConvention implements NamingConvention
         if ($hasRelationship) {
             // Casos especiales con alta relación semántica
             if (
-                (false !== mb_stripos($source, 'profile') && false !== mb_stripos($destination, 'avatar')) ||
-                (false !== mb_stripos($source, 'avatar') && false !== mb_stripos($destination, 'profile')) ||
-                (false !== mb_stripos($source, 'user id') && 'id' === $destination) ||
-                ('id' === $source && false !== mb_stripos($destination, 'user id'))
+                (false !== mb_stripos($source, 'profile') && false !== mb_stripos($destination, 'avatar'))
+                || (false !== mb_stripos($source, 'avatar') && false !== mb_stripos($destination, 'profile'))
+                || (false !== mb_stripos($source, 'user id') && 'id' === $destination)
+                || ('id' === $source && false !== mb_stripos($destination, 'user id'))
             ) {
                 return max($baseSimilarity, 0.75); // Dar un boost significativo
             }

@@ -96,8 +96,8 @@ final class CarbonSupport
             return false;
         }
 
-        return $value instanceof Carbon ||
-            (self::isImmutableAvailable() && $value instanceof CarbonImmutable);
+        return $value instanceof Carbon
+            || (self::isImmutableAvailable() && $value instanceof CarbonImmutable);
     }
 
     /**
