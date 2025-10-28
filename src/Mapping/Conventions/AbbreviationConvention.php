@@ -44,8 +44,8 @@ class AbbreviationConvention implements NamingConvention
         $lowerName = mb_strtolower($name);
 
         foreach ($this->abbreviations as $abbr => $full) {
-            if ($lowerName === $abbr || str_starts_with($lowerName, $abbr . '_') ||
-                str_ends_with($lowerName, '_' . $abbr) || str_contains($lowerName, '_' . $abbr . '_')) {
+            if ($lowerName === $abbr || str_starts_with($lowerName, $abbr . '_')
+                || str_ends_with($lowerName, '_' . $abbr) || str_contains($lowerName, '_' . $abbr . '_')) {
                 return true;
             }
         }

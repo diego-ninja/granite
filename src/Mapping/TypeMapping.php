@@ -276,7 +276,7 @@ final class TypeMapping
             }
 
             $sourceProp = $mapping->getSourceProperty();
-            if (null !== $sourceProp) {
+            if (null !== $sourceProp && (is_string($sourceProp) || is_int($sourceProp))) {
                 $sourceProps[$sourceProp][] = $destProp;
             }
         }

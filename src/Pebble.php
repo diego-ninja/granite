@@ -108,8 +108,8 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     public function __set(string $name, mixed $value): void
     {
         throw new InvalidArgumentException(
-            'Cannot modify Pebble properties. Pebble objects are immutable. ' .
-            'Create a new instance with Pebble::from() instead.',
+            'Cannot modify Pebble properties. Pebble objects are immutable. '
+            . 'Create a new instance with Pebble::from() instead.',
         );
     }
 
@@ -340,7 +340,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function offsetExists(mixed $offset): bool
     {
-        if (! is_int($offset) && ! is_string($offset)) {
+        if ( ! is_int($offset) && ! is_string($offset)) {
             return false;
         }
 
@@ -355,6 +355,9 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function offsetGet(mixed $offset): mixed
     {
+        if ( ! is_string($offset) && ! is_int($offset)) {
+            return null;
+        }
         return $this->data[$offset] ?? null;
     }
 
@@ -368,8 +371,8 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
     public function offsetSet(mixed $offset, mixed $value): void
     {
         throw new InvalidArgumentException(
-            'Cannot modify Pebble properties via array access. Pebble objects are immutable. ' .
-            'Create a new instance with Pebble::from() or use merge() instead.',
+            'Cannot modify Pebble properties via array access. Pebble objects are immutable. '
+            . 'Create a new instance with Pebble::from() or use merge() instead.',
         );
     }
 

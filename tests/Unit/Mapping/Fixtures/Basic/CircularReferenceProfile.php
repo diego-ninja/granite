@@ -17,8 +17,8 @@ class CircularReferenceProfile extends MappingProfile
         $this->createMap('array', CircularReferenceDTO::class)
             ->forMember(
                 'parent',
-                fn($mapping) =>
-                $mapping->mapFrom('parent')
+                fn($mapping)
+                => $mapping->mapFrom('parent')
                     ->using(function ($value, $sourceData) {
                         if (null === $value) {
                             return null;

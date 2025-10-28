@@ -524,8 +524,8 @@ class PerformanceTestingProfile extends MappingProfile
         $this->createMap('array', ComplexPerformanceDTO::class)
             ->forMember(
                 'processedData',
-                fn($mapping) =>
-            $mapping->mapFrom('data'),
+                fn($mapping)
+            => $mapping->mapFrom('data'),
             );
     }
 }
@@ -537,8 +537,8 @@ class BoundaryValueProfile extends MappingProfile
         $this->createMap('array', BoundaryValueDTO::class)
             ->forMember(
                 'processedValue',
-                fn($mapping) =>
-                $mapping->mapFrom('value')
+                fn($mapping)
+                => $mapping->mapFrom('value')
                     ->using(function ($value) {
                         if (0 === $value) {
                             return 'zero';
@@ -574,8 +574,8 @@ class ConflictingProfile1 extends MappingProfile
         $this->createMap('array', ConflictingConfigDTO::class)
             ->forMember(
                 'transformedValue',
-                fn($mapping) =>
-            $mapping->mapFrom('value')
+                fn($mapping)
+            => $mapping->mapFrom('value')
                 ->using(fn($value) => 'PROFILE1: ' . $value),
             );
     }
@@ -588,8 +588,8 @@ class ConflictingProfile2 extends MappingProfile
         $this->createMap('array', ConflictingConfigDTO::class)
             ->forMember(
                 'transformedValue',
-                fn($mapping) =>
-            $mapping->mapFrom('value')
+                fn($mapping)
+            => $mapping->mapFrom('value')
                 ->using(fn($value) => 'PROFILE2: ' . $value),
             );
     }

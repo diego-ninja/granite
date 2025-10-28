@@ -15,31 +15,31 @@ class UserMappingProfile extends MappingProfile
         $this->createMap('array', ProfileMappedUserDTO::class)
             ->forMember(
                 'fullName',
-                fn($mapping) =>
-                $mapping->using(
-                    fn($value, $source) =>
-                    ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? ''),
+                fn($mapping)
+                => $mapping->using(
+                    fn($value, $source)
+                    => ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? ''),
                 ),
             )
             ->forMember(
                 'birthYear',
-                fn($mapping) =>
-                $mapping->mapFrom('birthDate')
+                fn($mapping)
+                => $mapping->mapFrom('birthDate')
                     ->using(fn($value) => date('Y', strtotime($value))),
             )
             ->forMember(
                 'email',
-                fn($mapping) =>
-                $mapping->mapFrom('emailAddress'),
+                fn($mapping)
+                => $mapping->mapFrom('emailAddress'),
             );
 
         $this->createMap('array', HybridMappedUserDTO::class)
             ->forMember(
                 'fullName',
-                fn($mapping) =>
-                $mapping->using(
-                    fn($value, $source) =>
-                    ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? ''),
+                fn($mapping)
+                => $mapping->using(
+                    fn($value, $source)
+                    => ($source['firstName'] ?? '') . ' ' . ($source['lastName'] ?? ''),
                 ),
             );
     }

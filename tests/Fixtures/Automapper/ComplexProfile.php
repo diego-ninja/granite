@@ -15,8 +15,8 @@ class ComplexProfile extends MappingProfile
         $this->createMap('OrderEntity', 'OrderDTO')
             ->forMember(
                 'total',
-                fn($mapping) =>
-            $mapping->using(fn($value) => number_format($value, 2)),
+                fn($mapping)
+            => $mapping->using(fn($value) => number_format($value, 2)),
             );
     }
 }

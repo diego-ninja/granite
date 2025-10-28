@@ -31,8 +31,8 @@ class CollectionMappingProfile extends MappingProfile
         $this->createMap('array', TeamDTO::class)
             ->forMember(
                 'members',
-                fn($mapping) =>
-                $mapping->mapFrom('members')
+                fn($mapping)
+                => $mapping->mapFrom('members')
                     ->using(function ($value) {
                         if ( ! is_array($value)) {
                             return [];
@@ -45,8 +45,8 @@ class CollectionMappingProfile extends MappingProfile
         $this->createMap('array', ArticleDTO::class)
             ->forMember(
                 'comments',
-                fn($mapping) =>
-                $mapping->mapFrom('comments')
+                fn($mapping)
+                => $mapping->mapFrom('comments')
                     ->using(function ($value) {
                         if ( ! is_array($value)) {
                             return [];
@@ -62,8 +62,8 @@ class CollectionMappingProfile extends MappingProfile
         $this->createMap('array', TeamNestedDTO::class)
             ->forMember(
                 'members',
-                fn($mapping) =>
-                $mapping->mapFrom('members')
+                fn($mapping)
+                => $mapping->mapFrom('members')
                     ->using(function ($value) {
                         if ( ! is_array($value)) {
                             return [];
@@ -75,8 +75,8 @@ class CollectionMappingProfile extends MappingProfile
         $this->createMap('array', DepartmentDTO::class)
             ->forMember(
                 'teams',
-                fn($mapping) =>
-                $mapping->mapFrom('teams')
+                fn($mapping)
+                => $mapping->mapFrom('teams')
                     ->using(function ($value) {
                         if ( ! is_array($value)) {
                             return [];
@@ -88,8 +88,8 @@ class CollectionMappingProfile extends MappingProfile
         $this->createMap('array', OrganizationDTO::class)
             ->forMember(
                 'departments',
-                fn($mapping) =>
-                $mapping->mapFrom('departments')
+                fn($mapping)
+                => $mapping->mapFrom('departments')
                     ->using(function ($value) {
                         if ( ! is_array($value)) {
                             return [];
@@ -105,16 +105,16 @@ class CollectionMappingProfile extends MappingProfile
         $this->createMap('array', ConfigDTO::class)
             ->forMember(
                 'settings',
-                fn($mapping) =>
-                $mapping->mapFrom('settings'),
+                fn($mapping)
+                => $mapping->mapFrom('settings'),
             );
 
         // Key-value mapping
         $this->createMap('array', KeyValueDTO::class)
             ->forMember(
                 'mappings',
-                fn($mapping) =>
-                $mapping->mapFrom('mappings'),
+                fn($mapping)
+                => $mapping->mapFrom('mappings'),
             );
     }
 }
