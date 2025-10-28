@@ -14,9 +14,9 @@
 
 A powerful, zero-dependency PHP library for building **immutable**, **serializable** objects with **validation** and **mapping** capabilities. Perfect for DTOs, Value Objects, API responses, and domain modeling.
 
-## 🪶 Peeble - NEW! Lightweight Immutable Snapshots
+## 🪶 Pebble - NEW! Lightweight Immutable Snapshots
 
-Need a quick immutable snapshot without validation overhead? Meet **Peeble** - a lightweight alternative perfect for:
+Need a quick immutable snapshot without validation overhead? Meet **Pebble** - a lightweight alternative perfect for:
 - Creating immutable snapshots of Eloquent models
 - Fast DTOs without validation or type definitions
 - Caching and comparison use cases
@@ -56,10 +56,10 @@ $publicData = $snapshot->except(['password'])->merge(['status' => 'active']);
 - 🚀 **Zero overhead** - No validation or type checking
 
 **When to use which:**
-- **Peeble** → Quick snapshots, no validation needed, dynamic properties, maximum performance, fast comparisons
+- **Pebble** → Quick snapshots, no validation needed, dynamic properties, maximum performance, fast comparisons
 - **Granite** → Full DTOs with validation, type safety, custom serialization, advanced features
 
-📖 **[Read Peeble Documentation](docs/peeble.md)**
+📖 **[Read Pebble Documentation](docs/pebble.md)**
 
 ---
 

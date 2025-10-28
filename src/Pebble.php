@@ -4,6 +4,7 @@ namespace Ninja\Granite;
 
 use ArrayAccess;
 use Countable;
+use DateTimeInterface;
 use InvalidArgumentException;
 use JsonException;
 use JsonSerializable;
@@ -11,6 +12,7 @@ use Ninja\Granite\Exceptions\SerializationException;
 use ReflectionException;
 use ReflectionMethod;
 use Throwable;
+use UnitEnum;
 
 /**
  * Pebble - A lightweight, immutable data container for quick object snapshots.
@@ -59,21 +61,14 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      * Private constructor to enforce usage of static factory methods.
      *
      * @param array<string, mixed> $data Extracted data
+     * @throws JsonException
      */
     private function __construct(array $data)
     {
         $this->data = $data;
 
         // Compute fingerprint eagerly since we can't modify after construction (readonly)
-        $serialized = serialize($this->data);
-
-        if (function_exists('hash') && in_array('xxh3', hash_algos(), true)) {
-            $this->fingerprint = hash('xxh3', $serialized);
-        } elseif (function_exists('hash') && in_array('xxh64', hash_algos(), true)) {
-            $this->fingerprint = hash('xxh64', $serialized);
-        } else {
-            $this->fingerprint = md5($serialized);
-        }
+        $this->fingerprint = self::computeFingerprint($this->data);
     }
 
     /**
@@ -163,6 +158,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      * @return self Immutable Pebble instance
      * @throws Exceptions\ReflectionException
      * @throws SerializationException
+     * @throws JsonException
      */
     public static function from(array|object|string $source): self
     {
@@ -217,6 +213,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      *
      * @param mixed $other Comparison target
      * @return bool True if equal
+     * @throws JsonException
      */
     public function equals(mixed $other): bool
     {
@@ -230,18 +227,9 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
         }
 
         if (is_array($other)) {
-            // For arrays, compute hash on the fly
-            $serialized = serialize($other);
-
-            if (function_exists('hash') && in_array('xxh3', hash_algos(), true)) {
-                $otherHash = hash('xxh3', $serialized);
-            } elseif (function_exists('hash') && in_array('xxh64', hash_algos(), true)) {
-                $otherHash = hash('xxh64', $serialized);
-            } else {
-                $otherHash = md5($serialized);
-            }
-
-            return $this->fingerprint() === $otherHash;
+            // For arrays, compute hash on the fly using the same canonicalization
+            /** @phpstan-ignore-next-line */
+            return $this->fingerprint() === self::computeFingerprint($other);
         }
 
         return false;
@@ -296,6 +284,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      *
      * @param array<string> $keys Property names to extract
      * @return self New Pebble with only specified properties
+     * @throws JsonException
      */
     public function only(array $keys): self
     {
@@ -311,6 +300,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      *
      * @param array<string> $keys Property names to exclude
      * @return self New Pebble without specified properties
+     * @throws JsonException
      */
     public function except(array $keys): self
     {
@@ -326,6 +316,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      *
      * @param array<string, mixed> $data Additional data to merge
      * @return self New Pebble with merged data
+     * @throws JsonException
      */
     public function merge(array $data): self
     {
@@ -459,7 +450,6 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
 
         // Strategy 3: JsonSerializable
         if ($source instanceof JsonSerializable) {
-            /** @var mixed $result */
             $result = $source->jsonSerialize();
             /** @var array<string, mixed> $arrayResult */
             $arrayResult = is_array($result) ? $result : [];
@@ -536,7 +526,14 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
                     continue;
                 }
 
-                $getterData[$propertyName] = $source->{$method}();
+                // Invoke the getter - may throw runtime exceptions
+                try {
+                    $getterData[$propertyName] = $source->{$method}();
+                } catch (Throwable $e) {
+                    // Skip this getter if it throws any exception during invocation
+                    // This prevents a single failing getter from aborting the entire snapshot
+                    continue;
+                }
             } catch (ReflectionException) {
                 // Skip this getter if reflection fails
                 continue;
@@ -544,5 +541,73 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
         }
 
         return $getterData;
+    }
+
+    /**
+     * Compute a stable fingerprint from array data.
+     *
+     * @param array<string, mixed> $data Data to hash
+     * @return string Hash fingerprint
+     * @throws JsonException
+     * @internal
+     */
+    private static function computeFingerprint(array $data): string
+    {
+        $normalized = self::normalizeForHash($data);
+        $json = json_encode(
+            $normalized,
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION,
+        );
+
+        $algos = hash_algos();
+        $algo = in_array('xxh128', $algos, true)
+            ? 'xxh128'
+            : (in_array('xxh3', $algos, true) ? 'xxh3' : 'sha256');
+
+        return hash($algo, $json);
+    }
+
+    /**
+     * Normalize values and sort assoc keys to make hashing order-insensitive.
+     *
+     * @internal
+     * @param mixed $value Value to normalize
+     * @return mixed Normalized value
+     */
+    private static function normalizeForHash(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            $isAssoc = array_keys($value) !== range(0, count($value) - 1);
+            if ($isAssoc) {
+                ksort($value);
+            }
+            foreach ($value as $k => $v) {
+                $value[$k] = self::normalizeForHash($v);
+            }
+            return $value;
+        }
+
+        if ($value instanceof JsonSerializable) {
+            return self::normalizeForHash($value->jsonSerialize());
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            return $value->format(DATE_ATOM);
+        }
+
+        if ($value instanceof UnitEnum) {
+            /** @phpstan-ignore-next-line */
+            return property_exists($value, 'value') ? $value->value : $value->name;
+        }
+
+        if (is_object($value)) {
+            return self::normalizeForHash(get_object_vars($value));
+        }
+
+        if (is_resource($value)) {
+            return get_resource_type($value);
+        }
+
+        return $value;
     }
 }
