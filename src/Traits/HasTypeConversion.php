@@ -13,6 +13,7 @@ use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionType;
 use ReflectionUnionType;
+use Throwable;
 use UnitEnum;
 
 /**
@@ -208,6 +209,42 @@ trait HasTypeConversion
         }
 
         return null;
+    }
+
+    /**
+     * Try to create an instance from a value using from() or fromString() factory methods.
+     *
+     * @param mixed $value Value to convert
+     * @param class-string $className Target class name
+     * @return mixed Created instance or original value if conversion failed
+     */
+    private static function tryCreateFromValue(mixed $value, string $className): mixed
+    {
+        // Already correct type
+        if ($value instanceof $className) {
+            return $value;
+        }
+
+        // Try from() first
+        if (method_exists($className, 'from')) {
+            try {
+                return $className::from($value);
+            } catch (Throwable) {
+                // Fall through to fromString
+            }
+        }
+
+        // Try fromString() as fallback
+        if (method_exists($className, 'fromString')) {
+            try {
+                return $className::fromString($value);
+            } catch (Throwable) {
+                // Both failed, return original
+            }
+        }
+
+        // Couldn't convert, return original value unchanged
+        return $value;
     }
 
     /**

@@ -315,9 +315,90 @@ class HasTypeConversionTest extends TestCase
         $this->assertTrue($testClass->testLooksLikeIdClass('UserId'));
         $this->assertTrue($testClass->testLooksLikeIdClass('OrderId'));
 
-        // Should not match
+        // Should not match - regular classes
         $this->assertFalse($testClass->testLooksLikeIdClass('Customer'));
         $this->assertFalse($testClass->testLooksLikeIdClass('OrderStatus'));
+    }
+
+    public function test_try_create_from_value_with_from_method(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testTryCreateFromValue(
+            'user-123',
+            \Tests\Fixtures\VOs\UserId::class
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
+        $this->assertEquals('user-123', $result->value);
+    }
+
+    public function test_try_create_from_value_with_from_string_method(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testTryCreateFromValue(
+            'rc-456',
+            \Tests\Fixtures\VOs\Rcuid::class
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
+        $this->assertEquals('rc-456', $result->value);
+    }
+
+    public function test_try_create_from_value_prefers_from_over_from_string(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // CustomUuid has both methods - should use from()
+        $result = $testClass->testTryCreateFromValue(
+            'custom-789',
+            \Tests\Fixtures\VOs\CustomUuid::class
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
+        $this->assertEquals('custom-789', $result->value);
+    }
+
+    public function test_try_create_from_value_already_correct_type(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $userId = \Tests\Fixtures\VOs\UserId::from('existing');
+        $result = $testClass->testTryCreateFromValue(
+            $userId,
+            \Tests\Fixtures\VOs\UserId::class
+        );
+
+        $this->assertSame($userId, $result);
+    }
+
+    public function test_try_create_from_value_handles_exceptions(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // InvalidId throws exceptions from both methods
+        $result = $testClass->testTryCreateFromValue(
+            'invalid',
+            \Tests\Fixtures\VOs\InvalidId::class
+        );
+
+        // Should return original value unchanged
+        $this->assertEquals('invalid', $result);
+    }
+
+    public function test_try_create_from_value_no_factory_methods(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // stdClass has no from() or fromString()
+        $result = $testClass->testTryCreateFromValue(
+            'test-value',
+            \stdClass::class
+        );
+
+        // Should return original value
+        $this->assertEquals('test-value', $result);
     }
 }
 
