@@ -12,6 +12,7 @@ use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionType;
 use ReflectionUnionType;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 class HasTypeConversionTest extends TestCase
@@ -326,7 +327,7 @@ class HasTypeConversionTest extends TestCase
 
         $result = $testClass->testTryCreateFromValue(
             'user-123',
-            \Tests\Fixtures\VOs\UserId::class
+            \Tests\Fixtures\VOs\UserId::class,
         );
 
         $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
@@ -339,7 +340,7 @@ class HasTypeConversionTest extends TestCase
 
         $result = $testClass->testTryCreateFromValue(
             'rc-456',
-            \Tests\Fixtures\VOs\Rcuid::class
+            \Tests\Fixtures\VOs\Rcuid::class,
         );
 
         $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
@@ -353,7 +354,7 @@ class HasTypeConversionTest extends TestCase
         // CustomUuid has both methods - should use from()
         $result = $testClass->testTryCreateFromValue(
             'custom-789',
-            \Tests\Fixtures\VOs\CustomUuid::class
+            \Tests\Fixtures\VOs\CustomUuid::class,
         );
 
         $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
@@ -367,7 +368,7 @@ class HasTypeConversionTest extends TestCase
         $userId = \Tests\Fixtures\VOs\UserId::from('existing');
         $result = $testClass->testTryCreateFromValue(
             $userId,
-            \Tests\Fixtures\VOs\UserId::class
+            \Tests\Fixtures\VOs\UserId::class,
         );
 
         $this->assertSame($userId, $result);
@@ -380,7 +381,7 @@ class HasTypeConversionTest extends TestCase
         // InvalidId throws exceptions from both methods
         $result = $testClass->testTryCreateFromValue(
             'invalid',
-            \Tests\Fixtures\VOs\InvalidId::class
+            \Tests\Fixtures\VOs\InvalidId::class,
         );
 
         // Should return original value unchanged
@@ -394,7 +395,7 @@ class HasTypeConversionTest extends TestCase
         // stdClass has no from() or fromString()
         $result = $testClass->testTryCreateFromValue(
             'test-value',
-            \stdClass::class
+            stdClass::class,
         );
 
         // Should return original value
@@ -407,7 +408,7 @@ class HasTypeConversionTest extends TestCase
 
         $result = $testClass->testConvertToUuidLike(
             'custom-uuid-123',
-            \Tests\Fixtures\VOs\CustomUuid::class
+            \Tests\Fixtures\VOs\CustomUuid::class,
         );
 
         $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
@@ -420,7 +421,7 @@ class HasTypeConversionTest extends TestCase
 
         $result = $testClass->testConvertToUuidLike(
             'rcuid-456',
-            \Tests\Fixtures\VOs\Rcuid::class
+            \Tests\Fixtures\VOs\Rcuid::class,
         );
 
         $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
@@ -433,7 +434,7 @@ class HasTypeConversionTest extends TestCase
 
         $result = $testClass->testConvertToUuidLike(
             'user-789',
-            \Tests\Fixtures\VOs\UserId::class
+            \Tests\Fixtures\VOs\UserId::class,
         );
 
         $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
@@ -447,7 +448,7 @@ class HasTypeConversionTest extends TestCase
         // TestGraniteObject doesn't match naming heuristic
         $result = $testClass->testConvertToUuidLike(
             'customer-data',
-            \Tests\Fixtures\VOs\TestGraniteObject::class
+            \Tests\Fixtures\VOs\TestGraniteObject::class,
         );
 
         // Should return original value unchanged
@@ -460,7 +461,7 @@ class HasTypeConversionTest extends TestCase
 
         $result = $testClass->testConvertToUuidLike(
             'will-fail',
-            \Tests\Fixtures\VOs\InvalidId::class
+            \Tests\Fixtures\VOs\InvalidId::class,
         );
 
         // Should return original value when conversion fails
@@ -469,7 +470,7 @@ class HasTypeConversionTest extends TestCase
 
     public function test_convert_to_uuid_like_ramsey_uuid(): void
     {
-        if (!interface_exists('Ramsey\Uuid\UuidInterface')) {
+        if ( ! interface_exists('Ramsey\Uuid\UuidInterface')) {
             $this->markTestSkipped('ramsey/uuid not installed');
         }
 
@@ -478,7 +479,7 @@ class HasTypeConversionTest extends TestCase
         $uuidString = '550e8400-e29b-41d4-a716-446655440000';
         $result = $testClass->testConvertToUuidLike(
             $uuidString,
-            \Ramsey\Uuid\Uuid::class
+            \Ramsey\Uuid\Uuid::class,
         );
 
         $this->assertInstanceOf(\Ramsey\Uuid\UuidInterface::class, $result);
@@ -487,7 +488,7 @@ class HasTypeConversionTest extends TestCase
 
     public function test_convert_to_uuid_like_symfony_uuid(): void
     {
-        if (!class_exists('Symfony\Component\Uid\Uuid')) {
+        if ( ! class_exists('Symfony\Component\Uid\Uuid')) {
             $this->markTestSkipped('symfony/uid not installed');
         }
 
@@ -496,7 +497,7 @@ class HasTypeConversionTest extends TestCase
         $uuidString = '550e8400-e29b-41d4-a716-446655440000';
         $result = $testClass->testConvertToUuidLike(
             $uuidString,
-            \Symfony\Component\Uid\Uuid::class
+            \Symfony\Component\Uid\Uuid::class,
         );
 
         $this->assertInstanceOf(\Symfony\Component\Uid\AbstractUid::class, $result);
@@ -505,7 +506,7 @@ class HasTypeConversionTest extends TestCase
 
     public function test_convert_to_uuid_like_symfony_ulid(): void
     {
-        if (!class_exists('Symfony\Component\Uid\Ulid')) {
+        if ( ! class_exists('Symfony\Component\Uid\Ulid')) {
             $this->markTestSkipped('symfony/uid not installed');
         }
 
@@ -514,7 +515,7 @@ class HasTypeConversionTest extends TestCase
         $ulidString = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
         $result = $testClass->testConvertToUuidLike(
             $ulidString,
-            \Symfony\Component\Uid\Ulid::class
+            \Symfony\Component\Uid\Ulid::class,
         );
 
         $this->assertInstanceOf(\Symfony\Component\Uid\AbstractUid::class, $result);

@@ -10,8 +10,12 @@ use InvalidArgumentException;
 readonly class CustomUuid
 {
     private function __construct(
-        public string $value
-    ) {
+        public string $value,
+    ) {}
+
+    public function __toString(): string
+    {
+        return $this->value;
     }
 
     public static function from(mixed $value): self
@@ -33,11 +37,6 @@ readonly class CustomUuid
     }
 
     public function toString(): string
-    {
-        return $this->value;
-    }
-
-    public function __toString(): string
     {
         return $this->value;
     }

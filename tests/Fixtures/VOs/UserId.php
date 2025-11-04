@@ -10,9 +10,8 @@ use InvalidArgumentException;
 readonly class UserId
 {
     private function __construct(
-        public string $value
-    ) {
-    }
+        public string $value,
+    ) {}
 
     public static function from(mixed $value): self
     {

@@ -100,6 +100,7 @@ trait HasTypeConversion
         ?ReflectionProperty $property = null,
         ?DateTimeProvider $classProvider = null,
     ): mixed {
+        /** @var class-string $typeName */
         $typeName = $type->getName();
 
         // Check for Carbon classes first (before general DateTime check)
@@ -108,7 +109,7 @@ trait HasTypeConversion
         }
 
         // Check for UUID/ULID classes
-        if (!$type->isBuiltin()) {
+        if ( ! $type->isBuiltin()) {
             $uuidResult = self::convertToUuidLike($value, $typeName);
             if ($uuidResult !== $value) {
                 return $uuidResult;
@@ -223,19 +224,19 @@ trait HasTypeConversion
      * Convert value to UUID/ULID instance using hybrid detection.
      *
      * @param mixed $value Value to convert
-     * @param string $typeName Target type name
+     * @param class-string $typeName Target type name
      * @return mixed Converted UUID/ULID instance or original value
      */
     private static function convertToUuidLike(mixed $value, string $typeName): mixed
     {
         // Step 1: Check known libraries
-        if (interface_exists('Ramsey\Uuid\UuidInterface') &&
-            is_subclass_of($typeName, 'Ramsey\Uuid\UuidInterface')) {
+        if (interface_exists('Ramsey\Uuid\UuidInterface')
+            && is_subclass_of($typeName, 'Ramsey\Uuid\UuidInterface')) {
             return self::tryCreateFromValue($value, $typeName);
         }
 
-        if (class_exists('Symfony\Component\Uid\AbstractUid') &&
-            is_subclass_of($typeName, 'Symfony\Component\Uid\AbstractUid')) {
+        if (class_exists('Symfony\Component\Uid\AbstractUid')
+            && is_subclass_of($typeName, 'Symfony\Component\Uid\AbstractUid')) {
             return self::tryCreateFromValue($value, $typeName);
         }
 
