@@ -12,6 +12,7 @@ use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionType;
 use ReflectionUnionType;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 class HasTypeConversionTest extends TestCase
@@ -294,6 +295,287 @@ class HasTypeConversionTest extends TestCase
         $result = $this->testClass->testConvertValueToType('test', $mockType);
         $this->assertEquals('test', $result);
     }
+
+    public function test_looks_like_id_class_uuid_variants(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // Should match "uuid"
+        $this->assertTrue($testClass->testLooksLikeIdClass('CustomUuid'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('App\\OrderUuid'));
+
+        // Should match "ulid"
+        $this->assertTrue($testClass->testLooksLikeIdClass('Ulid'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('App\\Domain\\Ulid'));
+
+        // Should match "uid"
+        $this->assertTrue($testClass->testLooksLikeIdClass('Rcuid'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('CustomUid'));
+
+        // Should match "id"
+        $this->assertTrue($testClass->testLooksLikeIdClass('UserId'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('OrderId'));
+
+        // Should not match - regular classes
+        $this->assertFalse($testClass->testLooksLikeIdClass('Customer'));
+        $this->assertFalse($testClass->testLooksLikeIdClass('OrderStatus'));
+    }
+
+    public function test_try_create_from_value_with_from_method(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testTryCreateFromValue(
+            'user-123',
+            \Tests\Fixtures\VOs\UserId::class,
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
+        $this->assertEquals('user-123', $result->value);
+    }
+
+    public function test_try_create_from_value_with_from_string_method(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testTryCreateFromValue(
+            'rc-456',
+            \Tests\Fixtures\VOs\Rcuid::class,
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
+        $this->assertEquals('rc-456', $result->value);
+    }
+
+    public function test_try_create_from_value_prefers_from_over_from_string(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // CustomUuid has both methods - should use from()
+        $result = $testClass->testTryCreateFromValue(
+            'custom-789',
+            \Tests\Fixtures\VOs\CustomUuid::class,
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
+        $this->assertEquals('custom-789', $result->value);
+    }
+
+    public function test_try_create_from_value_already_correct_type(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $userId = \Tests\Fixtures\VOs\UserId::from('existing');
+        $result = $testClass->testTryCreateFromValue(
+            $userId,
+            \Tests\Fixtures\VOs\UserId::class,
+        );
+
+        $this->assertSame($userId, $result);
+    }
+
+    public function test_try_create_from_value_handles_exceptions(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // InvalidId throws exceptions from both methods
+        $result = $testClass->testTryCreateFromValue(
+            'invalid',
+            \Tests\Fixtures\VOs\InvalidId::class,
+        );
+
+        // Should return original value unchanged
+        $this->assertEquals('invalid', $result);
+    }
+
+    public function test_try_create_from_value_no_factory_methods(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // stdClass has no from() or fromString()
+        $result = $testClass->testTryCreateFromValue(
+            'test-value',
+            stdClass::class,
+        );
+
+        // Should return original value
+        $this->assertEquals('test-value', $result);
+    }
+
+    public function test_convert_to_uuid_like_custom_uuid(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'custom-uuid-123',
+            \Tests\Fixtures\VOs\CustomUuid::class,
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
+        $this->assertEquals('custom-uuid-123', $result->value);
+    }
+
+    public function test_convert_to_uuid_like_rcuid(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'rcuid-456',
+            \Tests\Fixtures\VOs\Rcuid::class,
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
+        $this->assertEquals('rcuid-456', $result->value);
+    }
+
+    public function test_convert_to_uuid_like_user_id(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'user-789',
+            \Tests\Fixtures\VOs\UserId::class,
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
+        $this->assertEquals('user-789', $result->value);
+    }
+
+    public function test_convert_to_uuid_like_non_id_class(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // TestGraniteObject doesn't match naming heuristic
+        $result = $testClass->testConvertToUuidLike(
+            'customer-data',
+            \Tests\Fixtures\VOs\TestGraniteObject::class,
+        );
+
+        // Should return original value unchanged
+        $this->assertEquals('customer-data', $result);
+    }
+
+    public function test_convert_to_uuid_like_handles_conversion_failure(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'will-fail',
+            \Tests\Fixtures\VOs\InvalidId::class,
+        );
+
+        // Should return original value when conversion fails
+        $this->assertEquals('will-fail', $result);
+    }
+
+    public function test_convert_to_uuid_like_ramsey_uuid(): void
+    {
+        if ( ! interface_exists('Ramsey\Uuid\UuidInterface')) {
+            $this->markTestSkipped('ramsey/uuid not installed');
+        }
+
+        $testClass = new TestClassWithTypeConversion();
+
+        $uuidString = '550e8400-e29b-41d4-a716-446655440000';
+        $result = $testClass->testConvertToUuidLike(
+            $uuidString,
+            \Ramsey\Uuid\Uuid::class,
+        );
+
+        $this->assertInstanceOf(\Ramsey\Uuid\UuidInterface::class, $result);
+        $this->assertEquals($uuidString, $result->toString());
+    }
+
+    public function test_convert_to_uuid_like_symfony_uuid(): void
+    {
+        if ( ! class_exists('Symfony\Component\Uid\Uuid')) {
+            $this->markTestSkipped('symfony/uid not installed');
+        }
+
+        $testClass = new TestClassWithTypeConversion();
+
+        $uuidString = '550e8400-e29b-41d4-a716-446655440000';
+        $result = $testClass->testConvertToUuidLike(
+            $uuidString,
+            \Symfony\Component\Uid\Uuid::class,
+        );
+
+        $this->assertInstanceOf(\Symfony\Component\Uid\AbstractUid::class, $result);
+        $this->assertEquals($uuidString, (string) $result);
+    }
+
+    public function test_convert_to_uuid_like_symfony_ulid(): void
+    {
+        if ( ! class_exists('Symfony\Component\Uid\Ulid')) {
+            $this->markTestSkipped('symfony/uid not installed');
+        }
+
+        $testClass = new TestClassWithTypeConversion();
+
+        $ulidString = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+        $result = $testClass->testConvertToUuidLike(
+            $ulidString,
+            \Symfony\Component\Uid\Ulid::class,
+        );
+
+        $this->assertInstanceOf(\Symfony\Component\Uid\AbstractUid::class, $result);
+    }
+
+    public function test_convert_to_named_type_custom_uuid(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'customUuid');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('uuid-integration', $type);
+
+            $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
+            $this->assertEquals('uuid-integration', $result->value);
+        }
+    }
+
+    public function test_convert_to_named_type_rcuid(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'rcuid');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('rcuid-integration', $type);
+
+            $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
+            $this->assertEquals('rcuid-integration', $result->value);
+        }
+    }
+
+    public function test_convert_to_named_type_user_id(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'userId');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('user-integration', $type);
+
+            $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
+            $this->assertEquals('user-integration', $result->value);
+        }
+    }
+
+    public function test_convert_to_named_type_invalid_id_returns_original(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'invalidId');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('invalid-value', $type);
+
+            // Should return original value when conversion fails
+            $this->assertEquals('invalid-value', $result);
+        }
+    }
 }
 
 class TestClassWithTypeConversion
@@ -313,6 +595,21 @@ class TestClassWithTypeConversion
     public function testConvertToUnionType($value, $type, $property = null, $classProvider = null)
     {
         return self::convertToUnionType($value, $type, $property, $classProvider);
+    }
+
+    public function testConvertToUuidLike($value, $typeName)
+    {
+        return self::convertToUuidLike($value, $typeName);
+    }
+
+    public function testLooksLikeIdClass($className)
+    {
+        return self::looksLikeIdClass($className);
+    }
+
+    public function testTryCreateFromValue($value, $className)
+    {
+        return self::tryCreateFromValue($value, $className);
     }
 
     protected static function convertToCarbon(
@@ -366,6 +663,12 @@ class TestTypeConversionClass
     public TestBackedEnum $backedEnum;
     public TestUnitEnum $unitEnum;
     public TestIntBackedEnum $intBackedEnum;
+
+    // UUID/ULID properties for testing
+    public \Tests\Fixtures\VOs\CustomUuid $customUuid;
+    public \Tests\Fixtures\VOs\Rcuid $rcuid;
+    public \Tests\Fixtures\VOs\UserId $userId;
+    public \Tests\Fixtures\VOs\InvalidId $invalidId;
 }
 
 readonly class TestGraniteObject extends GraniteVO

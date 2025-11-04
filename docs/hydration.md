@@ -10,9 +10,10 @@ Granite's `from()` method has been enhanced to support multiple invocation patte
 - [JSON String](#json-string)
 - [Named Parameters](#named-parameters)
 - [Mixed Usage](#mixed-usage)
+- [UUId/ULID/Custom ID Conversion](#uuidulidcustom-id-conversion)
 - [Granite Object Cloning](#granite-object-cloning)
-- [Object Hydration](#object-hydration) ✨ NEW!
-- [Custom Hydrators](#custom-hydrators) 🔧 EXTENSIBLE!
+- [Object Hydration](#object-hydration)
+- [Custom Hydrators](#custom-hydrators)
 - [Partial Data](#partial-data)
 - [Type Safety](#type-safety)
 - [Advanced Examples](#advanced-examples)
@@ -58,7 +59,7 @@ $json = '{"name": "Laptop", "price": 999.99, "description": "High-performance la
 $product = Product::from($json);
 ```
 
-### 3. Named Parameters ✨ NEW!
+### 3. Named Parameters
 ```php
 $product = Product::from(
     name: 'Laptop',
@@ -68,7 +69,7 @@ $product = Product::from(
 );
 ```
 
-### 4. Mixed Usage ✨ NEW!
+### 4. Mixed Usage
 ```php
 $defaults = ['name' => 'Generic Product', 'price' => 0.0];
 $product = Product::from(
@@ -85,7 +86,7 @@ $originalProduct = Product::from(['name' => 'Laptop', 'price' => 999.99]);
 $clonedProduct = Product::from($originalProduct);
 ```
 
-### 6. Any Object (Laravel, Doctrine, etc.) ✨ NEW!
+### 6. Any Object (Laravel, Doctrine, etc.)
 ```php
 // From Laravel Eloquent Model
 $eloquentUser = User::find(1);
@@ -354,6 +355,56 @@ $product = Product::from(
 );
 ```
 
+### UUID/ULID/Custom ID Conversion
+
+Granite automatically converts string values to UUID/ULID objects when property types are ID classes:
+
+#### Supported Libraries
+
+- **ramsey/uuid**: Automatic support for `Ramsey\Uuid\UuidInterface`
+- **symfony/uid**: Automatic support for `Symfony\Component\Uid\AbstractUid` (Uuid, Ulid)
+
+#### Custom ID Classes
+
+Custom ID classes are detected if:
+1. Class name contains: `uuid`, `ulid`, `uid`, or `id` (case-insensitive)
+2. Class has public static `from()` or `fromString()` method
+
+**Example:**
+
+```php
+readonly class OrderId
+{
+    public function __construct(public string $value) {}
+
+    public static function from(mixed $value): self
+    {
+        if ($value instanceof self) {
+            return $value;
+        }
+        return new self((string) $value);
+    }
+}
+
+readonly class Order extends GraniteVO
+{
+    public OrderId $id;
+    public string $description;
+}
+
+// Automatic conversion
+$order = Order::from(['id' => 'order-123', 'description' => 'Test']);
+// $order->id is an OrderId instance, not a string
+```
+
+
+#### Factory Method Priority
+Tries from() first (accepts any type)
+Falls back to fromString() (string-specific)
+
+#### Error Handling
+If conversion fails, the original value is returned unchanged. Type errors will surface at PHP's type checking level.
+
 ## Granite Object Cloning
 
 Create new instances from existing Granite objects:
@@ -410,7 +461,7 @@ $audit = CustomerAudit::from([
 ]);
 ```
 
-## Object Hydration ✨ NEW!
+## Object Hydration
 
 Granite can now extract data from **any object**, not just Granite objects. This makes it incredibly easy to integrate with frameworks, libraries, and external APIs.
 
@@ -687,7 +738,7 @@ $user = User::from($source);
 // Only email is extracted, name property remains uninitialized
 ```
 
-## Custom Hydrators 🔧 EXTENSIBLE!
+## Custom Hydrators
 
 Granite's hydration system is **fully extensible**. You can create custom hydrators to support any data source imaginable - databases, APIs, file formats, or even custom protocols.
 

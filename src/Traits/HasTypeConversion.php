@@ -13,6 +13,7 @@ use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionType;
 use ReflectionUnionType;
+use Throwable;
 use UnitEnum;
 
 /**
@@ -99,11 +100,20 @@ trait HasTypeConversion
         ?ReflectionProperty $property = null,
         ?DateTimeProvider $classProvider = null,
     ): mixed {
+        /** @var class-string $typeName */
         $typeName = $type->getName();
 
         // Check for Carbon classes first (before general DateTime check)
         if (CarbonSupport::isCarbonClass($typeName)) {
             return self::convertToCarbon($value, $typeName, $property, $classProvider);
+        }
+
+        // Check for UUID/ULID classes
+        if ( ! $type->isBuiltin()) {
+            $uuidResult = self::convertToUuidLike($value, $typeName);
+            if ($uuidResult !== $value) {
+                return $uuidResult;
+            }
         }
 
         // Check for GraniteObject first
@@ -208,5 +218,83 @@ trait HasTypeConversion
         }
 
         return null;
+    }
+
+    /**
+     * Convert value to UUID/ULID instance using hybrid detection.
+     *
+     * @param mixed $value Value to convert
+     * @param class-string $typeName Target type name
+     * @return mixed Converted UUID/ULID instance or original value
+     */
+    private static function convertToUuidLike(mixed $value, string $typeName): mixed
+    {
+        // Step 1: Check known libraries
+        if (interface_exists('Ramsey\Uuid\UuidInterface')
+            && is_subclass_of($typeName, 'Ramsey\Uuid\UuidInterface')) {
+            return self::tryCreateFromValue($value, $typeName);
+        }
+
+        if (class_exists('Symfony\Component\Uid\AbstractUid')
+            && is_subclass_of($typeName, 'Symfony\Component\Uid\AbstractUid')) {
+            return self::tryCreateFromValue($value, $typeName);
+        }
+
+        // Step 2: Duck-typing for custom ID classes
+        if (self::looksLikeIdClass($typeName)) {
+            return self::tryCreateFromValue($value, $typeName);
+        }
+
+        // Not a UUID-like type, return original value
+        return $value;
+    }
+
+    /**
+     * Try to create an instance from a value using from() or fromString() factory methods.
+     *
+     * @param mixed $value Value to convert
+     * @param class-string $className Target class name
+     * @return mixed Created instance or original value if conversion failed
+     */
+    private static function tryCreateFromValue(mixed $value, string $className): mixed
+    {
+        // Already correct type
+        if ($value instanceof $className) {
+            return $value;
+        }
+
+        // Try from() first
+        if (method_exists($className, 'from')) {
+            try {
+                return $className::from($value);
+            } catch (Throwable) {
+                // Fall through to fromString
+            }
+        }
+
+        // Try fromString() as fallback
+        if (method_exists($className, 'fromString')) {
+            try {
+                return $className::fromString($value);
+            } catch (Throwable) {
+                // Both failed, return original
+            }
+        }
+
+        // Couldn't convert, return original value unchanged
+        return $value;
+    }
+
+    /**
+     * Check if a class name looks like an ID class based on naming heuristics.
+     *
+     * @param string $className Fully qualified class name
+     * @return bool True if class name contains uuid, ulid, uid, or id
+     */
+    private static function looksLikeIdClass(string $className): bool
+    {
+        $parts = explode('\\', $className);
+        $baseName = end($parts);
+        return (bool) preg_match('/uuid|ulid|uid|id/i', $baseName);
     }
 }
