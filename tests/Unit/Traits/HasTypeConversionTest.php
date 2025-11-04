@@ -294,6 +294,31 @@ class HasTypeConversionTest extends TestCase
         $result = $this->testClass->testConvertValueToType('test', $mockType);
         $this->assertEquals('test', $result);
     }
+
+    public function test_looks_like_id_class_uuid_variants(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // Should match "uuid"
+        $this->assertTrue($testClass->testLooksLikeIdClass('CustomUuid'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('App\\OrderUuid'));
+
+        // Should match "ulid"
+        $this->assertTrue($testClass->testLooksLikeIdClass('Ulid'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('App\\Domain\\Ulid'));
+
+        // Should match "uid"
+        $this->assertTrue($testClass->testLooksLikeIdClass('Rcuid'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('CustomUid'));
+
+        // Should match "id"
+        $this->assertTrue($testClass->testLooksLikeIdClass('UserId'));
+        $this->assertTrue($testClass->testLooksLikeIdClass('OrderId'));
+
+        // Should not match
+        $this->assertFalse($testClass->testLooksLikeIdClass('Customer'));
+        $this->assertFalse($testClass->testLooksLikeIdClass('OrderStatus'));
+    }
 }
 
 class TestClassWithTypeConversion

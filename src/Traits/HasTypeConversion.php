@@ -209,4 +209,17 @@ trait HasTypeConversion
 
         return null;
     }
+
+    /**
+     * Check if a class name looks like an ID class based on naming heuristics.
+     *
+     * @param string $className Fully qualified class name
+     * @return bool True if class name contains uuid, ulid, uid, or id
+     */
+    private static function looksLikeIdClass(string $className): bool
+    {
+        $parts = explode('\\', $className);
+        $baseName = end($parts);
+        return (bool) preg_match('/uuid|ulid|uid|id/i', $baseName);
+    }
 }
