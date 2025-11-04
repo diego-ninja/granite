@@ -315,6 +315,21 @@ class TestClassWithTypeConversion
         return self::convertToUnionType($value, $type, $property, $classProvider);
     }
 
+    public function testConvertToUuidLike($value, $typeName)
+    {
+        return self::convertToUuidLike($value, $typeName);
+    }
+
+    public function testLooksLikeIdClass($className)
+    {
+        return self::looksLikeIdClass($className);
+    }
+
+    public function testTryCreateFromValue($value, $className)
+    {
+        return self::tryCreateFromValue($value, $className);
+    }
+
     protected static function convertToCarbon(
         mixed $value,
         string $typeName,
@@ -366,6 +381,12 @@ class TestTypeConversionClass
     public TestBackedEnum $backedEnum;
     public TestUnitEnum $unitEnum;
     public TestIntBackedEnum $intBackedEnum;
+
+    // UUID/ULID properties for testing
+    public \Tests\Fixtures\VOs\CustomUuid $customUuid;
+    public \Tests\Fixtures\VOs\Rcuid $rcuid;
+    public \Tests\Fixtures\VOs\UserId $userId;
+    public \Tests\Fixtures\VOs\InvalidId $invalidId;
 }
 
 readonly class TestGraniteObject extends GraniteVO
