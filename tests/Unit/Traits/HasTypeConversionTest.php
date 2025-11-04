@@ -400,6 +400,125 @@ class HasTypeConversionTest extends TestCase
         // Should return original value
         $this->assertEquals('test-value', $result);
     }
+
+    public function test_convert_to_uuid_like_custom_uuid(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'custom-uuid-123',
+            \Tests\Fixtures\VOs\CustomUuid::class
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
+        $this->assertEquals('custom-uuid-123', $result->value);
+    }
+
+    public function test_convert_to_uuid_like_rcuid(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'rcuid-456',
+            \Tests\Fixtures\VOs\Rcuid::class
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
+        $this->assertEquals('rcuid-456', $result->value);
+    }
+
+    public function test_convert_to_uuid_like_user_id(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'user-789',
+            \Tests\Fixtures\VOs\UserId::class
+        );
+
+        $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
+        $this->assertEquals('user-789', $result->value);
+    }
+
+    public function test_convert_to_uuid_like_non_id_class(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        // TestGraniteObject doesn't match naming heuristic
+        $result = $testClass->testConvertToUuidLike(
+            'customer-data',
+            \Tests\Fixtures\VOs\TestGraniteObject::class
+        );
+
+        // Should return original value unchanged
+        $this->assertEquals('customer-data', $result);
+    }
+
+    public function test_convert_to_uuid_like_handles_conversion_failure(): void
+    {
+        $testClass = new TestClassWithTypeConversion();
+
+        $result = $testClass->testConvertToUuidLike(
+            'will-fail',
+            \Tests\Fixtures\VOs\InvalidId::class
+        );
+
+        // Should return original value when conversion fails
+        $this->assertEquals('will-fail', $result);
+    }
+
+    public function test_convert_to_uuid_like_ramsey_uuid(): void
+    {
+        if (!interface_exists('Ramsey\Uuid\UuidInterface')) {
+            $this->markTestSkipped('ramsey/uuid not installed');
+        }
+
+        $testClass = new TestClassWithTypeConversion();
+
+        $uuidString = '550e8400-e29b-41d4-a716-446655440000';
+        $result = $testClass->testConvertToUuidLike(
+            $uuidString,
+            \Ramsey\Uuid\Uuid::class
+        );
+
+        $this->assertInstanceOf(\Ramsey\Uuid\UuidInterface::class, $result);
+        $this->assertEquals($uuidString, $result->toString());
+    }
+
+    public function test_convert_to_uuid_like_symfony_uuid(): void
+    {
+        if (!class_exists('Symfony\Component\Uid\Uuid')) {
+            $this->markTestSkipped('symfony/uid not installed');
+        }
+
+        $testClass = new TestClassWithTypeConversion();
+
+        $uuidString = '550e8400-e29b-41d4-a716-446655440000';
+        $result = $testClass->testConvertToUuidLike(
+            $uuidString,
+            \Symfony\Component\Uid\Uuid::class
+        );
+
+        $this->assertInstanceOf(\Symfony\Component\Uid\AbstractUid::class, $result);
+        $this->assertEquals($uuidString, (string) $result);
+    }
+
+    public function test_convert_to_uuid_like_symfony_ulid(): void
+    {
+        if (!class_exists('Symfony\Component\Uid\Ulid')) {
+            $this->markTestSkipped('symfony/uid not installed');
+        }
+
+        $testClass = new TestClassWithTypeConversion();
+
+        $ulidString = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+        $result = $testClass->testConvertToUuidLike(
+            $ulidString,
+            \Symfony\Component\Uid\Ulid::class
+        );
+
+        $this->assertInstanceOf(\Symfony\Component\Uid\AbstractUid::class, $result);
+    }
 }
 
 class TestClassWithTypeConversion

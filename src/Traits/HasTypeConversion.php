@@ -212,6 +212,35 @@ trait HasTypeConversion
     }
 
     /**
+     * Convert value to UUID/ULID instance using hybrid detection.
+     *
+     * @param mixed $value Value to convert
+     * @param string $typeName Target type name
+     * @return mixed Converted UUID/ULID instance or original value
+     */
+    private static function convertToUuidLike(mixed $value, string $typeName): mixed
+    {
+        // Step 1: Check known libraries
+        if (interface_exists('Ramsey\Uuid\UuidInterface') &&
+            is_subclass_of($typeName, 'Ramsey\Uuid\UuidInterface')) {
+            return self::tryCreateFromValue($value, $typeName);
+        }
+
+        if (class_exists('Symfony\Component\Uid\AbstractUid') &&
+            is_subclass_of($typeName, 'Symfony\Component\Uid\AbstractUid')) {
+            return self::tryCreateFromValue($value, $typeName);
+        }
+
+        // Step 2: Duck-typing for custom ID classes
+        if (self::looksLikeIdClass($typeName)) {
+            return self::tryCreateFromValue($value, $typeName);
+        }
+
+        // Not a UUID-like type, return original value
+        return $value;
+    }
+
+    /**
      * Try to create an instance from a value using from() or fromString() factory methods.
      *
      * @param mixed $value Value to convert
