@@ -107,6 +107,14 @@ trait HasTypeConversion
             return self::convertToCarbon($value, $typeName, $property, $classProvider);
         }
 
+        // Check for UUID/ULID classes
+        if (!$type->isBuiltin()) {
+            $uuidResult = self::convertToUuidLike($value, $typeName);
+            if ($uuidResult !== $value) {
+                return $uuidResult;
+            }
+        }
+
         // Check for GraniteObject first
         if (is_subclass_of($typeName, GraniteObject::class)) {
             if (null === $value) {

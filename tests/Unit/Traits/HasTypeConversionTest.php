@@ -519,6 +519,62 @@ class HasTypeConversionTest extends TestCase
 
         $this->assertInstanceOf(\Symfony\Component\Uid\AbstractUid::class, $result);
     }
+
+    public function test_convert_to_named_type_custom_uuid(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'customUuid');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('uuid-integration', $type);
+
+            $this->assertInstanceOf(\Tests\Fixtures\VOs\CustomUuid::class, $result);
+            $this->assertEquals('uuid-integration', $result->value);
+        }
+    }
+
+    public function test_convert_to_named_type_rcuid(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'rcuid');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('rcuid-integration', $type);
+
+            $this->assertInstanceOf(\Tests\Fixtures\VOs\Rcuid::class, $result);
+            $this->assertEquals('rcuid-integration', $result->value);
+        }
+    }
+
+    public function test_convert_to_named_type_user_id(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'userId');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('user-integration', $type);
+
+            $this->assertInstanceOf(\Tests\Fixtures\VOs\UserId::class, $result);
+            $this->assertEquals('user-integration', $result->value);
+        }
+    }
+
+    public function test_convert_to_named_type_invalid_id_returns_original(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'invalidId');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
+            $testClass = new TestClassWithTypeConversion();
+            $result = $testClass->testConvertToNamedType('invalid-value', $type);
+
+            // Should return original value when conversion fails
+            $this->assertEquals('invalid-value', $result);
+        }
+    }
 }
 
 class TestClassWithTypeConversion
