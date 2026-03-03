@@ -13,6 +13,7 @@ use Tests\Fixtures\DTOs\NestedDTO;
 use Tests\Fixtures\DTOs\PersonDTO;
 use Tests\Fixtures\DTOs\ScalarDTO;
 use Tests\Fixtures\DTOs\SimpleDTO;
+use Tests\Fixtures\DTOs\TeamDTO;
 use Tests\Fixtures\DTOs\TestHiddenDto;
 use Tests\Fixtures\DTOs\TestSnakeCaseDto;
 use Tests\Fixtures\VOs\ValidatedUserVO;
@@ -169,5 +170,77 @@ class ClassProfileTest extends TestCase
         $result = $profile->tryFastPath(['Alice', 30, 'a@b.com']);
 
         $this->assertNull($result);
+    }
+
+    public function test_detects_fast_path_for_nested_granite_types(): void
+    {
+        $profile = ClassProfile::build(TeamDTO::class);
+
+        $this->assertTrue($profile->canUseFastPath);
+    }
+
+    public function test_tracks_granite_typed_params(): void
+    {
+        $profile = ClassProfile::build(TeamDTO::class);
+
+        $this->assertArrayHasKey('leader', $profile->graniteParams);
+        $this->assertSame(PersonDTO::class, $profile->graniteParams['leader']);
+    }
+
+    public function test_pure_primitive_dto_has_empty_granite_params(): void
+    {
+        $profile = ClassProfile::build(PersonDTO::class);
+
+        $this->assertEmpty($profile->graniteParams);
+    }
+
+    public function test_fast_path_nested_with_array_data(): void
+    {
+        $profile = ClassProfile::build(TeamDTO::class);
+
+        $result = $profile->tryFastPath([[
+            'name' => 'Alpha',
+            'leader' => ['name' => 'Alice', 'age' => 30, 'email' => 'alice@test.com'],
+            'size' => 5,
+        ]]);
+
+        $this->assertInstanceOf(TeamDTO::class, $result);
+        $this->assertSame('Alpha', $result->name);
+        $this->assertSame(5, $result->size);
+        $this->assertInstanceOf(PersonDTO::class, $result->leader);
+        $this->assertSame('Alice', $result->leader->name);
+        $this->assertSame(30, $result->leader->age);
+    }
+
+    public function test_fast_path_nested_with_granite_instance(): void
+    {
+        $profile = ClassProfile::build(TeamDTO::class);
+        $leader = PersonDTO::from(name: 'Bob', age: 25, email: 'bob@test.com');
+
+        $result = $profile->tryFastPath([[
+            'name' => 'Beta',
+            'leader' => $leader,
+            'size' => 3,
+        ]]);
+
+        $this->assertInstanceOf(TeamDTO::class, $result);
+        $this->assertSame('Bob', $result->leader->name);
+    }
+
+    public function test_fast_path_nested_produces_identical_results_to_slow_path(): void
+    {
+        $data = [
+            'name' => 'Gamma',
+            'leader' => ['name' => 'Charlie', 'age' => 35, 'email' => 'charlie@test.com'],
+            'size' => 10,
+        ];
+
+        $fast = TeamDTO::from($data);
+        // Force slow path by going through full hydration
+        $profile = ClassProfile::build(TeamDTO::class);
+        $fastDirect = $profile->tryFastPath([$data]);
+
+        $this->assertNotNull($fastDirect);
+        $this->assertEquals($fast->array(), $fastDirect->array());
     }
 }

@@ -1,10 +1,11 @@
 <?php
 
 // ABOUTME: Pre-computed class metadata for fast-path object creation.
-// ABOUTME: Detects simple DTOs (primitive types, no attributes) to bypass the hydration pipeline.
+// ABOUTME: Detects simple DTOs (primitive or Granite types, no attributes) to bypass the hydration pipeline.
 
 namespace Ninja\Granite\Support;
 
+use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
@@ -24,6 +25,9 @@ final class ClassProfile
 
     public readonly bool $canUseFastPath;
 
+    /** @var array<string, class-string> Param name => Granite subclass for non-primitive params */
+    public readonly array $graniteParams;
+
     /** @var class-string */
     private readonly string $className;
 
@@ -34,13 +38,15 @@ final class ClassProfile
      * @param class-string $className
      * @param array<string, mixed> $constructorParams
      * @param string[] $paramNames
+     * @param array<string, class-string> $graniteParams
      */
-    private function __construct(string $className, array $constructorParams, array $paramNames, bool $canUseFastPath)
+    private function __construct(string $className, array $constructorParams, array $paramNames, bool $canUseFastPath, array $graniteParams = [])
     {
         $this->className = $className;
         $this->constructorParams = $constructorParams;
         $this->paramNames = $paramNames;
         $this->canUseFastPath = $canUseFastPath;
+        $this->graniteParams = $graniteParams;
     }
 
     /**
@@ -52,16 +58,18 @@ final class ClassProfile
         $constructor = $reflection->getConstructor();
 
         if (null === $constructor) {
-            return new self($class, [], [], false);
+            return new self($class, [], [], false, []);
         }
 
         $params = [];
+        /** @var array<string, class-string> $graniteParams */
+        $graniteParams = [];
         $canUseFastPath = !self::hasDisqualifyingClassAttributes($reflection)
             && !self::hasOverriddenRules($reflection)
             && !self::hasReadonlyParentProperties($reflection);
 
         foreach ($constructor->getParameters() as $param) {
-            if ($canUseFastPath && !self::isSimpleParameter($param)) {
+            if ($canUseFastPath && !self::isFastPathParameter($param, $graniteParams)) {
                 $canUseFastPath = false;
             }
 
@@ -76,7 +84,11 @@ final class ClassProfile
             }
         }
 
-        return new self($class, $params, array_keys($params), $canUseFastPath);
+        if (!$canUseFastPath) {
+            $graniteParams = [];
+        }
+
+        return new self($class, $params, array_keys($params), $canUseFastPath, $graniteParams);
     }
 
     /**
@@ -96,11 +108,22 @@ final class ClassProfile
 
         $constructorArgs = [];
         foreach ($this->paramNames as $name) {
-            if (array_key_exists($name, $data)) {
-                $constructorArgs[] = $data[$name];
-            } else {
+            if (!array_key_exists($name, $data)) {
                 return null;
             }
+
+            $value = $data[$name];
+
+            if (isset($this->graniteParams[$name])) {
+                if (is_array($value)) {
+                    $graniteClass = $this->graniteParams[$name];
+                    $value = $graniteClass::from($value);
+                } elseif (null !== $value && !$value instanceof GraniteObject) {
+                    return null;
+                }
+            }
+
+            $constructorArgs[] = $value;
         }
 
         $className = $this->className;
@@ -108,25 +131,33 @@ final class ClassProfile
         return new $className(...$constructorArgs);
     }
 
-    private static function isSimpleParameter(ReflectionParameter $param): bool
+    /**
+     * Check if a parameter type is compatible with the fast path.
+     * Returns true for builtin types and Granite subclasses.
+     * For Granite subclasses, the class name is added to $graniteParams.
+     *
+     * @param array<string, class-string> $graniteParams Collects Granite-typed param names
+     */
+    private static function isFastPathParameter(ReflectionParameter $param, array &$graniteParams): bool
     {
         $type = $param->getType();
 
-        if (null === $type) {
-            return false;
-        }
-
-        if (!$type instanceof ReflectionNamedType) {
+        if (null === $type || !$type instanceof ReflectionNamedType) {
             return false;
         }
 
         $typeName = $type->getName();
 
-        if (!in_array($typeName, self::BUILTIN_TYPES, true)) {
-            return false;
+        if (in_array($typeName, self::BUILTIN_TYPES, true)) {
+            return true;
         }
 
-        return true;
+        if (is_subclass_of($typeName, GraniteObject::class)) {
+            $graniteParams[$param->getName()] = $typeName;
+            return true;
+        }
+
+        return false;
     }
 
     /**
