@@ -29,6 +29,13 @@ trait HasComparison
             return false;
         }
 
+        // Fast path: for simple DTOs (no hidden props, no naming conventions),
+        // compare serialized arrays directly instead of iterating via reflection.
+        $profile = ReflectionCache::getClassProfile(static::class);
+        if ($profile->canUseFastPath) {
+            return $this->array() === $other->array();
+        }
+
         $properties = ReflectionCache::getPublicProperties(static::class);
 
         foreach ($properties as $property) {
