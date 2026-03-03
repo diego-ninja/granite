@@ -29,6 +29,11 @@ trait HasComparison
             return false;
         }
 
+        $profile = ReflectionCache::getClassProfile(static::class);
+        if ($profile->canUseFastPath) {
+            return $profile->areEqual($this, $other);
+        }
+
         $properties = ReflectionCache::getPublicProperties(static::class);
 
         foreach ($properties as $property) {

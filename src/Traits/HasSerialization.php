@@ -10,6 +10,7 @@ use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\MetadataCache;
+use Ninja\Granite\Serialization\SerializationCache;
 use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Transformers\CarbonTransformer;
@@ -32,6 +33,7 @@ trait HasSerialization
      * @return CarbonTransformer|null Carbon transformer or null
      */
     abstract protected static function getCarbonTransformerFromAttributes(?ReflectionProperty $property = null, ?DateTimeProvider $classProvider = null): ?CarbonTransformer;
+
     /**
      * @return array Serialized array
      * @throws RuntimeException If a property cannot be serialized
@@ -39,6 +41,70 @@ trait HasSerialization
      */
     public function array(): array
     {
+        $cached = SerializationCache::get($this);
+        if (null !== $cached) {
+            return $cached;
+        }
+
+        $result = $this->computeArray();
+        SerializationCache::set($this, $result);
+
+        return $result;
+    }
+
+    /**
+     * @throws SerializationException|ReflectionException
+     */
+    public function json(): string
+    {
+        $cached = SerializationCache::getJson($this);
+        if (null !== $cached) {
+            return $cached;
+        }
+
+        $json = json_encode($this->array());
+        if (false === $json) {
+            throw new RuntimeException('Failed to encode object to JSON');
+        }
+
+        SerializationCache::setJson($this, $json);
+
+        return $json;
+    }
+
+    /**
+     * Define custom property names for serialization.
+     * Override in child classes to customize property names.
+     *
+     * @return array<string, string> Mapping of PHP property names to serialized names
+     */
+    protected static function serializedNames(): array
+    {
+        return [];
+    }
+
+    /**
+     * Define properties that should be hidden during serialization.
+     * Override in child classes to hide specific properties.
+     *
+     * @return array<string> List of property names to hide
+     */
+    protected static function hiddenProperties(): array
+    {
+        return [];
+    }
+
+    /**
+     * @return array Serialized array
+     * @throws SerializationException|ReflectionException
+     */
+    private function computeArray(): array
+    {
+        $profile = ReflectionCache::getClassProfile(static::class);
+        if ($profile->canUseFastPath) {
+            return $profile->toArray($this);
+        }
+
         $result = [];
         $properties = ReflectionCache::getPublicProperties(static::class);
         $metadata = MetadataCache::getMetadata(static::class);
@@ -65,40 +131,6 @@ trait HasSerialization
         }
 
         return $result;
-    }
-
-    /**
-     * @throws SerializationException|ReflectionException
-     */
-    public function json(): string
-    {
-        $json = json_encode($this->array());
-        if (false === $json) {
-            throw new RuntimeException('Failed to encode object to JSON');
-        }
-        return $json;
-    }
-
-    /**
-     * Define custom property names for serialization.
-     * Override in child classes to customize property names.
-     *
-     * @return array<string, string> Mapping of PHP property names to serialized names
-     */
-    protected static function serializedNames(): array
-    {
-        return [];
-    }
-
-    /**
-     * Define properties that should be hidden during serialization.
-     * Override in child classes to hide specific properties.
-     *
-     * @return array<string> List of property names to hide
-     */
-    protected static function hiddenProperties(): array
-    {
-        return [];
     }
 
     /**

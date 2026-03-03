@@ -217,7 +217,6 @@ use Tests\Helpers\TestCase;
 
         if ($reflection->hasProperty('metadataCache')) {
             $cacheProperty = $reflection->getProperty('metadataCache');
-            $cacheProperty->setAccessible(true);
             $cacheProperty->setValue(null, []);
         }
     }

@@ -104,6 +104,15 @@ trait HasDeserialization
             return $result;
         }
 
+        $profile = ReflectionCache::getClassProfile(static::class);
+        if ($profile->canUseFastPath) {
+            $result = $profile->tryFastPath($args);
+            if (null !== $result) {
+                /** @var static $result */
+                return $result;
+            }
+        }
+
         // Check if args has string keys (named parameters)
         $hasStringKeys = ! empty(array_filter(array_keys($args), 'is_string'));
 

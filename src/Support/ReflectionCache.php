@@ -26,6 +26,13 @@ final class ReflectionCache
     private static array $propertiesCache = [];
 
     /**
+     * Cache for class profiles.
+     *
+     * @var array<string, ClassProfile>
+     */
+    private static array $profileCache = [];
+
+    /**
      * Get a cached ReflectionClass instance.
      *
      * @param string $class Class name
@@ -64,5 +71,21 @@ final class ReflectionCache
         }
 
         return self::$propertiesCache[$class];
+    }
+
+    /**
+     * Get cached class profile for fast-path detection.
+     *
+     * @param class-string $class Class name
+     * @return ClassProfile Class profile
+     * @throws \Ninja\Granite\Exceptions\ReflectionException
+     */
+    public static function getClassProfile(string $class): ClassProfile
+    {
+        if ( ! isset(self::$profileCache[$class])) {
+            self::$profileCache[$class] = ClassProfile::build($class);
+        }
+
+        return self::$profileCache[$class];
     }
 }

@@ -4,7 +4,12 @@ namespace Ninja\Granite\Serialization;
 
 class Metadata
 {
-    public function __construct(private array $propertyNames = [], private array $hiddenProperties = []) {}
+    private array $hiddenProperties;
+
+    public function __construct(private array $propertyNames = [], array $hiddenProperties = [])
+    {
+        $this->hiddenProperties = empty($hiddenProperties) ? [] : array_fill_keys($hiddenProperties, true);
+    }
 
     public function getSerializedName(string $propertyName): string
     {
@@ -14,7 +19,7 @@ class Metadata
 
     public function isHidden(string $propertyName): bool
     {
-        return in_array($propertyName, $this->hiddenProperties, true);
+        return isset($this->hiddenProperties[$propertyName]);
     }
 
     public function mapPropertyName(string $propertyName, string $serializedName): self
@@ -25,18 +30,15 @@ class Metadata
 
     public function hideProperty(string $propertyName): self
     {
-        if ( ! in_array($propertyName, $this->hiddenProperties, true)) {
-            $this->hiddenProperties[] = $propertyName;
-        }
+        $this->hiddenProperties[$propertyName] = true;
         return $this;
     }
 
-    // Método para depuración que puede ayudar a verificar el estado
     public function debug(): array
     {
         return [
             'propertyNames' => $this->propertyNames,
-            'hiddenProperties' => $this->hiddenProperties,
+            'hiddenProperties' => array_keys($this->hiddenProperties),
         ];
     }
 }
