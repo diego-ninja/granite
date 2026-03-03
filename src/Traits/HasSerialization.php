@@ -91,10 +91,18 @@ trait HasSerialization
      */
     public function json(): string
     {
+        $cached = SerializationCache::getJson($this);
+        if (null !== $cached) {
+            return $cached;
+        }
+
         $json = json_encode($this->array());
         if (false === $json) {
             throw new RuntimeException('Failed to encode object to JSON');
         }
+
+        SerializationCache::setJson($this, $json);
+
         return $json;
     }
 
