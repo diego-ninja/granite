@@ -234,7 +234,6 @@ class MetadataCache
     {
         try {
             $reflectionMethod = new ReflectionMethod($class, $methodName);
-            $reflectionMethod->setAccessible(true);
             return $reflectionMethod->invoke(null);
         } catch (ReflectionException $e) {
             throw new \Ninja\Granite\Exceptions\ReflectionException($class, $methodName, $e->getMessage());
