@@ -6,6 +6,7 @@
 namespace Ninja\Granite\Support;
 
 use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
@@ -148,6 +149,37 @@ final class ClassProfile
         }
 
         return new $className(...$constructorArgs);
+    }
+
+    /**
+     * Compare two instances by direct property access, with early exit on first difference.
+     */
+    public function areEqual(object $a, object $b): bool
+    {
+        if (empty($this->graniteParams)) {
+            foreach ($this->paramNames as $name) {
+                if ($a->$name !== $b->$name) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        foreach ($this->paramNames as $name) {
+            $va = $a->$name;
+            $vb = $b->$name;
+
+            if ($va instanceof Granite && $vb instanceof Granite) {
+                if (!$va->equals($vb)) {
+                    return false;
+                }
+            } elseif ($va !== $vb) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
