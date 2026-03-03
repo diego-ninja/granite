@@ -1,0 +1,218 @@
+<?php
+
+// ABOUTME: Pre-computed class metadata for fast-path object creation.
+// ABOUTME: Detects simple DTOs (primitive types, no attributes) to bypass the hydration pipeline.
+
+namespace Ninja\Granite\Support;
+
+use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
+use Ninja\Granite\Serialization\Attributes\Hidden;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
+use Ninja\Granite\Serialization\Attributes\CarbonDate;
+use ReflectionAttribute;
+use ReflectionClass;
+use ReflectionNamedType;
+use ReflectionParameter;
+
+final class ClassProfile
+{
+    private const array BUILTIN_TYPES = ['int', 'string', 'float', 'bool', 'array', 'null'];
+
+    /** @var array<string, mixed> Ordered map of param name => default value or REQUIRED sentinel */
+    public readonly array $constructorParams;
+
+    public readonly bool $canUseFastPath;
+
+    /** @var ReflectionClass<object> */
+    private readonly ReflectionClass $reflectionClass;
+
+    /**
+     * @param ReflectionClass<object> $reflectionClass
+     * @param array<string, mixed> $constructorParams
+     */
+    private function __construct(ReflectionClass $reflectionClass, array $constructorParams, bool $canUseFastPath)
+    {
+        $this->reflectionClass = $reflectionClass;
+        $this->constructorParams = $constructorParams;
+        $this->canUseFastPath = $canUseFastPath;
+    }
+
+    /**
+     * @param class-string $class
+     */
+    public static function build(string $class): self
+    {
+        $reflection = ReflectionCache::getClass($class);
+        $constructor = $reflection->getConstructor();
+
+        if (null === $constructor) {
+            return new self($reflection, [], false);
+        }
+
+        $params = [];
+        $canUseFastPath = !self::hasDisqualifyingClassAttributes($reflection)
+            && !self::hasOverriddenRules($reflection)
+            && !self::hasReadonlyParentProperties($reflection);
+
+        foreach ($constructor->getParameters() as $param) {
+            if ($canUseFastPath && !self::isSimpleParameter($param)) {
+                $canUseFastPath = false;
+            }
+
+            if ($canUseFastPath && self::hasDisqualifyingPropertyAttributes($reflection, $param->getName())) {
+                $canUseFastPath = false;
+            }
+
+            if ($param->isDefaultValueAvailable()) {
+                $params[$param->getName()] = $param->getDefaultValue();
+            } else {
+                $params[$param->getName()] = self::required();
+            }
+        }
+
+        return new self($reflection, $params, $canUseFastPath);
+    }
+
+    /**
+     * @return object|null Created instance, or null to fall back to slow path
+     */
+    public function tryFastPath(array $args): ?object
+    {
+        $hasStringKeys = !empty(array_filter(array_keys($args), 'is_string'));
+
+        if ($hasStringKeys) {
+            $data = $args;
+        } elseif (1 === count($args) && is_array($args[0])) {
+            $data = $args[0];
+        } else {
+            return null;
+        }
+
+        $constructorArgs = [];
+        foreach ($this->constructorParams as $name => $_) {
+            if (array_key_exists($name, $data)) {
+                $constructorArgs[] = $data[$name];
+            } else {
+                return null;
+            }
+        }
+
+        return $this->reflectionClass->newInstanceArgs($constructorArgs);
+    }
+
+    private static function isSimpleParameter(ReflectionParameter $param): bool
+    {
+        $type = $param->getType();
+
+        if (null === $type) {
+            return false;
+        }
+
+        if (!$type instanceof ReflectionNamedType) {
+            return false;
+        }
+
+        $typeName = $type->getName();
+
+        if (!in_array($typeName, self::BUILTIN_TYPES, true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param ReflectionClass<object> $reflection
+     */
+    private static function hasDisqualifyingClassAttributes(ReflectionClass $reflection): bool
+    {
+        $disqualifying = [
+            SerializationConvention::class,
+            DateTimeProvider::class,
+        ];
+
+        foreach ($disqualifying as $attrClass) {
+            if (!empty($reflection->getAttributes($attrClass, ReflectionAttribute::IS_INSTANCEOF))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param ReflectionClass<object> $reflection
+     */
+    private static function hasDisqualifyingPropertyAttributes(ReflectionClass $reflection, string $propertyName): bool
+    {
+        $property = null;
+        try {
+            $property = $reflection->getProperty($propertyName);
+        } catch (\ReflectionException) {
+            return false;
+        }
+
+        $attributes = $property->getAttributes();
+        foreach ($attributes as $attr) {
+            $attrName = $attr->getName();
+            if (SerializedName::class === $attrName
+                || Hidden::class === $attrName
+                || is_subclass_of($attrName, \Ninja\Granite\Validation\Rules\AbstractRule::class)
+                || (class_exists(CarbonDate::class) && CarbonDate::class === $attrName)
+            ) {
+                return true;
+            }
+
+            // Check for validation attributes (any attribute that has asRule())
+            if (method_exists($attrName, 'asRule')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param ReflectionClass<object> $reflection
+     */
+    private static function hasOverriddenRules(ReflectionClass $reflection): bool
+    {
+        try {
+            $rulesMethod = $reflection->getMethod('rules');
+            // If the declaring class is not Granite's HasValidation trait host,
+            // then the method has been overridden
+            $declaringClass = $rulesMethod->getDeclaringClass()->getName();
+
+            // rules() is defined in HasValidation trait, used by Granite.
+            // If declaring class matches the concrete class, it's overridden.
+            return $declaringClass === $reflection->getName();
+        } catch (\ReflectionException) {
+            return false;
+        }
+    }
+
+    /**
+     * @param ReflectionClass<object> $reflection
+     */
+    private static function hasReadonlyParentProperties(ReflectionClass $reflection): bool
+    {
+        $properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
+        foreach ($properties as $property) {
+            if ($property->isReadOnly() && $property->getDeclaringClass()->getName() !== $reflection->getName()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function required(): \stdClass
+    {
+        /** @var \stdClass|null $sentinel */
+        static $sentinel = null;
+        $sentinel ??= new \stdClass();
+
+        return $sentinel;
+    }
+}
