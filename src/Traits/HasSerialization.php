@@ -58,6 +58,11 @@ trait HasSerialization
      */
     private function computeArray(): array
     {
+        $profile = ReflectionCache::getClassProfile(static::class);
+        if ($profile->canUseFastPath) {
+            return $profile->toArray($this);
+        }
+
         $result = [];
         $properties = ReflectionCache::getPublicProperties(static::class);
         $metadata = MetadataCache::getMetadata(static::class);

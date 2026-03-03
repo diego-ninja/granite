@@ -84,6 +84,14 @@ final class ClassProfile
             }
         }
 
+        // Ensure all public properties are covered by constructor params
+        if ($canUseFastPath) {
+            $publicProps = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
+            if (count($publicProps) !== count($params)) {
+                $canUseFastPath = false;
+            }
+        }
+
         if (!$canUseFastPath) {
             $graniteParams = [];
         }
@@ -129,6 +137,31 @@ final class ClassProfile
         $className = $this->className;
 
         return new $className(...$constructorArgs);
+    }
+
+    /**
+     * Build array representation by direct property access, bypassing reflection and metadata.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(object $instance): array
+    {
+        $result = [];
+        foreach ($this->paramNames as $name) {
+            try {
+                $value = $instance->$name;
+            } catch (\Error) {
+                continue;
+            }
+
+            if (isset($this->graniteParams[$name]) && $value instanceof GraniteObject) {
+                $value = $value->array();
+            }
+
+            $result[$name] = $value;
+        }
+
+        return $result;
     }
 
     /**
