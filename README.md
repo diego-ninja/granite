@@ -107,9 +107,10 @@ This documentation has been generated almost in its entirety using 🦠 Claude 4
 - Efficient array comparison without JSON encoding
 
 ### ⚡ **Performance Optimized**
-- Reflection caching for improved performance
-- Memory-efficient object creation
-- Lazy loading support
+- Fast path bypasses hydration pipeline for simple DTOs (~3.5x vs plain PHP)
+- WeakMap caching for `array()` and `json()` (near-native speed on repeated calls)
+- Reflection caching and O(1) hidden property lookups
+- Direct property access for serialization and comparison
 
 ## 🚀 Quick Start
 
@@ -714,31 +715,88 @@ $userDto = $mapper->map($userEntity, UserDto::class);
 | `#[Range(min: 'now', max: '+1 year')]` | Date within range | `#[Range(min: 'today', max: 'next month')]` |
 | `#[Weekend]` | Must be weekend | `#[Weekend('Event only on weekends')]` |
 
-## 📈 Performance
+## 📈 Performance & Benchmarks
 
-Granite is optimized for performance with:
+Granite uses a **multi-layer fast path** system that detects simple DTOs at class-load time and bypasses the full hydration pipeline (reflection, metadata, type conversion) entirely. For objects that qualify, the overhead vs plain PHP constructors is minimal.
 
-- **Reflection caching** - Class metadata cached automatically
-- **Mapping cache** - ObjectMapper configurations cached
-- **Memory efficiency** - Immutable objects reduce memory overhead
-- **Lazy loading** - Load related data only when needed
-- **Specialized components** - Refactored architecture with focused responsibilities
+### Benchmark Results
 
-```php
-// Use shared cache for web applications
-$mapper = new ObjectMapper(
-    ObjectMapperConfig::forProduction()
-        ->withSharedCache()
-        ->withWarmup()  // Preload configurations
-);
+Benchmarked on PHP 8.4, comparing Granite against plain PHP constructors and `Pebble` (Granite's lightweight companion). The test DTO has 6 fields (`int`, `string`, `string`, `int`, `string`, `bool`).
 
-// Preload mappings for better performance
-use Ninja\Granite\Mapping\MappingPreloader;
+#### Object Creation
 
-MappingPreloader::preload($mapper, [
-    [UserEntity::class, UserResponse::class],
-    [ProductEntity::class, ProductResponse::class]
-]);
+| Benchmark | µs/op | vs Plain PHP |
+|-----------|------:|:------------:|
+| Plain PHP constructor | 0.33 | — |
+| `Granite::from(array)` | 1.14 | 3.5x |
+| `Granite::from(named args)` | 1.13 | 3.4x |
+| `Pebble::from(array)` | 3.62 | 11.1x |
+
+#### Nested Object Creation (3 objects)
+
+| Benchmark | µs/op | vs Plain PHP |
+|-----------|------:|:------------:|
+| Plain PHP constructors | 0.78 | — |
+| `Granite::from(array)` | 3.63 | 4.6x |
+| `Pebble::from(array)` | 6.80 | 8.7x |
+
+Granite recursively applies the fast path to nested Granite-typed properties, so the overhead scales linearly with object depth rather than exploding through the full hydration pipeline.
+
+#### Serialization
+
+| Benchmark | µs/op | vs Plain PHP |
+|-----------|------:|:------------:|
+| Plain PHP `toArray()` | 0.19 | — |
+| `Granite array()` | 0.25 | 1.3x |
+| Plain PHP `json_encode(array)` | 0.25 | — |
+| `Granite json()` | 0.26 | 1.0x |
+
+Both `array()` and `json()` results are cached in a `WeakMap`. Since Granite objects are readonly, the serialized representation never changes, so repeated calls return instantly. The `json()` method effectively matches native `json_encode` performance.
+
+#### Equality Check
+
+| Benchmark | µs/op | vs Plain PHP |
+|-----------|------:|:------------:|
+| Plain array `===` | 0.12 | — |
+| `Granite equals()` | 0.48 | 4.0x |
+| `Pebble equals()` (fingerprint) | 0.31 | 2.6x |
+
+For simple DTOs, `equals()` compares properties directly without building intermediate arrays, with early exit on the first difference.
+
+#### Collection (100 items, create from array)
+
+| Benchmark | µs/op | vs Plain PHP |
+|-----------|------:|:------------:|
+| Plain PHP `array_map` + constructors | 31 | — |
+| Granite `array_map` + `from()` | 106 | 3.4x |
+| Pebble `array_map` + `from()` | 343 | 11.1x |
+
+#### Property Access
+
+Granite uses native PHP readonly promoted properties — property access is **identical** to plain PHP objects, with zero overhead:
+
+| Benchmark | µs/op |
+|-----------|------:|
+| Plain PHP readonly | 0.15 |
+| Granite readonly | 0.14 |
+| Pebble `__get()` | 1.03 |
+
+### How it works
+
+Granite's performance comes from three layers of optimization:
+
+1. **Fast path detection** (`ClassProfile`) — At class-load time, Granite analyzes each class and determines if it can skip the full hydration pipeline. A class qualifies when all constructor parameters are either primitive types (`int`, `string`, `float`, `bool`, `array`) or other Granite subclasses, and the class has no special attributes (`#[Hidden]`, `#[SerializedName]`, validation rules, etc.).
+
+2. **WeakMap caching** — `array()` and `json()` results are cached in a `WeakMap` keyed by object instance. Since Granite objects are readonly, the cache is always valid. When the object is garbage collected, the cache entry is automatically cleaned up.
+
+3. **Direct property access** — For serialization and comparison, Granite reads properties directly by name (`$instance->$name`) instead of going through reflection, metadata lookups, and type conversion.
+
+Classes that don't qualify for the fast path (those with validation attributes, naming conventions, Carbon dates, etc.) use the standard hydration pipeline, which is still optimized with reflection caching and O(1) hidden property lookups.
+
+### Running the Benchmarks
+
+```bash
+php benchmarks/GraniteBench.php
 ```
 
 ## 🧪 Testing
