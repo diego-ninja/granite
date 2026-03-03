@@ -10,6 +10,7 @@ use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\MetadataCache;
+use Ninja\Granite\Serialization\SerializationCache;
 use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Transformers\CarbonTransformer;
@@ -32,12 +33,30 @@ trait HasSerialization
      * @return CarbonTransformer|null Carbon transformer or null
      */
     abstract protected static function getCarbonTransformerFromAttributes(?ReflectionProperty $property = null, ?DateTimeProvider $classProvider = null): ?CarbonTransformer;
+
     /**
      * @return array Serialized array
      * @throws RuntimeException If a property cannot be serialized
      * @throws SerializationException|ReflectionException
      */
     public function array(): array
+    {
+        $cached = SerializationCache::get($this);
+        if (null !== $cached) {
+            return $cached;
+        }
+
+        $result = $this->computeArray();
+        SerializationCache::set($this, $result);
+
+        return $result;
+    }
+
+    /**
+     * @return array Serialized array
+     * @throws SerializationException|ReflectionException
+     */
+    private function computeArray(): array
     {
         $result = [];
         $properties = ReflectionCache::getPublicProperties(static::class);
