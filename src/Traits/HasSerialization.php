@@ -53,45 +53,6 @@ trait HasSerialization
     }
 
     /**
-     * @return array Serialized array
-     * @throws SerializationException|ReflectionException
-     */
-    private function computeArray(): array
-    {
-        $profile = ReflectionCache::getClassProfile(static::class);
-        if ($profile->canUseFastPath) {
-            return $profile->toArray($this);
-        }
-
-        $result = [];
-        $properties = ReflectionCache::getPublicProperties(static::class);
-        $metadata = MetadataCache::getMetadata(static::class);
-
-        foreach ($properties as $property) {
-            $phpName = $property->getName();
-
-            // Skip hidden properties
-            if ($metadata->isHidden($phpName)) {
-                continue;
-            }
-
-            // Skip uninitialized properties
-            if ( ! $property->isInitialized($this)) {
-                continue;
-            }
-
-            $value = $property->getValue($this);
-            $serializedValue = $this->serializeValue($phpName, $value, $property);
-
-            // Use custom property name if defined (includes convention-applied names)
-            $serializedName = $metadata->getSerializedName($phpName);
-            $result[$serializedName] = $serializedValue;
-        }
-
-        return $result;
-    }
-
-    /**
      * @throws SerializationException|ReflectionException
      */
     public function json(): string
@@ -131,6 +92,45 @@ trait HasSerialization
     protected static function hiddenProperties(): array
     {
         return [];
+    }
+
+    /**
+     * @return array Serialized array
+     * @throws SerializationException|ReflectionException
+     */
+    private function computeArray(): array
+    {
+        $profile = ReflectionCache::getClassProfile(static::class);
+        if ($profile->canUseFastPath) {
+            return $profile->toArray($this);
+        }
+
+        $result = [];
+        $properties = ReflectionCache::getPublicProperties(static::class);
+        $metadata = MetadataCache::getMetadata(static::class);
+
+        foreach ($properties as $property) {
+            $phpName = $property->getName();
+
+            // Skip hidden properties
+            if ($metadata->isHidden($phpName)) {
+                continue;
+            }
+
+            // Skip uninitialized properties
+            if ( ! $property->isInitialized($this)) {
+                continue;
+            }
+
+            $value = $property->getValue($this);
+            $serializedValue = $this->serializeValue($phpName, $value, $property);
+
+            // Use custom property name if defined (includes convention-applied names)
+            $serializedName = $metadata->getSerializedName($phpName);
+            $result[$serializedName] = $serializedValue;
+        }
+
+        return $result;
     }
 
     /**

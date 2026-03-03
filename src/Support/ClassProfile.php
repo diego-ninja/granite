@@ -5,17 +5,21 @@
 
 namespace Ninja\Granite\Support;
 
+use Error;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Granite;
+use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\Attributes\Hidden;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Attributes\SerializedName;
-use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use ReflectionAttribute;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionNamedType;
 use ReflectionParameter;
+use ReflectionProperty;
+use stdClass;
 
 final class ClassProfile
 {
@@ -65,12 +69,12 @@ final class ClassProfile
         $params = [];
         /** @var array<string, class-string> $graniteParams */
         $graniteParams = [];
-        $canUseFastPath = !self::hasDisqualifyingClassAttributes($reflection)
-            && !self::hasOverriddenRules($reflection)
-            && !self::hasReadonlyParentProperties($reflection);
+        $canUseFastPath = ! self::hasDisqualifyingClassAttributes($reflection)
+            && ! self::hasOverriddenRules($reflection)
+            && ! self::hasReadonlyParentProperties($reflection);
 
         foreach ($constructor->getParameters() as $param) {
-            if ($canUseFastPath && !self::isFastPathParameter($param, $graniteParams)) {
+            if ($canUseFastPath && ! self::isFastPathParameter($param, $graniteParams)) {
                 $canUseFastPath = false;
             }
 
@@ -87,13 +91,13 @@ final class ClassProfile
 
         // Ensure all public properties are covered by constructor params
         if ($canUseFastPath) {
-            $publicProps = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
+            $publicProps = $reflection->getProperties(ReflectionProperty::IS_PUBLIC);
             if (count($publicProps) !== count($params)) {
                 $canUseFastPath = false;
             }
         }
 
-        if (!$canUseFastPath) {
+        if ( ! $canUseFastPath) {
             $graniteParams = [];
         }
 
@@ -130,7 +134,7 @@ final class ClassProfile
         // DTOs with Granite-typed params: need per-param conversion
         $constructorArgs = [];
         foreach ($this->paramNames as $name) {
-            if (!array_key_exists($name, $data)) {
+            if ( ! array_key_exists($name, $data)) {
                 return null;
             }
 
@@ -140,7 +144,7 @@ final class ClassProfile
                 if (is_array($value)) {
                     $graniteClass = $this->graniteParams[$name];
                     $value = $graniteClass::from($value);
-                } elseif (null !== $value && !$value instanceof GraniteObject) {
+                } elseif (null !== $value && ! $value instanceof GraniteObject) {
                     return null;
                 }
             }
@@ -158,7 +162,7 @@ final class ClassProfile
     {
         if (empty($this->graniteParams)) {
             foreach ($this->paramNames as $name) {
-                if ($a->$name !== $b->$name) {
+                if ($a->{$name} !== $b->{$name}) {
                     return false;
                 }
             }
@@ -167,11 +171,11 @@ final class ClassProfile
         }
 
         foreach ($this->paramNames as $name) {
-            $va = $a->$name;
-            $vb = $b->$name;
+            $va = $a->{$name};
+            $vb = $b->{$name};
 
             if ($va instanceof Granite && $vb instanceof Granite) {
-                if (!$va->equals($vb)) {
+                if ( ! $va->equals($vb)) {
                     return false;
                 }
             } elseif ($va !== $vb) {
@@ -192,8 +196,8 @@ final class ClassProfile
         $result = [];
         foreach ($this->paramNames as $name) {
             try {
-                $value = $instance->$name;
-            } catch (\Error) {
+                $value = $instance->{$name};
+            } catch (Error) {
                 continue;
             }
 
@@ -218,7 +222,7 @@ final class ClassProfile
     {
         $type = $param->getType();
 
-        if (null === $type || !$type instanceof ReflectionNamedType) {
+        if (null === $type || ! $type instanceof ReflectionNamedType) {
             return false;
         }
 
@@ -247,7 +251,7 @@ final class ClassProfile
         ];
 
         foreach ($disqualifying as $attrClass) {
-            if (!empty($reflection->getAttributes($attrClass, ReflectionAttribute::IS_INSTANCEOF))) {
+            if ( ! empty($reflection->getAttributes($attrClass, ReflectionAttribute::IS_INSTANCEOF))) {
                 return true;
             }
         }
@@ -263,7 +267,7 @@ final class ClassProfile
         $property = null;
         try {
             $property = $reflection->getProperty($propertyName);
-        } catch (\ReflectionException) {
+        } catch (ReflectionException) {
             return false;
         }
 
@@ -301,7 +305,7 @@ final class ClassProfile
             // rules() is defined in HasValidation trait, used by Granite.
             // If declaring class matches the concrete class, it's overridden.
             return $declaringClass === $reflection->getName();
-        } catch (\ReflectionException) {
+        } catch (ReflectionException) {
             return false;
         }
     }
@@ -311,7 +315,7 @@ final class ClassProfile
      */
     private static function hasReadonlyParentProperties(ReflectionClass $reflection): bool
     {
-        $properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
+        $properties = $reflection->getProperties(ReflectionProperty::IS_PUBLIC);
         foreach ($properties as $property) {
             if ($property->isReadOnly() && $property->getDeclaringClass()->getName() !== $reflection->getName()) {
                 return true;
@@ -321,11 +325,11 @@ final class ClassProfile
         return false;
     }
 
-    private static function required(): \stdClass
+    private static function required(): stdClass
     {
-        /** @var \stdClass|null $sentinel */
+        /** @var stdClass|null $sentinel */
         static $sentinel = null;
-        $sentinel ??= new \stdClass();
+        $sentinel ??= new stdClass();
 
         return $sentinel;
     }
