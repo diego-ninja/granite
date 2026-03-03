@@ -24,17 +24,22 @@ final class ClassProfile
 
     public readonly bool $canUseFastPath;
 
-    /** @var ReflectionClass<object> */
-    private readonly ReflectionClass $reflectionClass;
+    /** @var class-string */
+    private readonly string $className;
+
+    /** @var string[] Param names in constructor order */
+    private readonly array $paramNames;
 
     /**
-     * @param ReflectionClass<object> $reflectionClass
+     * @param class-string $className
      * @param array<string, mixed> $constructorParams
+     * @param string[] $paramNames
      */
-    private function __construct(ReflectionClass $reflectionClass, array $constructorParams, bool $canUseFastPath)
+    private function __construct(string $className, array $constructorParams, array $paramNames, bool $canUseFastPath)
     {
-        $this->reflectionClass = $reflectionClass;
+        $this->className = $className;
         $this->constructorParams = $constructorParams;
+        $this->paramNames = $paramNames;
         $this->canUseFastPath = $canUseFastPath;
     }
 
@@ -47,7 +52,7 @@ final class ClassProfile
         $constructor = $reflection->getConstructor();
 
         if (null === $constructor) {
-            return new self($reflection, [], false);
+            return new self($class, [], [], false);
         }
 
         $params = [];
@@ -71,7 +76,7 @@ final class ClassProfile
             }
         }
 
-        return new self($reflection, $params, $canUseFastPath);
+        return new self($class, $params, array_keys($params), $canUseFastPath);
     }
 
     /**
@@ -79,18 +84,18 @@ final class ClassProfile
      */
     public function tryFastPath(array $args): ?object
     {
-        $hasStringKeys = !empty(array_filter(array_keys($args), 'is_string'));
-
-        if ($hasStringKeys) {
-            $data = $args;
-        } elseif (1 === count($args) && is_array($args[0])) {
-            $data = $args[0];
+        if (array_is_list($args)) {
+            if (1 === count($args) && is_array($args[0])) {
+                $data = $args[0];
+            } else {
+                return null;
+            }
         } else {
-            return null;
+            $data = $args;
         }
 
         $constructorArgs = [];
-        foreach ($this->constructorParams as $name => $_) {
+        foreach ($this->paramNames as $name) {
             if (array_key_exists($name, $data)) {
                 $constructorArgs[] = $data[$name];
             } else {
@@ -98,7 +103,9 @@ final class ClassProfile
             }
         }
 
-        return $this->reflectionClass->newInstanceArgs($constructorArgs);
+        $className = $this->className;
+
+        return new $className(...$constructorArgs);
     }
 
     private static function isSimpleParameter(ReflectionParameter $param): bool
