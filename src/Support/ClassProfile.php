@@ -114,6 +114,19 @@ final class ClassProfile
             $data = $args;
         }
 
+        $className = $this->className;
+
+        // Pure-primitive DTOs: use C-level array_intersect_key + named args unpacking
+        if (empty($this->graniteParams)) {
+            $filtered = array_intersect_key($data, $this->constructorParams);
+            if (count($filtered) !== count($this->paramNames)) {
+                return null;
+            }
+
+            return new $className(...$filtered);
+        }
+
+        // DTOs with Granite-typed params: need per-param conversion
         $constructorArgs = [];
         foreach ($this->paramNames as $name) {
             if (!array_key_exists($name, $data)) {
@@ -133,8 +146,6 @@ final class ClassProfile
 
             $constructorArgs[] = $value;
         }
-
-        $className = $this->className;
 
         return new $className(...$constructorArgs);
     }
