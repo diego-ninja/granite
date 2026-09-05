@@ -6,6 +6,7 @@ use DateTimeImmutable;
 use Ninja\Granite\Config\GraniteConfig;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
+use Ninja\Granite\Serialization\CarbonTransformerFactory;
 use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Traits\HasCarbonSupport;
 use Ninja\Granite\Transformers\CarbonTransformer;
@@ -170,6 +171,11 @@ class HasCarbonSupportTest extends TestCase
         $second = $this->testClass->testGetClassDateTimeProvider(TestClassWithDateTimeProvider::class);
 
         $this->assertSame($first, $second);
+
+        CarbonTransformerFactory::clearCache();
+        $third = $this->testClass->testGetClassDateTimeProvider(TestClassWithDateTimeProvider::class);
+
+        $this->assertNotSame($first, $third);
     }
 
     public function test_get_class_datetime_provider_without_attribute(): void

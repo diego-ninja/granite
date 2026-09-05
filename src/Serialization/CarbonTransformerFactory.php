@@ -82,6 +82,7 @@ final class CarbonTransformerFactory
     public static function clearCache(): void
     {
         self::$cache = [];
+        self::$classProviderCache = [];
     }
 
     /** @param class-string $class */
