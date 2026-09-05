@@ -45,6 +45,7 @@ final readonly class CarbonTransformer implements Transformer
      *
      * @param mixed $value Source value
      * @param array $sourceData Complete source data for context
+     * @param array<array-key, mixed> $sourceData
      * @return DateTimeInterface|null Transformed Carbon instance
      */
     public function transform(mixed $value, array $sourceData = []): ?DateTimeInterface

@@ -21,7 +21,7 @@ interface MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @return array|null Mapping configuration or null if not found
+     * @return array<string, array<string, mixed>>|null Mapping configuration or null if not found
      */
     public function get(string $sourceType, string $destinationType): ?array;
 
@@ -30,7 +30,7 @@ interface MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @param array $config Mapping configuration
+     * @param array<string, array<string, mixed>> $config Mapping configuration
      * @return void
      */
     public function put(string $sourceType, string $destinationType, array $config): void;

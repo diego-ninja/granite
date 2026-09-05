@@ -12,7 +12,7 @@ use Throwable;
 final readonly class ObjectFactory
 {
     /**
-     * @param array $data
+     * @param array<array-key, mixed> $data
      * @param class-string $className
      * @throws MappingException
      */
@@ -43,6 +43,7 @@ final readonly class ObjectFactory
     }
 
     /**
+     * @param array<array-key, mixed> $data
      * @throws MappingException
      */
     public function populate(object $object, array $data): object
@@ -88,7 +89,7 @@ final readonly class ObjectFactory
     }
 
     /**
-     * @param array $data Source data
+     * @param array<array-key, mixed> $data Source data
      * @param class-string $className Target class name
      * @throws MappingException
      */
@@ -122,6 +123,10 @@ final readonly class ObjectFactory
         }
     }
 
+    /**
+     * @param ReflectionClass<object> $reflection
+     * @param array<array-key, mixed> $data
+     */
     private function createWithConstructor(ReflectionClass $reflection, ReflectionMethod $constructor, array &$data): object
     {
         $args = [];
@@ -145,6 +150,10 @@ final readonly class ObjectFactory
         return $reflection->newInstanceArgs($args);
     }
 
+    /**
+     * @param array<array-key, mixed> $data
+     * @param ReflectionClass<object> $reflection
+     */
     private function setRemainingProperties(object $instance, array $data, ReflectionClass $reflection): void
     {
         foreach ($data as $propName => $propValue) {

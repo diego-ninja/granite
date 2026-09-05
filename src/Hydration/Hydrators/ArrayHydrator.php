@@ -19,7 +19,7 @@ class ArrayHydrator extends AbstractHydrator
 
     public function hydrate(mixed $data, string $targetClass): array
     {
-        /** @var array $data */
+        /** @var array<array-key, mixed> $data */
         return $data;
     }
 }

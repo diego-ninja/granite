@@ -18,6 +18,7 @@ class GraniteHydrator extends AbstractHydrator
         return $data instanceof GraniteObject;
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         /** @var GraniteObject $data */

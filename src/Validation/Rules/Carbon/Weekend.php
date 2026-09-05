@@ -24,7 +24,7 @@ final class Weekend extends AbstractRule
      * Validate that the date is a weekend day.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

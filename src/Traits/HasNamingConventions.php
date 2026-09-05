@@ -18,7 +18,7 @@ trait HasNamingConventions
     /**
      * Find value in data using multiple lookup strategies.
      *
-     * @param array $data Input data
+     * @param array<array-key, mixed> $data Input data
      * @param string $phpName PHP property name
      * @param string $serializedName Configured serialized name
      * @param NamingConvention|null $convention Class convention
@@ -34,6 +34,7 @@ trait HasNamingConventions
     }
 
     /**
+     * @param array<array-key, mixed> $data
      * @return array{found: bool, value: mixed}
      */
     protected static function findValueWithPresenceInData(
@@ -64,13 +65,16 @@ trait HasNamingConventions
     /**
      * Find key in data using multiple lookup strategies.
      */
+    /**
+     * @param array<array-key, mixed> $data
+     */
     protected static function hasValueSetInData(
         array $data,
         string $phpName,
         string $serializedName,
         ?NamingConvention $convention,
     ): bool {
-        return self::findValueWithPresenceInData($data, $phpName, $serializedName, $convention)['found'];
+        return (bool) self::findValueWithPresenceInData($data, $phpName, $serializedName, $convention)['found'];
     }
 
     /**

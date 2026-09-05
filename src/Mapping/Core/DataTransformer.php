@@ -14,12 +14,18 @@ final readonly class DataTransformer
         $this->invoker = $invoker ?? new TransformerInvoker();
     }
 
+    /**
+     * @param array<array-key, mixed> $sourceData
+     * @param array<string, mixed> $mappingConfig
+     * @return array<string, mixed>
+     */
     public function transform(array $sourceData, array $mappingConfig, string $destinationType = 'unknown'): array
     {
         $result = [];
 
         foreach ($mappingConfig as $destinationProperty => $config) {
-            if ( ! is_array($config)) {
+            $config = $this->normalizeMappingConfig($config);
+            if (null === $config) {
                 continue;
             }
 
@@ -48,12 +54,35 @@ final readonly class DataTransformer
         return $result;
     }
 
+    /** @return array<string, mixed>|null */
+    private function normalizeMappingConfig(mixed $config): ?array
+    {
+        if ( ! is_array($config)) {
+            return null;
+        }
+
+        $normalized = [];
+        foreach ($config as $key => $value) {
+            if ( ! is_string($key)) {
+                return null;
+            }
+            $normalized[$key] = $value;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     * @param array<array-key, mixed> $sourceData
+     */
     private function shouldApplyMapping(array $config, array $sourceData): bool
     {
         $condition = $config['condition'] ?? null;
         return null === $condition || (is_callable($condition) && $condition($sourceData));
     }
 
+    /** @param array<array-key, mixed> $sourceData */
     private function getSourceValue(array $sourceData, string $key): mixed
     {
         if (str_contains($key, '.')) {
@@ -63,6 +92,7 @@ final readonly class DataTransformer
         return $sourceData[$key] ?? null;
     }
 
+    /** @param array<array-key, mixed> $data */
     private function getNestedValue(array $data, string $key): mixed
     {
         $keys = explode('.', $key);
@@ -78,6 +108,10 @@ final readonly class DataTransformer
         return $value;
     }
 
+    /**
+     * @param array<string, mixed> $config
+     * @param array<array-key, mixed> $sourceData
+     */
     private function applyTransformation(
         mixed $value,
         array $config,
@@ -105,6 +139,7 @@ final readonly class DataTransformer
         );
     }
 
+    /** @param array<string, mixed> $config */
     private function applyDefaultValue(mixed $value, array $config): mixed
     {
         if (null !== $value || ! ($config['hasDefault'] ?? false)) {

@@ -8,7 +8,7 @@ class NumberType extends AbstractRule
      * Check if the value is a number.
      *
      * @param mixed $value
-     * @param array|null $allData
+     * @param array<array-key, mixed>|null $allData
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

@@ -25,7 +25,7 @@ interface Hydrator
      *
      * @param mixed $data Source data
      * @param string $targetClass Target class being hydrated
-     * @return array Normalized data as associative array
+     * @return array<array-key, mixed> Normalized data as associative array
      */
     public function hydrate(mixed $data, string $targetClass): array;
 

@@ -22,6 +22,7 @@ class ObjectHydrator extends AbstractHydrator
         return is_object($data);
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         /** @var object $data */

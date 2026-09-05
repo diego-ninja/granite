@@ -15,7 +15,7 @@ interface GraniteObject
     /**
      * Convert the object to an array.
      *
-     * @return array Array representation
+     * @return array<array-key, mixed> Array representation
      */
     public function array(): array;
 

@@ -23,7 +23,7 @@ abstract class AbstractHydrator implements Hydrator
      * Validate that the result is a valid array.
      *
      * @param mixed $result Result from extraction
-     * @return array Valid array or empty array
+     * @return array<array-key, mixed> Valid array or empty array
      */
     protected function ensureArray(mixed $result): array
     {

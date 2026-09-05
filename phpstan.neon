@@ -4,14 +4,5 @@ parameters:
         - src
     excludePaths:
         - tests/Fixtures
-    ignoreErrors:
-        # Allow mixed types in specific contexts where it's intentional  
-        - '#Parameter \#1 \$data of method .* expects array, mixed given#'
-        - '#Cannot call method .* on mixed#'
-        - '#Dead catch - ReflectionException is never thrown in the try block#'
-        -
-            identifier: missingType.iterableValue
-        -
-            identifier: missingType.generics
-    reportUnmatchedIgnoredErrors: false
+    reportUnmatchedIgnoredErrors: true
     tmpDir: var/cache/phpstan

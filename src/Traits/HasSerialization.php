@@ -38,6 +38,7 @@ trait HasSerialization
      * @throws RuntimeException If a property cannot be serialized
      * @throws SerializationException|ReflectionException
      */
+    /** @return array<array-key, mixed> */
     public function array(): array
     {
         $cacheable = SerializationCachePolicy::isCacheable($this);
@@ -107,6 +108,7 @@ trait HasSerialization
      * @return array Serialized array
      * @throws SerializationException|ReflectionException
      */
+    /** @return array<array-key, mixed> */
     private function computeArray(): array
     {
         $profile = ReflectionCache::getClassProfile(static::class);

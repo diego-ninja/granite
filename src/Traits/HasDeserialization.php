@@ -159,6 +159,10 @@ trait HasDeserialization
      * Handles automatic detection of named parameters vs regular arguments.
      * @throws Exceptions\ReflectionException
      */
+    /**
+     * @param array<array-key, mixed> $args
+     * @return array<array-key, mixed>
+     */
     protected static function resolveArgumentsToData(array $args): array
     {
         if (1 === count($args)) {
@@ -208,6 +212,10 @@ trait HasDeserialization
      * Copy resolved values to canonical PHP property names for validation.
      * Extra input keys remain available for cross-field rules.
      */
+    /**
+     * @param array<array-key, mixed> $data
+     * @return array<array-key, mixed>
+     */
     protected static function normalizeValidationData(array $data): array
     {
         $normalized = $data;
@@ -238,6 +246,7 @@ trait HasDeserialization
      * Map a single scalar value to the first property of the class.
      * @throws Exceptions\ReflectionException
      */
+    /** @return array<array-key, mixed> */
     protected static function mapScalarToFirstProperty(mixed $value): array
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
@@ -284,8 +293,8 @@ trait HasDeserialization
      * Build data array from positional arguments.
      * Maps arguments to class properties by order.
      *
-     * @param array $args All arguments passed to from()
-     * @return array Associative array with property names as keys
+     * @param array<array-key, mixed> $args All arguments passed to from()
+     * @return array<array-key, mixed> Associative array with property names as keys
      * @throws Exceptions\ReflectionException
      */
     protected static function buildFromPositionalArgs(array $args): array
@@ -350,8 +359,8 @@ trait HasDeserialization
     /**
      * Normalize input data to array format using HydratorFactory.
      *
-     * @param array|string|object $data Input data
-     * @return array Normalized data
+     * @param array<array-key, mixed>|string|object $data Input data
+     * @return array<array-key, mixed> Normalized data
      */
     protected static function normalizeInputData(array|string|object $data): array
     {
@@ -380,6 +389,7 @@ trait HasDeserialization
      * @throws DateMalformedStringException
      * @throws Exceptions\ReflectionException
      */
+    /** @param array<array-key, mixed> $data */
     protected static function hydrateInstance(object $instance, array $data): static
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
@@ -453,7 +463,7 @@ trait HasDeserialization
      * Create instance using constructor for readonly property compatibility.
      * This method maps data to constructor parameters.
      *
-     * @param array $data Data to use for initialization
+     * @param array<array-key, mixed> $data Data to use for initialization
      * @return static Created instance
      * @throws Exceptions\ReflectionException
      */
@@ -527,7 +537,8 @@ trait HasDeserialization
      * Hydrate properties not handled by constructor.
      *
      * @param object $instance Instance to hydrate
-     * @param array $data Data to hydrate with
+     * @param array<array-key, mixed> $data Data to hydrate with
+     * @param array<int, string> $consumedProperties
      * @return static Hydrated instance
      * @throws DateMalformedStringException
      * @throws Exceptions\ReflectionException

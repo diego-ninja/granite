@@ -12,7 +12,7 @@ use Ninja\Granite\Validation\Rules;
 class In
 {
     /**
-     * @var array Allowed values
+     * @var array<array-key, mixed> Allowed values
      */
     private array $values;
 
@@ -21,6 +21,7 @@ class In
      */
     private ?string $message;
 
+    /** @param array<array-key, mixed> $values */
     public function __construct(array $values, ?string $message = null)
     {
         $this->values = $values;

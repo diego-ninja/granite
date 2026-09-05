@@ -42,6 +42,7 @@ use UnitEnum;
  *
  * @since 2.1.0
  */
+/** @implements ArrayAccess<int|string, mixed> */
 final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
 {
     /**
@@ -596,7 +597,6 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
         }
 
         if ($value instanceof UnitEnum) {
-            /** @phpstan-ignore-next-line */
             return property_exists($value, 'value') ? $value->value : $value->name;
         }
 

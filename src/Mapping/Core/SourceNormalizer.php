@@ -19,6 +19,7 @@ final readonly class SourceNormalizer
     /**
      * @throws MappingException
      */
+    /** @return array<array-key, mixed> */
     public function normalize(mixed $source): array
     {
         if (is_array($source)) {
@@ -51,6 +52,7 @@ final readonly class SourceNormalizer
     /**
      * @throws MappingException
      */
+    /** @return array<array-key, mixed> */
     private function objectToArray(object $source): array
     {
         try {
@@ -72,6 +74,7 @@ final readonly class SourceNormalizer
     /**
      * @param callable(): mixed $adapter
      */
+    /** @return array<array-key, mixed> */
     private function normalizeWithAdapter(object $source, string $strategy, callable $adapter): array
     {
         try {

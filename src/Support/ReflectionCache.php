@@ -3,7 +3,6 @@
 namespace Ninja\Granite\Support;
 
 use ReflectionClass;
-use ReflectionException;
 use ReflectionProperty;
 
 /**
@@ -14,7 +13,7 @@ final class ReflectionCache
     /**
      * Cache for reflection classes.
      *
-     * @var array<string, ReflectionClass>
+     * @var array<string, ReflectionClass<object>>
      */
     private static array $classCache = [];
 
@@ -36,24 +35,21 @@ final class ReflectionCache
      * Get a cached ReflectionClass instance.
      *
      * @param string $class Class name
-     * @return ReflectionClass Reflection instance
+     * @return ReflectionClass<object> Reflection instance
      * @throws \Ninja\Granite\Exceptions\ReflectionException
      */
-    /**
-     * @param class-string $class
-     */
+    /** @return ReflectionClass<object> */
     public static function getClass(string $class): ReflectionClass
     {
-        try {
-            if ( ! isset(self::$classCache[$class])) {
-                /** @phpstan-ignore-next-line ReflectionClass can throw ReflectionException */
-                self::$classCache[$class] = new ReflectionClass($class);
-            }
-
-            return self::$classCache[$class];
-        } catch (ReflectionException $e) {
+        if ( ! class_exists($class)) {
             throw \Ninja\Granite\Exceptions\ReflectionException::classNotFound($class);
         }
+
+        if ( ! isset(self::$classCache[$class])) {
+            self::$classCache[$class] = new ReflectionClass($class);
+        }
+
+        return self::$classCache[$class];
     }
 
     /**

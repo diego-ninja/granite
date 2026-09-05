@@ -10,8 +10,10 @@ use Throwable;
  */
 class GraniteException extends Exception
 {
+    /** @var array<string, mixed> */
     protected array $context = [];
 
+    /** @param array<string, mixed> $context */
     public function __construct(string $message = "", int $code = 0, ?Throwable $previous = null, array $context = [])
     {
         parent::__construct($message, $code, $previous);
@@ -20,6 +22,7 @@ class GraniteException extends Exception
 
     /**
      * Get additional context information about the error.
+     * @return array<string, mixed>
      */
     public function getContext(): array
     {
@@ -28,6 +31,7 @@ class GraniteException extends Exception
 
     /**
      * Add context information to the exception.
+     * @param array<string, mixed> $context
      */
     public function withContext(array $context): static
     {

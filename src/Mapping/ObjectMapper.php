@@ -24,6 +24,7 @@ final class ObjectMapper implements Mapper, MappingStorage
     private MappingEngine $engine;
     private ConfigurationBuilder $configBuilder;
     private MappingCache $cache;
+    /** @var array<int, MappingProfile> */
     private array $profiles = [];
 
     // Singleton support
@@ -136,7 +137,7 @@ final class ObjectMapper implements Mapper, MappingStorage
 
     /**
      * @template T of object
-     * @param array $source Source array
+     * @param array<array-key, mixed> $source Source array
      * @param class-string<T> $destinationType Destination type
      * @return array<T> Array of mapped objects
      * @throws GraniteException
@@ -257,6 +258,7 @@ final class ObjectMapper implements Mapper, MappingStorage
         return $this->configBuilder->getMappingsForTypes($sourceType, $destinationType);
     }
 
+    /** @param array<int, mixed> $profiles */
     private function registerProfiles(array $profiles): void
     {
         foreach ($profiles as $profile) {

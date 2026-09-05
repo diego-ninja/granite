@@ -10,7 +10,7 @@ final class GraniteValidator
     /**
      * Collections of validation rules.
      *
-     * @var RuleCollection[]
+     * @var array<string, RuleCollection>
      */
     private array $collections = [];
 
@@ -34,7 +34,7 @@ final class GraniteValidator
      * Create a validator from an array of rule definitions.
      * Supports both array format and string format rules.
      *
-     * @param array $rulesArray Array of rule definitions
+     * @param array<array-key, mixed> $rulesArray Array of rule definitions
      * @return self New validator instance
      */
     public static function fromArray(array $rulesArray): self
@@ -127,13 +127,13 @@ final class GraniteValidator
     /**
      * Validate data against all rule collections.
      *
-     * @param array $data Data to validate
+     * @param array<array-key, mixed> $data Data to validate
      * @param string $objectName Object name for error messages
      * @throws ValidationException If validation fails
      */
     public function validate(array $data, string $objectName = 'Object'): void
     {
-        $errors = [];
+        $errors = self::emptyErrors();
 
         foreach ($this->collections as $property => $collection) {
             // Check if property exists in data
@@ -141,6 +141,7 @@ final class GraniteValidator
                 // Look for required rule
                 foreach ($collection->getRules() as $rule) {
                     if ($rule instanceof Rules\Required) {
+                        $errors[$property] ??= [];
                         $errors[$property][] = $rule->message($property);
                         break;
                     }
@@ -161,10 +162,16 @@ final class GraniteValidator
             throw new ValidationException($objectName, $errors);
         }
     }
+
+    /** @return array<string, array<int, string>> */
+    private static function emptyErrors(): array
+    {
+        return [];
+    }
     /**
      * Create a rule instance from a rule definition array.
      *
-     * @param array $definition Rule definition
+     * @param array<array-key, mixed> $definition Rule definition
      * @return ValidationRule Rule instance
      */
     private static function createRuleFromDefinition(array $definition, string $property, int|string $position): ValidationRule
@@ -212,6 +219,8 @@ final class GraniteValidator
         return $rule;
     }
 
+    /** @param array<string, mixed> $definition */
+    /** @param array<array-key, mixed> $definition */
     private static function createBoundaryRule(string $type, array $definition, string $property, int|string $position): ValidationRule
     {
         $value = $definition['value'] ?? null;
@@ -231,6 +240,8 @@ final class GraniteValidator
         return 'min' === $type ? new Rules\Min($parsed) : new Rules\Max($parsed);
     }
 
+    /** @param array<string, mixed> $definition */
+    /** @param array<array-key, mixed> $definition */
     private static function createInRule(array $definition, string $property, int|string $position): ValidationRule
     {
         $values = $definition['values'] ?? null;
@@ -241,6 +252,8 @@ final class GraniteValidator
         return new Rules\In($values);
     }
 
+    /** @param array<string, mixed> $definition */
+    /** @param array<array-key, mixed> $definition */
     private static function createRegexRule(array $definition, string $property, int|string $position): ValidationRule
     {
         $pattern = $definition['pattern'] ?? null;

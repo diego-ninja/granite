@@ -58,7 +58,7 @@ class PersistentMappingCache implements MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @return array|null Mapping configuration or null if not found
+     * @return array<string, array<string, mixed>>|null Mapping configuration or null if not found
      */
     public function get(string $sourceType, string $destinationType): ?array
     {
@@ -70,7 +70,7 @@ class PersistentMappingCache implements MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @param array $config Mapping configuration
+     * @param array<string, array<string, mixed>> $config Mapping configuration
      * @return void
      */
     public function put(string $sourceType, string $destinationType, array $config): void
@@ -189,7 +189,7 @@ class PersistentMappingCache implements MappingCache
     /**
      * Extract cache data from memory cache.
      *
-     * @return array Cache data
+     * @return array<string, array<string, array<string, mixed>>> Cache data
      */
     private function extractCacheData(): array
     {
@@ -205,7 +205,7 @@ class PersistentMappingCache implements MappingCache
     }
 
     /**
-     * @return array<string, array>|null
+     * @return array<string, array<string, array<string, mixed>>>|null
      */
     private function validatePayload(mixed $payload): ?array
     {
@@ -224,7 +224,27 @@ class PersistentMappingCache implements MappingCache
                 continue;
             }
 
-            $mappings[$key] = $config;
+            $validatedConfig = [];
+            foreach ($config as $property => $propertyConfig) {
+                if ( ! is_string($property) || ! is_array($propertyConfig) || ! $this->isPersistableValue($propertyConfig)) {
+                    $validatedConfig = null;
+                    break;
+                }
+
+                $validatedPropertyConfig = [];
+                foreach ($propertyConfig as $configKey => $configValue) {
+                    if ( ! is_string($configKey)) {
+                        $validatedConfig = null;
+                        break 2;
+                    }
+                    $validatedPropertyConfig[$configKey] = $configValue;
+                }
+                $validatedConfig[$property] = $validatedPropertyConfig;
+            }
+
+            if (null !== $validatedConfig) {
+                $mappings[$key] = $validatedConfig;
+            }
         }
 
         return $mappings;

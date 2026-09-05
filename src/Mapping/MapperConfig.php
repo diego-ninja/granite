@@ -8,6 +8,10 @@ use Ninja\Granite\Mapping\Contracts\NamingConvention;
 
 final readonly class MapperConfig
 {
+    /**
+     * @param array<int, mixed> $profiles
+     * @param array<int, mixed> $conventions
+     */
     private function __construct(
         public CacheType $cacheType = CacheType::Memory,
         public bool $warmupCache = true,
@@ -172,6 +176,7 @@ final readonly class MapperConfig
         );
     }
 
+    /** @param array<int, mixed> $profiles */
     public function withProfiles(array $profiles): self
     {
         return new self(

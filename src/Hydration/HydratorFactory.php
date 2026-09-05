@@ -108,7 +108,7 @@ class HydratorFactory
      *
      * @param mixed $data Source data
      * @param string $targetClass Target class being hydrated
-     * @return array Normalized data
+     * @return array<array-key, mixed> Normalized data
      * @throws RuntimeException If no suitable hydrator is found
      */
     public function hydrateWith(mixed $data, string $targetClass): array
@@ -152,7 +152,7 @@ class HydratorFactory
      *
      * @param object $data Source object
      * @param string $targetClass Target class
-     * @return array Combined extracted data
+     * @return array<array-key, mixed> Combined extracted data
      */
     private function hydrateObjectWithChain(object $data, string $targetClass): array
     {

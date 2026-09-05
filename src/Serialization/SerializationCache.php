@@ -9,12 +9,13 @@ use WeakMap;
 
 final class SerializationCache
 {
-    /** @var WeakMap<object, array> */
+    /** @var WeakMap<object, array<array-key, mixed>> */
     private static ?WeakMap $arrayCache = null;
 
     /** @var WeakMap<object, string> */
     private static ?WeakMap $jsonCache = null;
 
+    /** @return array<array-key, mixed>|null */
     public static function get(object $instance): ?array
     {
         if (null === self::$arrayCache) {
@@ -24,6 +25,7 @@ final class SerializationCache
         return self::$arrayCache[$instance] ?? null;
     }
 
+    /** @param array<array-key, mixed> $result */
     public static function set(object $instance, array $result): void
     {
         self::$arrayCache ??= new WeakMap();

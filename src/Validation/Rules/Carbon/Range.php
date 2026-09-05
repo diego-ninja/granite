@@ -29,7 +29,7 @@ final class Range extends AbstractRule
      * Validate that the Carbon date is within the specified range.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

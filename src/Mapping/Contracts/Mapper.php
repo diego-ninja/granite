@@ -27,7 +27,7 @@ interface Mapper
      * Map array of objects.
      *
      * @template T of object
-     * @param array $source Array of source objects
+     * @param array<array-key, mixed> $source Array of source objects
      * @param class-string<T> $destinationType Destination class
      * @return T[] Array of mapped objects
      */

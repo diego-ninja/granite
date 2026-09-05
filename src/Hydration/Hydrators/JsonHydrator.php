@@ -26,6 +26,7 @@ class JsonHydrator extends AbstractHydrator
         return str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[');
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         /** @var string $data */

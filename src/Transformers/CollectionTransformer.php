@@ -33,6 +33,7 @@ final class CollectionTransformer implements Transformer
     /**
      * Transform a collection.
      */
+    /** @param array<array-key, mixed> $sourceData */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
         if (null === $value) {
@@ -110,6 +111,7 @@ final class CollectionTransformer implements Transformer
     /**
      * Check if an array is associative (vs sequential).
      */
+    /** @param array<array-key, mixed> $array */
     private function isAssociativeArray(array $array): bool
     {
         if ([] === $array) {

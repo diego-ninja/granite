@@ -122,7 +122,7 @@ final readonly class AttributeProcessor
     /**
      * Process individual attribute and update configuration.
      *
-     * @param ReflectionAttribute $attribute Attribute to process
+     * @param ReflectionAttribute<object> $attribute Attribute to process
      * @param array<string, mixed> $config Configuration array to update
      * @return void
      */

@@ -10,7 +10,7 @@ use Exception;
 class ValidationException extends GraniteException
 {
     /**
-     * @var array<array<string>> Validation errors by field.
+     * @var array<string, array<int, string>> Validation errors by field.
      * The keys are field names and the values are arrays of error messages.
      */
     private array $errors;
@@ -20,7 +20,7 @@ class ValidationException extends GraniteException
      * Create a new ValidationException.
      *
      * @param string $objectType The type of object that failed validation.
-     * @param array<array<string>> $errors Validation errors by field.
+     * @param array<string, array<int, string>> $errors Validation errors by field.
      * @param string $message Optional custom message for the exception.
      * @param int $code Optional custom error code.
      * @param Exception|null $previous Optional previous exception for chaining.
@@ -44,7 +44,7 @@ class ValidationException extends GraniteException
 
     /**
      * Get validation errors by field.
-     * @return array<array<string>>
+     * @return array<string, array<int, string>>
      */
     public function getErrors(): array
     {
@@ -53,6 +53,7 @@ class ValidationException extends GraniteException
 
     /**
      * Get errors for a specific field.
+     * @return array<int, string>
      */
     public function getFieldErrors(string $field): array
     {
@@ -77,6 +78,7 @@ class ValidationException extends GraniteException
 
     /**
      * Get all error messages as a flat array.
+     * @return array<int, string>
      */
     public function getAllMessages(): array
     {

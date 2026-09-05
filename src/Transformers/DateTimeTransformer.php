@@ -13,6 +13,7 @@ final readonly class DateTimeTransformer implements Transformer
         private string $format = DateTimeInterface::ATOM,
     ) {}
 
+    /** @param array<array-key, mixed> $sourceData */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
         if (null === $value) {

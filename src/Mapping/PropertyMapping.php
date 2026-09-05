@@ -92,6 +92,7 @@ class PropertyMapping
     /**
      * @deprecated Use the DataTransformer runtime through ObjectMapper instead.
      */
+    /** @param array<array-key, mixed> $sourceData */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
         // Skip if explicitly ignored

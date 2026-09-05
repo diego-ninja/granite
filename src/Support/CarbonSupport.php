@@ -141,7 +141,6 @@ final class CarbonSupport
                     /** @var CarbonImmutable $value */
                     return Carbon::instance($value);
                 }
-                /** @var DateTimeInterface $value */
                 return $value;
             }
 

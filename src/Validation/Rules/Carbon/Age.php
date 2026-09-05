@@ -30,7 +30,7 @@ final class Age extends AbstractRule
      * Validate that the date represents a valid age.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

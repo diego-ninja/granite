@@ -12,7 +12,7 @@ class InMemoryMappingCache implements MappingCache
     /**
      * Cached mapping configurations.
      *
-     * @var array<string, array>
+     * @var array<string, array<string, array<string, mixed>>>
      */
     private array $cache = [];
 
@@ -34,7 +34,7 @@ class InMemoryMappingCache implements MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @return array|null Mapping configuration or null if not found
+     * @return array<string, array<string, mixed>>|null Mapping configuration or null if not found
      */
     public function get(string $sourceType, string $destinationType): ?array
     {
@@ -47,7 +47,7 @@ class InMemoryMappingCache implements MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @param array $config Mapping configuration
+     * @param array<string, array<string, mixed>> $config Mapping configuration
      * @return void
      */
     public function put(string $sourceType, string $destinationType, array $config): void
@@ -69,7 +69,7 @@ class InMemoryMappingCache implements MappingCache
     /**
      * Get all cached mapping configurations.
      *
-     * @return array<string, array>
+     * @return array<string, array<string, array<string, mixed>>>
      */
     public function all(): array
     {

@@ -12,6 +12,9 @@ use ReflectionFunction;
 
 final class TransformerInvoker
 {
+    /**
+     * @param array<array-key, mixed> $sourceData
+     */
     public function invoke(
         mixed $transformer,
         mixed $value,

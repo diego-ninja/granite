@@ -20,6 +20,7 @@ class StringHydrator extends AbstractHydrator
         return is_string($data);
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         // All strings should be JSON if they're being used for hydration

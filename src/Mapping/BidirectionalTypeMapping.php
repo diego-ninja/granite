@@ -153,8 +153,8 @@ final class BidirectionalTypeMapping
 
         // Apply all bidirectional mappings
         foreach ($this->forwardMemberMappings as $propertyA => $propertyB) {
-            $this->forwardMapping->forMember($propertyB, fn($m) => $m->mapFrom($propertyA));
-            $this->reverseMapping->forMember($propertyA, fn($m) => $m->mapFrom($propertyB));
+            $this->forwardMapping->forMember($propertyB, fn(PropertyMapping $mapping) => $mapping->mapFrom($propertyA));
+            $this->reverseMapping->forMember($propertyA, fn(PropertyMapping $mapping) => $mapping->mapFrom($propertyB));
         }
 
         // Seal both mappings

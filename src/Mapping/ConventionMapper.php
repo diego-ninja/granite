@@ -21,7 +21,7 @@ class ConventionMapper
     private float $confidenceThreshold;
 
     /**
-     * @var array Cache of discovered mappings
+     * @var array<string, array<string, string>> Cache of discovered mappings
      */
     private array $discoveredMappings = [];
 
@@ -114,15 +114,14 @@ class ConventionMapper
      *
      * @param class-string $sourceType Source type
      * @param class-string $destinationType Destination type
-     * @return array Discovered mappings [destinationProperty => sourceProperty]
+     * @return array<string, string> Discovered mappings [destinationProperty => sourceProperty]
      */
     public function discoverMappings(string $sourceType, string $destinationType): array
     {
         $cacheKey = $sourceType . '->' . $destinationType;
 
         if (isset($this->discoveredMappings[$cacheKey])) {
-            $cached = $this->discoveredMappings[$cacheKey];
-            return is_array($cached) ? $cached : [];
+            return $this->discoveredMappings[$cacheKey];
         }
 
         // If source is not a class (e.g., 'array'), we can't use reflection on it
@@ -175,7 +174,7 @@ class ConventionMapper
      * @param class-string $sourceType Source type
      * @param class-string $destinationType Destination type
      * @param TypeMapping|null $typeMapping Existing type mapping (optional)
-     * @return array The discovered mappings
+     * @return array<string, string> The discovered mappings
      */
     public function applyConventions(string $sourceType, string $destinationType, ?TypeMapping $typeMapping = null): array
     {
@@ -189,7 +188,7 @@ class ConventionMapper
         if (null !== $typeMapping) {
             foreach ($mappings as $destinationName => $sourceName) {
                 if ($destinationName !== $sourceName) {
-                    $typeMapping->forMember($destinationName, fn($mapping) => $mapping->mapFrom($sourceName));
+                    $typeMapping->forMember($destinationName, fn(PropertyMapping $mapping) => $mapping->mapFrom($sourceName));
                 }
             }
         }

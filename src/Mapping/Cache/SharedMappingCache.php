@@ -64,7 +64,7 @@ class SharedMappingCache implements MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @return array|null Mapping configuration or null if not found
+     * @return array<string, array<string, mixed>>|null Mapping configuration or null if not found
      */
     public function get(string $sourceType, string $destinationType): ?array
     {
@@ -84,7 +84,7 @@ class SharedMappingCache implements MappingCache
      *
      * @param string $sourceType Source type name
      * @param string $destinationType Destination type name
-     * @param array $config Mapping configuration
+     * @param array<string, array<string, mixed>> $config Mapping configuration
      * @return void
      */
     public function put(string $sourceType, string $destinationType, array $config): void
@@ -107,7 +107,7 @@ class SharedMappingCache implements MappingCache
     /**
      * Get cache statistics.
      *
-     * @return array Cache statistics
+     * @return array<string, int|float|string> Cache statistics
      */
     public function getStats(): array
     {

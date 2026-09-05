@@ -114,6 +114,7 @@ final class ClassProfile
     /**
      * @return object|null Created instance, or null to fall back to slow path
      */
+    /** @param array<array-key, mixed> $args */
     public function tryFastPath(array $args): ?object
     {
         if ( ! $this->canUseFastPath) {
