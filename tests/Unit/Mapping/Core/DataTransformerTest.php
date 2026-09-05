@@ -277,6 +277,19 @@ class DataTransformerTest extends TestCase
         $this->assertEquals(['name' => 'John', 'age' => 30], $result);
     }
 
+    public function test_transform_skips_config_with_non_string_keys(): void
+    {
+        $result = $this->transformer->transform(
+            ['name' => 'John'],
+            [
+                'invalid' => [0 => 'unexpected', 'source' => 'name'],
+                'name' => ['source' => 'name'],
+            ],
+        );
+
+        $this->assertSame(['name' => 'John'], $result);
+    }
+
     public function test_transform_handles_missing_source_keys(): void
     {
         $sourceData = ['name' => 'John'];

@@ -63,15 +63,13 @@ final readonly class DataTransformer
             return null;
         }
 
-        $normalized = [];
         foreach ($config as $key => $value) {
             if ( ! is_string($key)) {
                 return null;
             }
-            $normalized[$key] = $value;
         }
 
-        return $normalized;
+        return $config;
     }
 
     /**
