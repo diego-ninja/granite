@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Validation;
 
+use InvalidArgumentException;
 use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\Validation\GraniteValidator;
 use Ninja\Granite\Validation\RuleCollection;
@@ -318,16 +319,28 @@ use Tests\Helpers\TestCase;
         $this->assertTrue(true);
     }
 
-    public function test_handles_invalid_rule_format_gracefully(): void
+    public function test_rejects_unknown_string_rule(): void
     {
         $rulesArray = [
             'name' => 'required|string',
             'invalid' => 'unknown_rule|another_unknown',
         ];
 
-        $validator = GraniteValidator::fromArray($rulesArray);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('unknown_rule');
 
-        // Should create validator without errors (unknown rules are ignored)
-        $this->assertInstanceOf(GraniteValidator::class, $validator);
+        GraniteValidator::fromArray($rulesArray);
+    }
+
+    public function test_rejects_malformed_array_rule_definition(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('min');
+
+        GraniteValidator::fromArray([
+            'age' => [
+                ['type' => 'min'],
+            ],
+        ]);
     }
 }

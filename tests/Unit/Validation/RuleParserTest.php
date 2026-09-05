@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Validation;
 
+use InvalidArgumentException;
 use Ninja\Granite\Validation\RuleParser;
 use Ninja\Granite\Validation\Rules\ArrayType;
 use Ninja\Granite\Validation\Rules\BooleanType;
@@ -202,31 +203,22 @@ use Tests\Helpers\TestCase;
         $this->assertInstanceOf(Regex::class, $rules[0]);
     }
 
-    public function test_ignores_unknown_rules(): void
+    public function test_rejects_unknown_rules_with_position(): void
     {
-        $rules = RuleParser::parse('required|unknown_rule|string');
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('unknown_rule');
+        $this->expectExceptionMessage('position 2');
 
-        $this->assertCount(2, $rules);
-        $this->assertInstanceOf(Required::class, $rules[0]);
-        $this->assertInstanceOf(StringType::class, $rules[1]);
+        RuleParser::parse('required|unknown_rule|string');
     }
 
-    public function test_ignores_rules_with_missing_parameters(): void
+    public function test_rejects_rules_with_missing_parameters(): void
     {
-        $rules = RuleParser::parse('required|min:|max|string');
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('min');
+        $this->expectExceptionMessage('position 2');
 
-        // Let's check what we actually get first
-        $ruleTypes = array_map(fn($rule) => get_class($rule), $rules);
-
-        // min: with empty parameter should be ignored, but max without : might still be valid
-        // Let's adjust based on actual behavior
-        $this->assertContains(Required::class, $ruleTypes);
-        $this->assertContains(StringType::class, $ruleTypes);
-
-        // The exact count depends on how the parser handles 'max' without parameters
-        // Let's be more flexible here
-        $this->assertGreaterThanOrEqual(2, count($rules));
-        $this->assertLessThanOrEqual(3, count($rules));
+        RuleParser::parse('required|min:|max|string');
     }
 
     #[DataProvider('complexRuleStringProvider')] public function test_parses_complex_rule_combinations(string $ruleString, int $expectedCount, array $expectedTypes): void
@@ -246,27 +238,20 @@ use Tests\Helpers\TestCase;
 
     public function test_handles_whitespace_in_rules(): void
     {
-        // Note: The parser likely doesn't handle spaces around separators
-        // Let's test what actually works
-        $rules = RuleParser::parse('required|string|min:5');
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('required ');
 
-        $this->assertGreaterThan(0, count($rules));
-        $this->assertInstanceOf(Required::class, $rules[0]);
+        RuleParser::parse('required |string');
     }
 
     public function test_handles_case_sensitivity_properly(): void
     {
-        // Test uppercase (should not work)
-        $upperRules = RuleParser::parse('REQUIRED|STRING');
-        $this->assertCount(0, $upperRules);
-
-        // Test lowercase (should work)
         $lowerRules = RuleParser::parse('required|string');
         $this->assertCount(2, $lowerRules);
 
-        // Test mixed case (should only recognize lowercase parts)
-        $mixedRules = RuleParser::parse('required|STRING|min:3');
-        $this->assertCount(2, $mixedRules); // only 'required' and 'min:3'
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('STRING');
+        RuleParser::parse('required|STRING|min:3');
     }
 
     public function test_parses_numeric_parameters(): void
@@ -276,6 +261,53 @@ use Tests\Helpers\TestCase;
         $this->assertCount(2, $rules);
         $this->assertInstanceOf(Min::class, $rules[0]);
         $this->assertInstanceOf(Max::class, $rules[1]);
+    }
+
+    public function test_preserves_decimal_minimum(): void
+    {
+        $rules = RuleParser::parse('min:1.5');
+
+        $this->assertFalse($rules[0]->validate('a'));
+        $this->assertTrue($rules[0]->validate('aa'));
+    }
+
+    public function test_preserves_negative_decimal_maximum(): void
+    {
+        $rules = RuleParser::parse('max:-0.25');
+
+        $this->assertFalse($rules[0]->validate(''));
+    }
+
+    public function test_preserves_exponent_as_float(): void
+    {
+        $rules = RuleParser::parse('min:1e2');
+
+        $this->assertFalse($rules[0]->validate(str_repeat('a', 99)));
+        $this->assertTrue($rules[0]->validate(str_repeat('a', 100)));
+    }
+
+    public function test_rejects_non_numeric_boundary(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('min');
+
+        RuleParser::parse('min:abc');
+    }
+
+    public function test_rejects_empty_in_rule(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('in');
+
+        RuleParser::parse('in:');
+    }
+
+    public function test_rejects_empty_regex_rule(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('regex');
+
+        RuleParser::parse('regex:');
     }
 
     public function test_parses_special_regex_patterns(): void
@@ -307,7 +339,13 @@ use Tests\Helpers\TestCase;
     public function test_returns_empty_array_for_invalid_input(): void
     {
         $this->assertEquals([], RuleParser::parse(''));
-        $this->assertEquals([], RuleParser::parse('unknown_rule'));
-        $this->assertEquals([], RuleParser::parse('UPPERCASE_RULE'));
+    }
+
+    public function test_rejects_non_empty_input_without_valid_rules(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('No valid validation rules');
+
+        RuleParser::parse('|||');
     }
 }

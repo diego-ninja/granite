@@ -53,7 +53,7 @@ final class GraniteValidator
             }
             // Handle array format rules
             elseif (is_array($propertyRules)) {
-                foreach ($propertyRules as $ruleDefinition) {
+                foreach ($propertyRules as $position => $ruleDefinition) {
                     // Support for string format within arrays (e.g. ['required|string', ...])
                     if (is_string($ruleDefinition)) {
                         $rules = RuleParser::parse($ruleDefinition);
@@ -63,10 +63,7 @@ final class GraniteValidator
                     }
                     // Support for traditional array format
                     elseif (is_array($ruleDefinition)) {
-                        $rule = self::createRuleFromDefinition($ruleDefinition);
-                        if (null !== $rule) {
-                            $collection->add($rule);
-                        }
+                        $collection->add(self::createRuleFromDefinition($ruleDefinition, (string) $property, $position));
                     } elseif ($ruleDefinition instanceof ValidationRule) {
                         $collection->add($ruleDefinition);
                     } else {
@@ -168,12 +165,16 @@ final class GraniteValidator
      * Create a rule instance from a rule definition array.
      *
      * @param array $definition Rule definition
-     * @return ValidationRule|null Rule instance or null if invalid
+     * @return ValidationRule Rule instance
      */
-    private static function createRuleFromDefinition(array $definition): ?ValidationRule
+    private static function createRuleFromDefinition(array $definition, string $property, int|string $position): ValidationRule
     {
-        $type = $definition['type'] ?? '';
+        $type = $definition['type'] ?? null;
         $message = $definition['message'] ?? null;
+
+        if ( ! is_string($type) || '' === $type) {
+            throw self::invalidRuleDefinition($property, $position, 'missing rule type');
+        }
 
         $rule = match ($type) {
             'required' => new Rules\Required(),
@@ -182,10 +183,9 @@ final class GraniteValidator
             'float', 'number' => new Rules\NumberType(),
             'bool', 'boolean' => new Rules\BooleanType(),
             'array' => new Rules\ArrayType(),
-            'min' => isset($definition['value']) && is_numeric($definition['value']) ? new Rules\Min((float) $definition['value']) : null,
-            'max' => isset($definition['value']) && is_numeric($definition['value']) ? new Rules\Max((float) $definition['value']) : null,
-            'in' => isset($definition['values']) && is_array($definition['values']) ? new Rules\In($definition['values']) : null,
-            'regex' => isset($definition['pattern']) && is_string($definition['pattern']) ? new Rules\Regex($definition['pattern']) : null,
+            'min', 'max' => self::createBoundaryRule($type, $definition, $property, $position),
+            'in' => self::createInRule($definition, $property, $position),
+            'regex' => self::createRegexRule($definition, $property, $position),
             'email' => new Rules\Email(),
             'url' => new Rules\Url(),
             'ip' => new Rules\IpAddress(),
@@ -194,13 +194,70 @@ final class GraniteValidator
                 ? new Rules\When($definition['condition'], $definition['rule']) : null,
             'each' => isset($definition['rules']) && ($definition['rules'] instanceof ValidationRule)
                 ? new Rules\Each($definition['rules']) : null,
-            default => null,
+            default => throw self::invalidRuleDefinition($property, $position, sprintf('unknown rule "%s"', $type)),
         };
 
-        if (null !== $rule && null !== $message && is_string($message)) {
+        if ( ! $rule instanceof ValidationRule) {
+            throw self::invalidRuleDefinition($property, $position, sprintf('malformed rule "%s"', $type));
+        }
+
+        if (null !== $message && ! is_string($message)) {
+            throw self::invalidRuleDefinition($property, $position, 'message must be a string');
+        }
+
+        if (null !== $message && $rule instanceof Rules\AbstractRule) {
             $rule->withMessage($message);
         }
 
         return $rule;
+    }
+
+    private static function createBoundaryRule(string $type, array $definition, string $property, int|string $position): ValidationRule
+    {
+        $value = $definition['value'] ?? null;
+        if ( ! is_int($value) && ! is_float($value) && ! is_string($value)) {
+            throw self::invalidRuleDefinition($property, $position, sprintf('rule "%s" requires a numeric value', $type));
+        }
+
+        if (is_string($value) && ('' === $value || $value !== trim($value) || ! is_numeric($value))) {
+            throw self::invalidRuleDefinition($property, $position, sprintf('rule "%s" requires a numeric value', $type));
+        }
+
+        $normalized = is_string($value) ? strtolower($value) : '';
+        $parsed = is_float($value) || str_contains((string) $value, '.') || str_contains($normalized, 'e')
+            ? (float) $value
+            : (int) $value;
+
+        return 'min' === $type ? new Rules\Min($parsed) : new Rules\Max($parsed);
+    }
+
+    private static function createInRule(array $definition, string $property, int|string $position): ValidationRule
+    {
+        $values = $definition['values'] ?? null;
+        if ( ! is_array($values) || [] === $values || in_array('', $values, true)) {
+            throw self::invalidRuleDefinition($property, $position, 'rule "in" requires non-empty values');
+        }
+
+        return new Rules\In($values);
+    }
+
+    private static function createRegexRule(array $definition, string $property, int|string $position): ValidationRule
+    {
+        $pattern = $definition['pattern'] ?? null;
+        if ( ! is_string($pattern) || '' === $pattern) {
+            throw self::invalidRuleDefinition($property, $position, 'rule "regex" requires a non-empty pattern');
+        }
+
+        return new Rules\Regex($pattern);
+    }
+
+    private static function invalidRuleDefinition(string $property, int|string $position, string $reason): InvalidArgumentException
+    {
+        return new InvalidArgumentException(sprintf(
+            'Invalid rule definition for property "%s" at position %s: %s',
+            $property,
+            $position,
+            $reason,
+        ));
     }
 }
