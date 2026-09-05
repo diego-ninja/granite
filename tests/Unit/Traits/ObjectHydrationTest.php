@@ -845,7 +845,6 @@ final readonly class TestHydrationTarget extends Granite
     {
         $hydrator = new \Ninja\Granite\Hydration\Hydrators\GetterHydrator();
         $reflection = new ReflectionMethod($hydrator, 'buildGetterPatterns');
-        $reflection->setAccessible(true);
         return $reflection->invoke($hydrator, $propertyName, $type);
     }
 
@@ -853,7 +852,6 @@ final readonly class TestHydrationTarget extends Granite
     {
         $hydrator = new \Ninja\Granite\Hydration\Hydrators\GetterHydrator();
         $reflection = new ReflectionMethod($hydrator, 'snakeToCamel');
-        $reflection->setAccessible(true);
         return $reflection->invoke($hydrator, $string);
     }
 }

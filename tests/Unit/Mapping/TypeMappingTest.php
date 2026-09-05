@@ -459,7 +459,6 @@ class TypeMappingTest extends TestCase
         // Set an invalid transformer using reflection since there's no direct way
         $reflection = new ReflectionClass($propertyMapping);
         $transformerProperty = $reflection->getProperty('transformer');
-        $transformerProperty->setAccessible(true);
         $transformerProperty->setValue($propertyMapping, 'invalid_transformer_string');
 
         // Add the mapping directly to the profile

@@ -9,12 +9,12 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Ninja\Granite\Config\GraniteConfig;
 use Ninja\Granite\Transformers\CarbonTransformer;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-/**
- * @covers \Ninja\Granite\Transformers\CarbonTransformer
- */
+#[CoversClass(CarbonTransformer::class)]
 final class CarbonTransformerTest extends TestCase
 {
     protected function tearDown(): void
@@ -280,10 +280,7 @@ final class CarbonTransformerTest extends TestCase
         $this->assertEquals('2023-01-01', $result);
     }
 
-    /**
-     * @dataProvider invalidInputProvider
-     * @param mixed $input
-     */
+    #[DataProvider('invalidInputProvider')]
     public function testTransformHandlesInvalidInputGracefully(mixed $input): void
     {
         $transformer = new CarbonTransformer();
@@ -292,9 +289,7 @@ final class CarbonTransformerTest extends TestCase
         $this->assertNull($result);
     }
 
-    /**
-     * @dataProvider relativeStringProvider
-     */
+    #[DataProvider('relativeStringProvider')]
     public function testRelativeStringDetection(string $input, bool $shouldBeRelative): void
     {
         $transformer = new CarbonTransformer(parseRelative: false);

@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Ninja\Granite\Validation\Rules\Carbon\Future;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -203,9 +204,7 @@ final class FutureTest extends TestCase
         $this->assertTrue($tokyoRule->validate($tomorrowUtc));
     }
 
-    /**
-     * @dataProvider edgeCaseProvider
-     */
+    #[DataProvider('edgeCaseProvider')]
     public function testEdgeCases(mixed $input, bool $expected): void
     {
         $rule = new Future();

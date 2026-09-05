@@ -235,7 +235,6 @@ class MapperConfigTest extends TestCase
         // Create a config with invalid threshold using reflection to bypass the clamping
         $config = new ReflectionClass(MapperConfig::class);
         $constructor = $config->getConstructor();
-        $constructor->setAccessible(true);
         $instance = $config->newInstanceWithoutConstructor();
         $constructor->invoke($instance, CacheType::Memory, true, false, -0.1, [], []);
 

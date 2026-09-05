@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Ninja\Granite\Support\CarbonSupport;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -224,10 +225,7 @@ final class CarbonSupportTest extends TestCase
         $this->assertSame($timezone, $carbon->getTimezone()->getName());
     }
 
-    /**
-     * @dataProvider invalidInputProvider
-     * @param mixed $input
-     */
+    #[DataProvider('invalidInputProvider')]
     public function testCreateHandlesInvalidInputGracefully(mixed $input): void
     {
         $result = CarbonSupport::create($input);

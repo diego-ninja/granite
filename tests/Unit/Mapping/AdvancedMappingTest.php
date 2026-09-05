@@ -5,12 +5,12 @@ namespace Tests\Unit\Mapping;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
-use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Mapping\Attributes\MapFrom;
 use Ninja\Granite\Mapping\Attributes\MapWith;
 use Ninja\Granite\Mapping\Contracts\Transformer;
+use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Mapping\MapperConfig;
 use Ninja\Granite\Mapping\MappingProfile;
 use Ninja\Granite\Mapping\ObjectMapper;
@@ -208,7 +208,7 @@ class AdvancedMappingTest extends TestCase
     #[Test]
     public function it_fails_validation_during_mapping(): void
     {
-        $this->expectException(ValidationException::class);
+        $this->expectException(MappingException::class);
 
         $invalidSource = [
             'name' => 'X', // Too short
@@ -360,7 +360,7 @@ class AdvancedMappingTest extends TestCase
     public function it_supports_bidirectional_mapping(): void
     {
         // Creamos un perfil personalizado para este test específico
-        $profile = new class () extends MappingProfile {
+        $profile = new class extends MappingProfile {
             protected function configure(): void
             {
                 // Entity to DTO
@@ -423,7 +423,7 @@ class AdvancedMappingTest extends TestCase
             'currency' => 'USD',
         ];
 
-        $profile = new class () extends MappingProfile {
+        $profile = new class extends MappingProfile {
             protected function configure(): void
             {
                 $this->createMap('array', CustomAttributeDTO::class)

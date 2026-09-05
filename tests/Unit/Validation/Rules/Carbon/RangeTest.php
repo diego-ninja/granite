@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Ninja\Granite\Validation\Rules\Carbon\Range;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -247,9 +248,7 @@ final class RangeTest extends TestCase
         $this->assertFalse($rule->validate('next week'));
     }
 
-    /**
-     * @dataProvider edgeCaseProvider
-     */
+    #[DataProvider('edgeCaseProvider')]
     public function testEdgeCases(mixed $input, bool $expected): void
     {
         $rule = new Range(min: '2023-01-01', max: '2023-12-31');

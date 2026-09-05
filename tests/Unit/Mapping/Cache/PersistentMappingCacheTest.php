@@ -305,10 +305,10 @@ class PersistentMappingCacheTest extends TestCase
         $payload = [
             'version' => 1,
             'mappings' => [
-                'SimpleDTO->UserDTO' => ['valid' => 'mapping'],
-                'MalformedKey' => ['should' => 'be ignored'],
-                'Another->Malformed->Key' => ['also' => 'ignored'],
-                'ValidKey->ValidDest' => ['valid' => 'mapping2'],
+                'SimpleDTO->UserDTO' => ['valid' => ['source' => 'mapping']],
+                'MalformedKey' => ['should' => ['source' => 'be ignored']],
+                'Another->Malformed->Key' => ['also' => ['source' => 'ignored']],
+                'ValidKey->ValidDest' => ['valid' => ['source' => 'mapping2']],
             ],
         ];
 
