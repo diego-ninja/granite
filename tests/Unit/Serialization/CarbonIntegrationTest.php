@@ -16,6 +16,7 @@ use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\CarbonRange;
 use Ninja\Granite\Serialization\Attributes\CarbonRelative;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
+use Ninja\Granite\Serialization\SerializationCache;
 use Ninja\Granite\Validation\Attributes\Carbon\Age;
 use Ninja\Granite\Validation\Attributes\Carbon\Future;
 use Ninja\Granite\Validation\Attributes\Carbon\Range;
@@ -208,6 +209,19 @@ final class CarbonIntegrationTest extends TestCase
         $this->assertEquals('2023-01-01', $array['timestamp']);
     }
 
+    public function testChangingSerializationConfigurationInvalidatesCachedValues(): void
+    {
+        $config = GraniteConfig::getInstance()->carbonSerializeFormat('Y-m-d');
+        $dto = new GlobalConfigCarbonImmutableDTO(CarbonImmutable::parse('2023-01-02 15:30:00'));
+
+        $this->assertSame('2023-01-02', $dto->array()['timestamp']);
+        $this->assertNotNull(SerializationCache::get($dto));
+
+        $config->carbonSerializeFormat('c');
+
+        $this->assertSame('2023-01-02T15:30:00+00:00', $dto->array()['timestamp']);
+    }
+
     public function testDateTimeProviderAttribute(): void
     {
         $dto = DateTimeProviderDTO::from([
@@ -344,6 +358,11 @@ final readonly class GlobalConfigCarbonDTO extends GraniteDTO
     public function __construct(
         public ?Carbon $timestamp = null,
     ) {}
+}
+
+final readonly class GlobalConfigCarbonImmutableDTO extends GraniteDTO
+{
+    public function __construct(public CarbonImmutable $timestamp) {}
 }
 
 #[DateTimeProvider(provider: 'Carbon\CarbonImmutable')]

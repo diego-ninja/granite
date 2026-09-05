@@ -43,14 +43,12 @@ trait HasSerialization
     /** @return array<array-key, mixed> */
     public function array(): array
     {
-        $cacheable = SerializationCachePolicy::isCacheable($this);
-        if ($cacheable) {
-            $cached = SerializationCache::get($this);
-            if (null !== $cached) {
-                return $cached;
-            }
+        $cached = SerializationCache::get($this);
+        if (null !== $cached) {
+            return $cached;
         }
 
+        $cacheable = SerializationCachePolicy::isCacheable($this);
         $result = $this->computeArray();
         if ($cacheable) {
             SerializationCache::set($this, $result);
@@ -64,14 +62,12 @@ trait HasSerialization
      */
     public function json(): string
     {
-        $cacheable = SerializationCachePolicy::isCacheable($this);
-        if ($cacheable) {
-            $cached = SerializationCache::getJson($this);
-            if (null !== $cached) {
-                return $cached;
-            }
+        $cached = SerializationCache::getJson($this);
+        if (null !== $cached) {
+            return $cached;
         }
 
+        $cacheable = SerializationCachePolicy::isCacheable($this);
         $json = json_encode($this->array());
         if (false === $json) {
             throw new RuntimeException('Failed to encode object to JSON');
