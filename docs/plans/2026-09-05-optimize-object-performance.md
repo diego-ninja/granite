@@ -29,7 +29,7 @@
 
 ## Cut 3: Type conversion and hydration fast paths
 
-- Add tests for builtin conversion, array-property DTOs, normalized JSON/object/Granite sources, nested DTOs, and constructor defaults.
+- Add tests for builtin conversion, array-property DTOs, normalized JSON/object/Granite sources, nested DTOs, and constructor-default fallback semantics.
 - Return builtin named types before class/Carbon checks.
 - Split `ClassProfile` capabilities for hydration, serialization, and comparison.
 - Retry constructor hydration after structured input normalization.
@@ -67,3 +67,26 @@
 - Compare median before/after timings and document the results.
 - Run PHPUnit, PHPStan at maximum level, Pint check, ABOUTME audit, and project audit checks.
 - Commit as `docs: record object performance results`.
+
+## Results
+
+Measured on PHP 8.5.10 (Darwin), with OPcache CLI enabled and `XDEBUG_MODE=off`. Each result is the median of 7 repetitions with 100,000 operations per repetition. The baseline commit (`969db61`) and optimized branch were executed consecutively with the same benchmark and dependency set.
+
+| Scenario | Before (µs) | After (µs) | Reduction | Speed-up |
+|---|---:|---:|---:|---:|
+| `plain.constructor` | 0.157 | 0.147 | 6.3% | 1.07x |
+| `hydrate.scalar.array` | 0.287 | 0.284 | 1.2% | 1.01x |
+| `hydrate.scalar.named` | 0.358 | 0.356 | 0.6% | 1.01x |
+| `hydrate.scalar.json` | 6.227 | 1.019 | 83.6% | 6.11x |
+| `hydrate.scalar.object` | 5.589 | 1.000 | 82.1% | 5.59x |
+| `hydrate.scalar.granite` | 6.738 | 0.898 | 86.7% | 7.50x |
+| `hydrate.array_property` | 2.349 | 0.201 | 91.4% | 11.69x |
+| `hydrate.validated` | 9.213 | 4.691 | 49.1% | 1.96x |
+| `serialize.scalar.array_cached` | 0.894 | 0.040 | 95.6% | 22.58x |
+| `serialize.scalar.json_cached` | 0.882 | 0.040 | 95.5% | 22.04x |
+| `serialize.nested.array_cached` | 1.257 | 0.040 | 96.8% | 31.56x |
+| `serialize.array_property` | 1.636 | 1.175 | 28.2% | 1.39x |
+| `mapper.plain` | 2.079 | 1.869 | 10.1% | 1.11x |
+| `mapper.granite` | 1.770 | 1.550 | 12.5% | 1.14x |
+
+The plain constructor control moved by 0.010 µs between adjacent runs; sub-2% changes in already-fast scalar hydration are treated as noise rather than claimed improvements.

@@ -123,7 +123,7 @@ final class PipelineBenchmark
                     'os' => PHP_OS_FAMILY,
                     'opcache_cli' => filter_var(ini_get('opcache.enable_cli'), FILTER_VALIDATE_BOOL),
                     'xdebug_loaded' => extension_loaded('xdebug'),
-                    'xdebug_mode' => ini_get('xdebug.mode') ?: 'off',
+                    'xdebug_mode' => getenv('XDEBUG_MODE') ?: (ini_get('xdebug.mode') ?: 'off'),
                     'iterations' => $this->iterations,
                     'repetitions' => $this->repetitions,
                 ],

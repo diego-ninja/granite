@@ -111,82 +111,43 @@ Granite uses a **multi-layer fast path** system that detects simple DTOs at clas
 
 ### Benchmark Results
 
-Benchmarked on PHP 8.4, comparing Granite against plain PHP constructors and `Pebble` (Granite's lightweight companion). The test DTO has 6 fields (`int`, `string`, `string`, `int`, `string`, `bool`).
+Measured on PHP 8.5.10 with OPcache CLI enabled, using the median of 7 repetitions with 100,000 operations each:
 
-#### Object Creation
+| Scenario | µs/op | Improvement |
+|---|---:|---:|
+| Plain PHP constructor | 0.147 | control |
+| `Granite::from(array)` | 0.284 | — |
+| `Granite::from(JSON)` | 1.019 | 6.11x faster |
+| `Granite::from(object)` | 1.000 | 5.59x faster |
+| `Granite::from(Granite)` | 0.898 | 7.50x faster |
+| Array-property DTO hydration | 0.201 | 11.69x faster |
+| Validated DTO hydration | 4.691 | 1.96x faster |
+| Cached `array()` | 0.040 | 22.58x faster |
+| Cached nested `array()` | 0.040 | 31.56x faster |
+| General array serialization | 1.175 | 1.39x faster |
+| ObjectMapper to plain object | 1.869 | 1.11x faster |
+| ObjectMapper to Granite | 1.550 | 1.14x faster |
 
-| Benchmark | µs/op | vs Plain PHP |
-|-----------|------:|:------------:|
-| Plain PHP constructor | 0.33 | — |
-| `Granite::from(array)` | 1.14 | 3.5x |
-| `Granite::from(named args)` | 1.13 | 3.4x |
-| `Pebble::from(array)` | 3.62 | 11.1x |
-
-#### Nested Object Creation (3 objects)
-
-| Benchmark | µs/op | vs Plain PHP |
-|-----------|------:|:------------:|
-| Plain PHP constructors | 0.78 | — |
-| `Granite::from(array)` | 3.63 | 4.6x |
-| `Pebble::from(array)` | 6.80 | 8.7x |
-
-Granite recursively applies the fast path to nested Granite-typed properties, so the overhead scales linearly with object depth rather than exploding through the full hydration pipeline.
-
-#### Serialization
-
-| Benchmark | µs/op | vs Plain PHP |
-|-----------|------:|:------------:|
-| Plain PHP `toArray()` | 0.19 | — |
-| `Granite array()` | 0.25 | 1.3x |
-| Plain PHP `json_encode(array)` | 0.25 | — |
-| `Granite json()` | 0.26 | 1.0x |
-
-Both `array()` and `json()` may be cached in a `WeakMap` when the complete value graph is demonstrably immutable. Arrays, mutable dates and unknown objects bypass the cache so later mutations cannot return stale data.
-
-#### Equality Check
-
-| Benchmark | µs/op | vs Plain PHP |
-|-----------|------:|:------------:|
-| Plain array `===` | 0.12 | — |
-| `Granite equals()` | 0.48 | 4.0x |
-| `Pebble equals()` (fingerprint) | 0.31 | 2.6x |
-
-For simple DTOs, `equals()` compares properties directly without building intermediate arrays, with early exit on the first difference.
-
-#### Collection (100 items, create from array)
-
-| Benchmark | µs/op | vs Plain PHP |
-|-----------|------:|:------------:|
-| Plain PHP `array_map` + constructors | 31 | — |
-| Granite `array_map` + `from()` | 106 | 3.4x |
-| Pebble `array_map` + `from()` | 343 | 11.1x |
-
-#### Property Access
-
-Granite uses native PHP readonly promoted properties — property access is **identical** to plain PHP objects, with zero overhead:
-
-| Benchmark | µs/op |
-|-----------|------:|
-| Plain PHP readonly | 0.15 |
-| Granite readonly | 0.14 |
-| Pebble `__get()` | 1.03 |
+Improvements compare the same benchmark against the pre-optimization baseline. Full samples and methodology are recorded in [the performance optimization plan](docs/plans/2026-09-05-optimize-object-performance.md#results).
 
 ### How it works
 
 Granite's performance comes from three layers of optimization:
 
-1. **Fast path detection** (`ClassProfile`) — At class-load time, Granite analyzes each class and determines if it can skip the full hydration pipeline. A class qualifies when all constructor parameters are scalar/null-compatible primitives or other Granite subclasses, and the class has no special attributes (`#[Hidden]`, `#[SerializedName]`, validation rules, etc.). Arrays use the general path until their element semantics can be proven equivalent.
+1. **Capability-specific fast paths** (`ClassProfile`) — Hydration, serialization, and comparison are evaluated independently. Exact array properties can use constructor hydration while still using recursive general serialization.
 
-2. **WeakMap caching** — `array()` and `json()` results are cached only for deeply immutable graphs. A readonly outer object does not make mutable arrays or dates immutable. When the object is garbage collected, the cache entry is automatically cleaned up.
+2. **WeakMap caching** — `array()` and `json()` results are read before repeating graph analysis and are cached only for deeply immutable graphs. Runtime serialization configuration invalidates cached values.
 
-3. **Direct property access** — For serialization and comparison, Granite reads properties directly by name (`$instance->$name`) instead of going through reflection, metadata lookups, and type conversion.
+3. **Compiled metadata** — Reflection objects, validation attributes, validators, class date providers, and property transformers are reused across operations.
 
-Classes that don't qualify for the fast path (those with validation attributes, naming conventions, Carbon dates, etc.) use the standard hydration pipeline, which is still optimized with reflection caching and O(1) hidden property lookups.
+Classes that need conversion or custom naming use the general pipeline, with cached metadata and early exits for scalar values.
 
 ### Running the Benchmarks
 
 ```bash
 php benchmarks/GraniteBench.php
+composer bench:objects
+composer bench:objects -- --json --iterations=100000 --repetitions=7
 ```
 
 ## ⚠️ Deprecation Notice
