@@ -4,8 +4,8 @@ namespace Ninja\Granite\Transformers;
 
 use DateTimeImmutable;
 use DateTimeInterface;
-use Exception;
 use Ninja\Granite\Mapping\Contracts\Transformer;
+use Throwable;
 
 final readonly class DateTimeTransformer implements Transformer
 {
@@ -25,8 +25,15 @@ final readonly class DateTimeTransformer implements Transformer
 
         if (is_string($value)) {
             try {
-                return new DateTimeImmutable($value);
-            } catch (Exception $e) {
+                $result = DateTimeImmutable::createFromFormat($this->format, $value);
+                $errors = DateTimeImmutable::getLastErrors();
+
+                if (false === $result || (false !== $errors && (0 < $errors['warning_count'] || 0 < $errors['error_count']))) {
+                    return null;
+                }
+
+                return $result;
+            } catch (Throwable) {
                 return null;
             }
         }

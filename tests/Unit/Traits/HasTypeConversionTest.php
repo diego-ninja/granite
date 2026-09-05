@@ -4,6 +4,7 @@ namespace Tests\Unit\Traits;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Support\CarbonSupport;
@@ -172,8 +173,20 @@ class HasTypeConversionTest extends TestCase
         $type = $property->getType();
 
         if ($type instanceof ReflectionNamedType) {
+            $this->expectException(SerializationException::class);
+            $this->testClass->testConvertToNamedType('invalid', $type);
+        }
+    }
+
+    public function test_convert_to_named_type_enum_with_unknown_case_uses_fallback(): void
+    {
+        $property = new ReflectionProperty(TestTypeConversionClass::class, 'enumWithUnknown');
+        $type = $property->getType();
+
+        if ($type instanceof ReflectionNamedType) {
             $result = $this->testClass->testConvertToNamedType('invalid', $type);
-            $this->assertNull($result);
+
+            $this->assertSame(\Tests\Data\StatusTestEnum::Unknown, $result);
         }
     }
 
@@ -231,8 +244,8 @@ class HasTypeConversionTest extends TestCase
 
         if ($type instanceof ReflectionNamedType) {
             // Pass array instead of string/int
-            $result = $this->testClass->testConvertToNamedType(['invalid'], $type);
-            $this->assertNull($result);
+            $this->expectException(SerializationException::class);
+            $this->testClass->testConvertToNamedType(['invalid'], $type);
         }
     }
 
@@ -319,6 +332,7 @@ class HasTypeConversionTest extends TestCase
         // Should not match - regular classes
         $this->assertFalse($testClass->testLooksLikeIdClass('Customer'));
         $this->assertFalse($testClass->testLooksLikeIdClass('OrderStatus'));
+        $this->assertFalse($testClass->testLooksLikeIdClass(\Tests\Fixtures\VOs\Identity::class));
     }
 
     public function test_try_create_from_value_with_from_method(): void
@@ -378,14 +392,8 @@ class HasTypeConversionTest extends TestCase
     {
         $testClass = new TestClassWithTypeConversion();
 
-        // InvalidId throws exceptions from both methods
-        $result = $testClass->testTryCreateFromValue(
-            'invalid',
-            \Tests\Fixtures\VOs\InvalidId::class,
-        );
-
-        // Should return original value unchanged
-        $this->assertEquals('invalid', $result);
+        $this->expectException(SerializationException::class);
+        $testClass->testTryCreateFromValue('invalid', \Tests\Fixtures\VOs\InvalidId::class);
     }
 
     public function test_try_create_from_value_no_factory_methods(): void
@@ -459,13 +467,8 @@ class HasTypeConversionTest extends TestCase
     {
         $testClass = new TestClassWithTypeConversion();
 
-        $result = $testClass->testConvertToUuidLike(
-            'will-fail',
-            \Tests\Fixtures\VOs\InvalidId::class,
-        );
-
-        // Should return original value when conversion fails
-        $this->assertEquals('will-fail', $result);
+        $this->expectException(SerializationException::class);
+        $testClass->testConvertToUuidLike('will-fail', \Tests\Fixtures\VOs\InvalidId::class);
     }
 
     public function test_convert_to_uuid_like_ramsey_uuid(): void
@@ -569,11 +572,8 @@ class HasTypeConversionTest extends TestCase
         $type = $property->getType();
 
         if ($type instanceof ReflectionNamedType) {
-            $testClass = new TestClassWithTypeConversion();
-            $result = $testClass->testConvertToNamedType('invalid-value', $type);
-
-            // Should return original value when conversion fails
-            $this->assertEquals('invalid-value', $result);
+            $this->expectException(SerializationException::class);
+            (new TestClassWithTypeConversion())->testConvertToNamedType('invalid-value', $type);
         }
     }
 }
@@ -669,6 +669,7 @@ class TestTypeConversionClass
     public \Tests\Fixtures\VOs\Rcuid $rcuid;
     public \Tests\Fixtures\VOs\UserId $userId;
     public \Tests\Fixtures\VOs\InvalidId $invalidId;
+    public \Tests\Data\StatusTestEnum $enumWithUnknown;
 }
 
 readonly class TestGraniteObject extends GraniteVO

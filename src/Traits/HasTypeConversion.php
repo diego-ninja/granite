@@ -7,8 +7,10 @@ use DateMalformedStringException;
 use DateTimeInterface;
 use Exception;
 use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Exceptions;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Support\CarbonSupport;
+use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionProperty;
 use ReflectionType;
@@ -143,7 +145,16 @@ trait HasTypeConversion
                 if (is_subclass_of($typeName, BackedEnum::class)) {
                     $enum = $typeName::tryFrom($value);
                     if (null === $enum) {
-                        return self::defaultCase($typeName, 'Unknown');
+                        $unknown = self::defaultCase($typeName, 'Unknown');
+                        if (null !== $unknown) {
+                            return $unknown;
+                        }
+
+                        throw Exceptions\SerializationException::conversionFailed(
+                            static::class,
+                            $property?->getName() ?? $typeName,
+                            $typeName,
+                        );
                     }
                     return $enum;
                 }
@@ -156,8 +167,16 @@ trait HasTypeConversion
                 }
             }
 
-            // If we couldn't convert to an enum, return null
-            return null;
+            $unknown = self::defaultCase($typeName, 'Unknown');
+            if (null !== $unknown) {
+                return $unknown;
+            }
+
+            throw Exceptions\SerializationException::conversionFailed(
+                static::class,
+                $property?->getName() ?? $typeName,
+                $typeName,
+            );
         }
 
         return $value;
@@ -204,12 +223,11 @@ trait HasTypeConversion
     }
 
     /**
-     * @template T of BackedEnum
-     * @param class-string<T> $enumClass
+     * @param class-string<UnitEnum> $enumClass
      * @param string $caseName
-     * @return BackedEnum|null
+     * @return UnitEnum|null
      */
-    private static function defaultCase(string $enumClass, string $caseName): ?BackedEnum
+    private static function defaultCase(string $enumClass, string $caseName): ?UnitEnum
     {
         foreach ($enumClass::cases() as $case) {
             if ($case->name === $caseName) {
@@ -264,25 +282,54 @@ trait HasTypeConversion
         }
 
         // Try from() first
-        if (method_exists($className, 'from')) {
+        $lastError = null;
+        $attempted = false;
+
+        if (self::canInvokeFactory($className, 'from')) {
+            $attempted = true;
             try {
-                return $className::from($value);
-            } catch (Throwable) {
-                // Fall through to fromString
+                $result = $className::from($value);
+                if ($result instanceof $className) {
+                    return $result;
+                }
+            } catch (Throwable $e) {
+                $lastError = $e;
             }
         }
 
         // Try fromString() as fallback
-        if (method_exists($className, 'fromString')) {
+        if (self::canInvokeFactory($className, 'fromString')) {
+            $attempted = true;
             try {
-                return $className::fromString($value);
-            } catch (Throwable) {
-                // Both failed, return original
+                $result = $className::fromString($value);
+                if ($result instanceof $className) {
+                    return $result;
+                }
+            } catch (Throwable $e) {
+                $lastError = $e;
             }
         }
 
-        // Couldn't convert, return original value unchanged
-        return $value;
+        if ( ! $attempted) {
+            return $value;
+        }
+
+        throw Exceptions\SerializationException::conversionFailed(
+            static::class,
+            $className,
+            $className,
+            $lastError,
+        );
+    }
+
+    private static function canInvokeFactory(string $className, string $methodName): bool
+    {
+        if ( ! method_exists($className, $methodName)) {
+            return false;
+        }
+
+        $method = new ReflectionMethod($className, $methodName);
+        return $method->isPublic() && $method->isStatic() && 0 < $method->getNumberOfParameters();
     }
 
     /**
@@ -295,6 +342,6 @@ trait HasTypeConversion
     {
         $parts = explode('\\', $className);
         $baseName = end($parts);
-        return (bool) preg_match('/uuid|ulid|uid|id/i', $baseName);
+        return (bool) preg_match('/(?:Uuid|Ulid|Uid|Id)$/i', $baseName);
     }
 }

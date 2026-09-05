@@ -81,6 +81,22 @@ class SerializationException extends GraniteException
         );
     }
 
+    public static function conversionFailed(
+        string $objectType,
+        string $propertyName,
+        string $targetType,
+        ?Throwable $previous = null,
+    ): self {
+        return new self(
+            $objectType,
+            'deserialization',
+            sprintf('Failed to convert property "%s" to "%s"', $propertyName, $targetType),
+            $propertyName,
+            0,
+            $previous,
+        );
+    }
+
     public function getObjectType(): string
     {
         return $this->objectType;
