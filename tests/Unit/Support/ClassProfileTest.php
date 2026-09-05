@@ -32,10 +32,13 @@ class ClassProfileTest extends TestCase
         $this->assertTrue($profile->canUseFastPath);
     }
 
-    public function test_rejects_fast_path_for_dto_with_array_type(): void
+    public function test_array_type_uses_hydration_but_not_serialization_fast_path(): void
     {
         $profile = ClassProfile::build(ScalarDTO::class);
 
+        $this->assertTrue($profile->canHydrateFastPath);
+        $this->assertFalse($profile->canSerializeFastPath);
+        $this->assertTrue($profile->canCompareFastPath);
         $this->assertFalse($profile->canUseFastPath);
     }
 
@@ -151,13 +154,16 @@ class ClassProfileTest extends TestCase
         $this->assertEquals($slow->array(), $fast->array());
     }
 
-    public function test_array_typed_dto_avoids_fast_path(): void
+    public function test_array_typed_dto_uses_hydration_fast_path(): void
     {
         $data = ['id' => 1, 'name' => 'Product', 'price' => 9.99, 'active' => true, 'tags' => ['a', 'b']];
         $profile = ClassProfile::build(ScalarDTO::class);
 
         $this->assertFalse($profile->canUseFastPath);
-        $this->assertNull($profile->tryFastPath([$data]));
+        $result = $profile->tryFastPath([$data]);
+
+        $this->assertInstanceOf(ScalarDTO::class, $result);
+        $this->assertSame(['a', 'b'], $result->tags);
     }
 
     public function test_fast_path_returns_null_for_positional_args(): void

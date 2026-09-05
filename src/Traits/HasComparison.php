@@ -33,7 +33,7 @@ trait HasComparison
         }
 
         $profile = ReflectionCache::getClassProfile(static::class);
-        if ($profile->canUseFastPath) {
+        if ($profile->canCompareFastPath) {
             return $profile->areEqual($this, $other);
         }
 

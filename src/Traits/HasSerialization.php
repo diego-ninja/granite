@@ -110,7 +110,7 @@ trait HasSerialization
     private function computeArray(): array
     {
         $profile = ReflectionCache::getClassProfile(static::class);
-        if ($profile->canUseFastPath) {
+        if ($profile->canSerializeFastPath) {
             return $profile->toArray($this);
         }
 

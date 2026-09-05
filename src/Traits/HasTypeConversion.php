@@ -104,8 +104,13 @@ trait HasTypeConversion
         ?ReflectionProperty $property = null,
         ?DateTimeProvider $classProvider = null,
     ): mixed {
-        /** @var class-string $typeName */
         $typeName = $type->getName();
+
+        if ($type->isBuiltin()) {
+            return $value;
+        }
+
+        /** @var class-string $typeName */
 
         // Check for Carbon classes first (before general DateTime check)
         if (CarbonSupport::isCarbonClass($typeName)) {
@@ -113,11 +118,9 @@ trait HasTypeConversion
         }
 
         // Check for UUID/ULID classes
-        if ( ! $type->isBuiltin()) {
-            $uuidResult = self::convertToUuidLike($value, $typeName);
-            if ($uuidResult !== $value) {
-                return $uuidResult;
-            }
+        $uuidResult = self::convertToUuidLike($value, $typeName);
+        if ($uuidResult !== $value) {
+            return $uuidResult;
         }
 
         // Check for GraniteObject first

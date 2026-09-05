@@ -108,7 +108,7 @@ trait HasDeserialization
         }
 
         $profile = ReflectionCache::getClassProfile(static::class);
-        if ($profile->canUseFastPath) {
+        if ($profile->canHydrateFastPath) {
             $result = $profile->tryFastPath($args);
             if (null !== $result) {
                 /** @var static $result */
@@ -143,6 +143,14 @@ trait HasDeserialization
         } else {
             // Regular positional arguments - resolve them
             $data = self::resolveArgumentsToData($args);
+        }
+
+        if ($profile->canHydrateFastPath) {
+            $result = $profile->tryFastPath([$data]);
+            if (null !== $result) {
+                /** @var static $result */
+                return $result;
+            }
         }
 
         static::validateData(self::normalizeValidationData($data), static::class);
