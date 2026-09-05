@@ -67,6 +67,16 @@ class InMemoryMappingCache implements MappingCache
     }
 
     /**
+     * Get all cached mapping configurations.
+     *
+     * @return array<string, array>
+     */
+    public function all(): array
+    {
+        return $this->cache;
+    }
+
+    /**
      * Get cache key for a type pair.
      *
      * @param string $sourceType Source type name

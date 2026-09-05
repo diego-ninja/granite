@@ -2,9 +2,8 @@
 
 namespace Ninja\Granite\Mapping\Cache;
 
-use Exception;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
-use ReflectionClass;
+use Throwable;
 
 /**
  * File-based persistent mapping cache.
@@ -26,6 +25,8 @@ class PersistentMappingCache implements MappingCache
      */
     private bool $isDirty = false;
 
+    private bool $shutdownRegistered = false;
+
     /**
      * Constructor.
      *
@@ -37,8 +38,7 @@ class PersistentMappingCache implements MappingCache
         $this->cachePath = $cachePath;
         $this->loadCache();
 
-        // Register shutdown function to save cache automatically
-        register_shutdown_function([$this, 'saveIfDirty']);
+        $this->registerShutdownCallback();
     }
 
     /**
@@ -98,25 +98,44 @@ class PersistentMappingCache implements MappingCache
      */
     public function save(): bool
     {
+        $tmpFile = null;
+
         try {
             $cacheDir = dirname($this->cachePath);
             if ( ! is_dir($cacheDir)) {
-                mkdir($cacheDir, 0755, true);
+                if ( ! @mkdir($cacheDir, 0755, true) && ! is_dir($cacheDir)) {
+                    return false;
+                }
             }
 
-            $tmpFile = $this->cachePath . '.tmp';
-            $result = file_put_contents($tmpFile, serialize($this->extractCacheData()), LOCK_EX);
-
-            if (false !== $result) {
-                rename($tmpFile, $this->cachePath);
-                $this->isDirty = false;
-                return true;
+            $payload = [
+                'version' => 1,
+                'mappings' => $this->extractCacheData(),
+            ];
+            $contents = json_encode($payload, JSON_THROW_ON_ERROR);
+            $tmpFile = @tempnam($cacheDir, basename($this->cachePath) . '.tmp-');
+            if (false === $tmpFile) {
+                return false;
             }
-        } catch (Exception $e) {
-            // Ignore errors, just return false
+
+            if (false === @file_put_contents($tmpFile, $contents, LOCK_EX)) {
+                return false;
+            }
+
+            if ( ! @rename($tmpFile, $this->cachePath)) {
+                return false;
+            }
+
+            $tmpFile = null;
+            $this->isDirty = false;
+            return true;
+        } catch (Throwable) {
+            return false;
+        } finally {
+            if (is_string($tmpFile) && is_file($tmpFile)) {
+                @unlink($tmpFile);
+            }
         }
-
-        return false;
     }
 
     /**
@@ -138,33 +157,32 @@ class PersistentMappingCache implements MappingCache
      */
     private function loadCache(): void
     {
-        if ( ! file_exists($this->cachePath)) {
+        if ( ! is_file($this->cachePath)) {
             return;
         }
 
         try {
-            $cacheData = file_get_contents($this->cachePath);
+            $cacheData = @file_get_contents($this->cachePath);
             if (false === $cacheData) {
+                $this->isDirty = true;
                 return;
             }
 
-            $data = unserialize($cacheData);
-            if ( ! is_array($data)) {
+            $payload = json_decode($cacheData, true, 512, JSON_THROW_ON_ERROR);
+            $mappings = $this->validatePayload($payload);
+            if (null === $mappings) {
+                $this->memoryCache->clear();
+                $this->isDirty = true;
                 return;
             }
 
-            foreach ($data as $key => $config) {
-                if (is_string($key) && is_array($config)) {
-                    $parts = explode('->', $key, 2);
-                    if (2 === count($parts)) {
-                        [$sourceType, $destinationType] = $parts;
-                        $this->memoryCache->put($sourceType, $destinationType, $config);
-                    }
-                }
+            foreach ($mappings as $key => $config) {
+                [$sourceType, $destinationType] = explode('->', $key, 2);
+                $this->memoryCache->put($sourceType, $destinationType, $config);
             }
-        } catch (Exception $e) {
-            // If loading fails, just start with an empty cache
+        } catch (Throwable) {
             $this->memoryCache->clear();
+            $this->isDirty = true;
         }
     }
 
@@ -175,12 +193,65 @@ class PersistentMappingCache implements MappingCache
      */
     private function extractCacheData(): array
     {
-        $reflection = new ReflectionClass($this->memoryCache);
-        $cacheProperty = $reflection->getProperty('cache');
-        $cacheProperty->setAccessible(true);
+        $cacheData = [];
 
-        $cacheData = $cacheProperty->getValue($this->memoryCache);
+        foreach ($this->memoryCache->all() as $key => $config) {
+            if ($this->isPersistableValue($config)) {
+                $cacheData[$key] = $config;
+            }
+        }
 
-        return is_array($cacheData) ? $cacheData : [];
+        return $cacheData;
+    }
+
+    /**
+     * @return array<string, array>|null
+     */
+    private function validatePayload(mixed $payload): ?array
+    {
+        if ( ! is_array($payload) || 1 !== ($payload['version'] ?? null) || ! is_array($payload['mappings'] ?? null)) {
+            return null;
+        }
+
+        $mappings = [];
+        foreach ($payload['mappings'] as $key => $config) {
+            if ( ! is_string($key) || 2 !== count(explode('->', $key, 2)) || ! is_array($config) || ! $this->isPersistableValue($config)) {
+                continue;
+            }
+
+            [$sourceType, $destinationType] = explode('->', $key, 2);
+            if ('' === $sourceType || '' === $destinationType || str_contains($destinationType, '->')) {
+                continue;
+            }
+
+            $mappings[$key] = $config;
+        }
+
+        return $mappings;
+    }
+
+    private function isPersistableValue(mixed $value): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $nestedValue) {
+                if ( ! $this->isPersistableValue($nestedValue)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        return null === $value || is_bool($value) || is_int($value) || is_float($value) || is_string($value);
+    }
+
+    private function registerShutdownCallback(): void
+    {
+        if ($this->shutdownRegistered) {
+            return;
+        }
+
+        register_shutdown_function([$this, 'saveIfDirty']);
+        $this->shutdownRegistered = true;
     }
 }

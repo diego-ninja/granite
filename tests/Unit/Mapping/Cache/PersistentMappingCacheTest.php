@@ -5,6 +5,7 @@ namespace Tests\Unit\Mapping\Cache;
 use Ninja\Granite\Mapping\Cache\PersistentMappingCache;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
 use PHPUnit\Framework\Attributes\CoversClass;
+use stdClass;
 use Tests\Fixtures\DTOs\SimpleDTO;
 use Tests\Fixtures\DTOs\UserDTO;
 use Tests\Helpers\TestCase;
@@ -100,6 +101,18 @@ class PersistentMappingCacheTest extends TestCase
         $this->assertFileExists($this->tempCacheFile);
     }
 
+    public function test_save_writes_versioned_json(): void
+    {
+        $config = ['properties' => ['name' => 'username']];
+        $this->cache->put(SimpleDTO::class, UserDTO::class, $config);
+
+        $this->assertTrue($this->cache->save());
+
+        $payload = json_decode((string) file_get_contents($this->tempCacheFile), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $payload['version']);
+        $this->assertSame($config, $payload['mappings'][SimpleDTO::class . '->' . UserDTO::class]);
+    }
+
     public function test_save_persists_cache_data(): void
     {
         $config = ['properties' => ['name' => 'username']];
@@ -170,6 +183,18 @@ class PersistentMappingCacheTest extends TestCase
         $this->assertFalse($cache->has(SimpleDTO::class, UserDTO::class));
     }
 
+    public function test_load_cache_treats_serialized_object_payload_as_miss_without_warning(): void
+    {
+        file_put_contents(
+            $this->tempCacheFile,
+            serialize([SimpleDTO::class . '->' . UserDTO::class => ['transformer' => new stdClass()]]),
+        );
+
+        $cache = new PersistentMappingCache($this->tempCacheFile);
+
+        $this->assertFalse($cache->has(SimpleDTO::class, UserDTO::class));
+    }
+
     public function test_load_cache_handles_nonexistent_file(): void
     {
         $nonExistentPath = sys_get_temp_dir() . '/nonexistent_cache_' . uniqid() . '.cache';
@@ -211,6 +236,51 @@ class PersistentMappingCacheTest extends TestCase
         $this->assertEquals($config3, $newCache->get('TypeA', 'TypeB'));
     }
 
+    public function test_save_skips_non_persistable_entries(): void
+    {
+        $safeConfig = ['properties' => ['name' => 'username']];
+        $unsafeConfig = ['transformer' => fn(string $value): string => $value];
+
+        $this->cache->put(SimpleDTO::class, UserDTO::class, $safeConfig);
+        $this->cache->put('UnsafeSource', 'UnsafeDestination', $unsafeConfig);
+
+        $this->assertTrue($this->cache->save());
+
+        $newCache = new PersistentMappingCache($this->tempCacheFile);
+        $this->assertSame($safeConfig, $newCache->get(SimpleDTO::class, UserDTO::class));
+        $this->assertNull($newCache->get('UnsafeSource', 'UnsafeDestination'));
+        $this->assertSame($unsafeConfig, $this->cache->get('UnsafeSource', 'UnsafeDestination'));
+    }
+
+    public function test_save_returns_false_when_directory_cannot_be_created(): void
+    {
+        $blockingFile = sys_get_temp_dir() . '/mapping_cache_blocker_' . uniqid();
+        file_put_contents($blockingFile, 'file');
+        $cache = new PersistentMappingCache($blockingFile . '/cache.json');
+        $cache->put(SimpleDTO::class, UserDTO::class, ['safe' => true]);
+
+        try {
+            $this->assertFalse($cache->save());
+        } finally {
+            unlink($blockingFile);
+        }
+    }
+
+    public function test_save_returns_false_and_cleans_temp_file_when_rename_fails(): void
+    {
+        $targetDirectory = sys_get_temp_dir() . '/mapping_cache_target_' . uniqid();
+        mkdir($targetDirectory);
+        $cache = new PersistentMappingCache($targetDirectory);
+        $cache->put(SimpleDTO::class, UserDTO::class, ['safe' => true]);
+
+        try {
+            $this->assertFalse($cache->save());
+            $this->assertSame([], glob(dirname($targetDirectory) . '/' . basename($targetDirectory) . '.tmp-*'));
+        } finally {
+            rmdir($targetDirectory);
+        }
+    }
+
     public function test_clear_immediately_saves_empty_cache(): void
     {
         $config = ['properties' => ['name' => 'username']];
@@ -232,15 +302,17 @@ class PersistentMappingCacheTest extends TestCase
 
     public function test_load_cache_ignores_malformed_keys(): void
     {
-        // Manually create cache file with malformed keys
-        $badData = [
-            'SimpleDTO->UserDTO' => ['valid' => 'mapping'],
-            'MalformedKey' => ['should' => 'be ignored'],
-            'Another->Malformed->Key' => ['also' => 'ignored'],
-            'ValidKey->ValidDest' => ['valid' => 'mapping2'],
+        $payload = [
+            'version' => 1,
+            'mappings' => [
+                'SimpleDTO->UserDTO' => ['valid' => 'mapping'],
+                'MalformedKey' => ['should' => 'be ignored'],
+                'Another->Malformed->Key' => ['also' => 'ignored'],
+                'ValidKey->ValidDest' => ['valid' => 'mapping2'],
+            ],
         ];
 
-        file_put_contents($this->tempCacheFile, serialize($badData));
+        file_put_contents($this->tempCacheFile, json_encode($payload, JSON_THROW_ON_ERROR));
 
         $cache = new PersistentMappingCache($this->tempCacheFile);
 
