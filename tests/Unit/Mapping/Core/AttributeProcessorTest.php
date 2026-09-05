@@ -227,6 +227,7 @@ class AttributeProcessorTest extends TestCase
         $config = $this->processor->processProperty($property);
 
         $this->assertTrue($config['hasCarbonAttributes'] ?? false);
+        $this->assertInstanceOf(CarbonTransformer::class, $config['transformer']);
     }
 
     public function test_process_property_with_carbon_relative_sets_flag(): void
@@ -235,6 +236,7 @@ class AttributeProcessorTest extends TestCase
         $config = $this->processor->processProperty($property);
 
         $this->assertTrue($config['hasCarbonAttributes'] ?? false);
+        $this->assertInstanceOf(CarbonTransformer::class, $config['transformer']);
     }
 
     public function test_build_carbon_transformer_returns_null_without_relevant_attributes(): void

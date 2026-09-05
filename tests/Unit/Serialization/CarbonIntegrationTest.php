@@ -9,9 +9,12 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Ninja\Granite\Config\GraniteConfig;
+use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
+use Ninja\Granite\Serialization\Attributes\CarbonRange;
+use Ninja\Granite\Serialization\Attributes\CarbonRelative;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Validation\Attributes\Carbon\Age;
 use Ninja\Granite\Validation\Attributes\Carbon\Future;
@@ -215,6 +218,35 @@ final class CarbonIntegrationTest extends TestCase
         $this->assertEquals('2023-01-01 12:00:00', $dto->anyDateTime->format('Y-m-d H:i:s'));
     }
 
+    public function testDateTimeProviderAppliesFormatLocaleTimezoneAndSerialization(): void
+    {
+        $dto = ConfiguredDateTimeProviderDTO::from([
+            'anyDateTime' => '31/12/2023 12:00:00',
+        ]);
+
+        $this->assertInstanceOf(Carbon::class, $dto->anyDateTime);
+        $this->assertSame('America/New_York', $dto->anyDateTime->getTimezone()->getName());
+        $this->assertSame('es', $dto->anyDateTime->locale);
+        $this->assertSame('2023-12-31', $dto->array()['anyDateTime']);
+    }
+
+    public function testCarbonRangeAttributeBecomesValidationRuleWithCustomMessage(): void
+    {
+        try {
+            RangeAttributeDTO::from(['date' => '2022-01-01']);
+            $this->fail('Expected a validation exception.');
+        } catch (ValidationException $exception) {
+            $this->assertContains('date is outside the allowed range', $exception->getAllMessages());
+        }
+    }
+
+    public function testCarbonRelativeAttributeUsesBaseDate(): void
+    {
+        $dto = RelativeAttributeDTO::from(['date' => 'tomorrow']);
+
+        $this->assertSame('2024-01-02 00:00:00', $dto->date->format('Y-m-d H:i:s'));
+    }
+
     public function testCarbonAutoConversion(): void
     {
         $config = GraniteConfig::getInstance();
@@ -319,6 +351,34 @@ final readonly class DateTimeProviderDTO extends GraniteDTO
 {
     public function __construct(
         public ?DateTimeInterface $anyDateTime = null,
+    ) {}
+}
+
+#[DateTimeProvider(
+    provider: 'Carbon\\Carbon',
+    timezone: 'America/New_York',
+    locale: 'es',
+    format: 'd/m/Y H:i:s',
+    serializeFormat: 'Y-m-d',
+)]
+final readonly class ConfiguredDateTimeProviderDTO extends GraniteDTO
+{
+    public function __construct(public ?DateTimeInterface $anyDateTime = null) {}
+}
+
+final readonly class RangeAttributeDTO extends GraniteDTO
+{
+    public function __construct(
+        #[CarbonRange(min: '2023-01-01', max: '2023-12-31', message: 'date is outside the allowed range')]
+        public ?Carbon $date = null,
+    ) {}
+}
+
+final readonly class RelativeAttributeDTO extends GraniteDTO
+{
+    public function __construct(
+        #[CarbonRelative(baseDate: '2024-01-01 12:00:00')]
+        public ?Carbon $date = null,
     ) {}
 }
 

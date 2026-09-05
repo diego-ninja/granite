@@ -151,7 +151,10 @@ trait HasSerialization
      */
     private function serializeValue(string $propertyName, mixed $value, ?ReflectionProperty $property = null): mixed
     {
-        $carbonTransformer = self::getCarbonTransformerFromAttributes($property, null);
+        $carbonTransformer = self::getCarbonTransformerFromAttributes(
+            $property,
+            self::getClassDateTimeProvider(static::class),
+        );
         $config = GraniteConfig::getInstance();
         $dateFormatter = static function (DateTimeInterface $date) use ($carbonTransformer, $config): string {
             if (null !== $carbonTransformer) {

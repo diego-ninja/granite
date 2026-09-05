@@ -122,6 +122,19 @@ final class CarbonTransformerTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function testTransformRelativeStringUsesConfiguredBaseDate(): void
+    {
+        $transformer = new CarbonTransformer(
+            timezone: 'UTC',
+            relativeBaseDate: '2024-01-01 12:00:00',
+        );
+
+        $result = $transformer->transform('tomorrow');
+
+        $this->assertInstanceOf(Carbon::class, $result);
+        $this->assertSame('2024-01-02 00:00:00', $result->format('Y-m-d H:i:s'));
+    }
+
     public function testTransformWithRange(): void
     {
         $min = Carbon::parse('2023-01-01');
