@@ -4,6 +4,7 @@ namespace Tests\Unit\Traits;
 
 use Error;
 use InvalidArgumentException;
+use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
@@ -11,6 +12,9 @@ use Ninja\Granite\Traits\HasDeserialization;
 use ReflectionProperty;
 use ReflectionType;
 use Tests\Data\StatusTestEnum;
+use Tests\Fixtures\DTOs\AliasedValidatedDTO;
+use Tests\Fixtures\DTOs\TestBidirectionalKebabDto;
+use Tests\Fixtures\DTOs\TestBidirectionalSnakeDto;
 use Tests\Helpers\TestCase;
 use Tests\Unit\Support\HydrationTestClass;
 
@@ -24,6 +28,55 @@ class HasDeserializationTest extends TestCase
         $this->assertInstanceOf(TestDeserializationClass::class, $result);
         $this->assertEquals('John', $result->name);
         $this->assertEquals(30, $result->age);
+    }
+
+    public function test_required_alias_is_normalized_before_validation(): void
+    {
+        $result = AliasedValidatedDTO::from(['display_name' => 'Ada']);
+
+        $this->assertSame('Ada', $result->displayName);
+    }
+
+    public function test_explicit_null_alias_is_present_for_validation(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        AliasedValidatedDTO::from(['display_name' => null]);
+    }
+
+    public function test_php_name_wins_over_serialized_alias_for_validation_and_hydration(): void
+    {
+        $result = AliasedValidatedDTO::from([
+            'displayName' => 'PHP name',
+            'display_name' => 'serialized name',
+        ]);
+
+        $this->assertSame('PHP name', $result->displayName);
+    }
+
+    public function test_snake_case_convention_is_bidirectional(): void
+    {
+        $result = TestBidirectionalSnakeDto::from([
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'email_address' => 'ada@example.com',
+        ]);
+
+        $this->assertSame('Ada', $result->firstName);
+        $this->assertSame('ada@example.com', $result->emailAddress);
+    }
+
+    public function test_kebab_case_convention_is_bidirectional(): void
+    {
+        $result = TestBidirectionalKebabDto::from([
+            'product-name' => 'Granite',
+            'unit-price' => 10.5,
+            'is-available' => true,
+            'stock-count' => 3,
+        ]);
+
+        $this->assertSame('Granite', $result->productName);
+        $this->assertSame(10.5, $result->unitPrice);
     }
 
     public function test_from_with_json_string(): void

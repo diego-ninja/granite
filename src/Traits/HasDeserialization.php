@@ -142,7 +142,7 @@ trait HasDeserialization
             $data = self::resolveArgumentsToData($args);
         }
 
-        static::validateData($data, static::class);
+        static::validateData(self::normalizeValidationData($data), static::class);
 
         // Check if we need to use constructor due to readonly properties from parent classes
         if (self::hasReadonlyPropertiesFromParentClasses()) {
@@ -201,6 +201,36 @@ trait HasDeserialization
         $namedData = self::buildFromPositionalArgs(array_slice($args, $startIndex));
 
         return array_merge($baseData, $namedData);
+    }
+
+    /**
+     * Copy resolved values to canonical PHP property names for validation.
+     * Extra input keys remain available for cross-field rules.
+     */
+    protected static function normalizeValidationData(array $data): array
+    {
+        $normalized = $data;
+        $metadata = MetadataCache::getMetadata(static::class);
+        $convention = self::getClassConvention(static::class);
+
+        foreach (ReflectionCache::getPublicProperties(static::class) as $property) {
+            $phpName = $property->getName();
+            $serializedName = $metadata->getSerializedName($phpName);
+            $value = self::findValueInData($data, $phpName, $serializedName, $convention);
+            $found = null !== $value
+                || array_key_exists($phpName, $data)
+                || ($phpName !== $serializedName && array_key_exists($serializedName, $data));
+
+            if (in_array(HasNamingConventions::class, class_uses(static::class), true)) {
+                $found = static::hasValueSetInData($data, $phpName, $serializedName, $convention);
+            }
+
+            if ($found) {
+                $normalized[$phpName] = $value;
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -310,7 +340,7 @@ trait HasDeserialization
             unset($data['data']); // Remove the data parameter if it was null/empty
         }
 
-        static::validateData($data, static::class);
+        static::validateData(self::normalizeValidationData($data), static::class);
 
         $instance = self::createEmptyInstance();
         return self::hydrateInstance($instance, $data);

@@ -30,27 +30,35 @@ trait HasNamingConventions
         string $serializedName,
         ?NamingConvention $convention,
     ): mixed {
-        // Strategy 1: Direct PHP name match
+        return self::findValueWithPresenceInData($data, $phpName, $serializedName, $convention)['value'];
+    }
+
+    /**
+     * @return array{found: bool, value: mixed}
+     */
+    protected static function findValueWithPresenceInData(
+        array $data,
+        string $phpName,
+        string $serializedName,
+        ?NamingConvention $convention,
+    ): array {
         if (array_key_exists($phpName, $data)) {
-            return $data[$phpName];
+            return ['found' => true, 'value' => $data[$phpName]];
         }
 
-        // Strategy 2: Configured serialized name match
         if ($phpName !== $serializedName && array_key_exists($serializedName, $data)) {
-            return $data[$serializedName];
+            return ['found' => true, 'value' => $data[$serializedName]];
         }
 
-        // Strategy 3: Convention-based lookup (bidirectional)
         if (null !== $convention) {
-            // Try to find a key that would convert to our PHP property name via the convention
             foreach (array_keys($data) as $key) {
-                if (MetadataCache::conventionMatches($key, $phpName, $convention)) {
-                    return $data[$key];
+                if (is_string($key) && MetadataCache::conventionMatches($key, $phpName, $convention)) {
+                    return ['found' => true, 'value' => $data[$key]];
                 }
             }
         }
 
-        return null;
+        return ['found' => false, 'value' => null];
     }
 
     /**
@@ -62,27 +70,7 @@ trait HasNamingConventions
         string $serializedName,
         ?NamingConvention $convention,
     ): bool {
-        // Strategy 1: Direct PHP name match
-        if (array_key_exists($phpName, $data)) {
-            return true;
-        }
-
-        // Strategy 2: Configured serialized name match
-        if ($phpName !== $serializedName && array_key_exists($serializedName, $data)) {
-            return true;
-        }
-
-        // Strategy 3: Convention-based lookup (bidirectional)
-        if (null !== $convention) {
-            // Try to find a key that would convert to our PHP property name via the convention
-            foreach (array_keys($data) as $key) {
-                if (MetadataCache::conventionMatches($key, $phpName, $convention)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return self::findValueWithPresenceInData($data, $phpName, $serializedName, $convention)['found'];
     }
 
     /**
