@@ -26,6 +26,25 @@ abstract class MappingProfile implements MappingStorage
     abstract protected function configure(): void;
 
     /**
+     * @return list<array{0: string, 1: string}>
+     */
+    public function configuredTypePairs(): array
+    {
+        $pairs = [];
+
+        foreach (array_keys($this->mappings) as $key) {
+            $pair = explode('->', $key, 2);
+            if (2 !== count($pair) || '' === $pair[0] || '' === $pair[1]) {
+                continue;
+            }
+
+            $pairs[] = [$pair[0], $pair[1]];
+        }
+
+        return $pairs;
+    }
+
+    /**
      * Create a mapping from source type to a destination type.
      *
      * @param class-string $sourceType Source type name

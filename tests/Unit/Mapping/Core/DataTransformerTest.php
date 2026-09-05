@@ -4,7 +4,9 @@ namespace Tests\Unit\Mapping\Core;
 
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Core\DataTransformer;
+use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Transformers\CollectionTransformer;
+use stdClass;
 use Tests\Helpers\TestCase;
 
 class DataTransformerTest extends TestCase
@@ -157,6 +159,36 @@ class DataTransformerTest extends TestCase
         $this->assertEquals(['name' => 'John Doe'], $result);
     }
 
+    public function test_transform_handles_invokable_object_transformer(): void
+    {
+        $result = $this->transformer->transform(
+            ['name' => 'john'],
+            [
+                'name' => [
+                    'source' => 'name',
+                    'transformer' => new InvokableTransformer(),
+                ],
+            ],
+        );
+
+        $this->assertEquals(['name' => 'JOHN'], $result);
+    }
+
+    public function test_transform_handles_single_argument_internal_callable(): void
+    {
+        $result = $this->transformer->transform(
+            ['name' => 'john'],
+            [
+                'name' => [
+                    'source' => 'name',
+                    'transformer' => 'strtoupper',
+                ],
+            ],
+        );
+
+        $this->assertEquals(['name' => 'JOHN'], $result);
+    }
+
     public function test_transform_passes_source_data_to_transformer(): void
     {
         $sourceData = ['firstName' => 'John', 'lastName' => 'Doe'];
@@ -170,6 +202,43 @@ class DataTransformerTest extends TestCase
         $result = $this->transformer->transform($sourceData, $mappingConfig);
 
         $this->assertEquals(['fullName' => 'John Doe'], $result);
+    }
+
+    public function test_transform_uses_default_when_condition_is_false(): void
+    {
+        $result = $this->transformer->transform(
+            ['enabled' => false, 'status' => 'source'],
+            [
+                'status' => [
+                    'source' => 'status',
+                    'condition' => fn(array $data): bool => $data['enabled'],
+                    'default' => 'fallback',
+                    'hasDefault' => true,
+                ],
+                'optional' => [
+                    'source' => 'status',
+                    'condition' => fn(array $data): bool => $data['enabled'],
+                ],
+            ],
+        );
+
+        $this->assertSame(['status' => 'fallback'], $result);
+    }
+
+    public function test_transform_rejects_invalid_transformer(): void
+    {
+        $this->expectException(MappingException::class);
+        $this->expectExceptionMessage('Failed to transform property "name"');
+
+        $this->transformer->transform(
+            ['name' => 'John'],
+            [
+                'name' => [
+                    'source' => 'name',
+                    'transformer' => new stdClass(),
+                ],
+            ],
+        );
     }
 
     public function test_transform_injects_mapper_into_collection_transformer(): void
@@ -264,5 +333,13 @@ class DataTransformerTest extends TestCase
         ];
 
         $this->assertEquals($expected, $result);
+    }
+}
+
+final class InvokableTransformer
+{
+    public function __invoke(string $value): string
+    {
+        return strtoupper($value);
     }
 }

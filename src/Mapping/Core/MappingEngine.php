@@ -38,7 +38,7 @@ final class MappingEngine
         try {
             $sourceData = $this->sourceNormalizer->normalize($source);
             $config = $this->configBuilder->getConfiguration($source, $destinationType);
-            $transformedData = $this->dataTransformer->transform($sourceData, $config);
+            $transformedData = $this->dataTransformer->transform($sourceData, $config, $destinationType);
 
             if ( ! class_exists($destinationType)) {
                 $sourceType = is_object($source) ? get_class($source) : 'array';
@@ -63,7 +63,7 @@ final class MappingEngine
         try {
             $sourceData = $this->sourceNormalizer->normalize($source);
             $config = $this->configBuilder->getConfiguration($source, get_class($destination));
-            $transformedData = $this->dataTransformer->transform($sourceData, $config);
+            $transformedData = $this->dataTransformer->transform($sourceData, $config, get_class($destination));
 
             return $this->objectFactory->populate($destination, $transformedData);
 

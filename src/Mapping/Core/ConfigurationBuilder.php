@@ -12,7 +12,6 @@ use Ninja\Granite\Mapping\PropertyMapping;
 use Ninja\Granite\Mapping\Traits\MappingStorageTrait;
 use Ninja\Granite\Mapping\TypeMapping;
 use Ninja\Granite\Support\ReflectionCache;
-use ReflectionClass;
 use ReflectionProperty;
 
 /**
@@ -224,14 +223,7 @@ final class ConfigurationBuilder
      */
     private function buildPropertyConfig(PropertyMapping $mapping, string $propertyName): array
     {
-        return [
-            'source' => $mapping->getSourceProperty() ?? $propertyName,
-            'transformer' => $mapping->getTransformer(),
-            'condition' => $mapping->getCondition(),
-            'default' => $mapping->getDefaultValue(),
-            'hasDefault' => $mapping->hasDefaultValue(),
-            'ignore' => $mapping->isIgnored(),
-        ];
+        return $mapping->toConfig($propertyName);
     }
 
     /**
@@ -287,23 +279,7 @@ final class ConfigurationBuilder
 
     private function warmupProfileCache(MappingProfile $profile): void
     {
-        // Extract mappings from profile and warm up cache
-        $reflection = new ReflectionClass($profile);
-        $mappingsProperty = $reflection->getProperty('mappings');
-        $mappingsProperty->setAccessible(true);
-
-        $mappings = $mappingsProperty->getValue($profile);
-
-        if ( ! is_array($mappings)) {
-            return;
-        }
-
-        foreach ($mappings as $key => $propertyMappings) {
-            if ( ! is_string($key)) {
-                continue;
-            }
-            [$sourceType, $destinationType] = explode('->', $key);
-
+        foreach ($profile->configuredTypePairs() as [$sourceType, $destinationType]) {
             if ( ! $this->cache->has($sourceType, $destinationType)) {
                 $config = $this->buildConfiguration($sourceType, $destinationType);
                 $this->cache->put($sourceType, $destinationType, $config);

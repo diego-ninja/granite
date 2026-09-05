@@ -85,6 +85,16 @@ class ConfigurationBuilderTest extends TestCase
         $this->assertTrue(true);
     }
 
+    public function test_mapping_profile_exposes_configured_type_pairs(): void
+    {
+        $profile = new TestMappingProfile();
+
+        $this->assertSame(
+            [[TestSourceClass::class, TestDestinationClass::class]],
+            $profile->configuredTypePairs(),
+        );
+    }
+
     public function test_warmup_cache_with_non_profile(): void
     {
         $profiles = ['not_a_profile', new TestMappingProfile()];

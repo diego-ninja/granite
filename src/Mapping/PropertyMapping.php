@@ -3,6 +3,7 @@
 namespace Ninja\Granite\Mapping;
 
 use Ninja\Granite\Mapping\Contracts\Transformer;
+use Ninja\Granite\Mapping\Core\TransformerInvoker;
 
 class PropertyMapping
 {
@@ -89,7 +90,7 @@ class PropertyMapping
     }
 
     /**
-     * Transform value with context.
+     * @deprecated Use the DataTransformer runtime through ObjectMapper instead.
      */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
@@ -105,11 +106,7 @@ class PropertyMapping
 
         // Apply transformer if set
         if (null !== $this->transformer) {
-            if (is_callable($this->transformer)) {
-                $value = ($this->transformer)($value, $sourceData);
-            } elseif ($this->transformer instanceof Transformer) {
-                $value = $this->transformer->transform($value, $sourceData);
-            }
+            $value = (new TransformerInvoker())->invoke($this->transformer, $value, $sourceData);
         }
 
         // Use default value if the value is null and default is set
@@ -118,6 +115,21 @@ class PropertyMapping
         }
 
         return $value;
+    }
+
+    /**
+     * @return array{source: string, transformer: mixed, condition: mixed, default: mixed, hasDefault: bool, ignore: bool}
+     */
+    public function toConfig(string $propertyName): array
+    {
+        return [
+            'source' => $this->sourceProperty ?? $propertyName,
+            'transformer' => $this->transformer,
+            'condition' => $this->condition,
+            'default' => $this->defaultValue,
+            'hasDefault' => $this->hasDefaultValue,
+            'ignore' => $this->ignore,
+        ];
     }
 
     public function getSourceProperty(): ?string

@@ -7,9 +7,14 @@ use Ninja\Granite\Transformers\CollectionTransformer;
 
 final readonly class DataTransformer
 {
-    public function __construct(private ?Mapper $mapper = null) {}
+    private TransformerInvoker $invoker;
 
-    public function transform(array $sourceData, array $mappingConfig): array
+    public function __construct(private ?Mapper $mapper = null, ?TransformerInvoker $invoker = null)
+    {
+        $this->invoker = $invoker ?? new TransformerInvoker();
+    }
+
+    public function transform(array $sourceData, array $mappingConfig, string $destinationType = 'unknown'): array
     {
         $result = [];
 
@@ -23,6 +28,10 @@ final readonly class DataTransformer
             }
 
             if ( ! $this->shouldApplyMapping($config, $sourceData)) {
+                if ($config['hasDefault'] ?? false) {
+                    $result[$destinationProperty] = $config['default'];
+                }
+
                 continue;
             }
 
@@ -32,7 +41,7 @@ final readonly class DataTransformer
             }
 
             $sourceValue = $this->getSourceValue($sourceData, $sourceKey);
-            $transformedValue = $this->applyTransformation($sourceValue, $config, $sourceData);
+            $transformedValue = $this->applyTransformation($sourceValue, $config, $sourceData, $destinationProperty, $destinationType);
             $result[$destinationProperty] = $this->applyDefaultValue($transformedValue, $config);
         }
 
@@ -69,8 +78,13 @@ final readonly class DataTransformer
         return $value;
     }
 
-    private function applyTransformation(mixed $value, array $config, array $sourceData): mixed
-    {
+    private function applyTransformation(
+        mixed $value,
+        array $config,
+        array $sourceData,
+        string $propertyName,
+        string $destinationType,
+    ): mixed {
         $transformer = $config['transformer'] ?? null;
 
         if (null === $transformer) {
@@ -81,27 +95,14 @@ final readonly class DataTransformer
             $transformer->setMapper($this->mapper);
         }
 
-        return match (true) {
-            is_callable($transformer) => $transformer($value, $sourceData),
-            is_object($transformer) && method_exists($transformer, 'transform') => $transformer->transform($value, $sourceData),
-            is_array($transformer) && 2 === count($transformer) => $this->invokeArrayCallable($transformer, $value, $sourceData),
-            default => $value,
-        };
-    }
-
-    private function invokeArrayCallable(array $transformer, mixed $value, array $sourceData): mixed
-    {
-        [$class, $method] = $transformer;
-
-        if (is_string($class) && class_exists($class)) {
-            return $class::$method($value, $sourceData);
-        }
-
-        if (is_object($class)) {
-            return $class->{$method}($value, $sourceData);
-        }
-
-        return $value;
+        return $this->invoker->invoke(
+            $transformer,
+            $value,
+            $sourceData,
+            'array',
+            $destinationType,
+            $propertyName,
+        );
     }
 
     private function applyDefaultValue(mixed $value, array $config): mixed

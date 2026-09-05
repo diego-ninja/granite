@@ -464,6 +464,30 @@ class PropertyMappingTest extends TestCase
         $this->assertSame($transformer, $this->mapping->getTransformer());
     }
 
+    public function test_to_config_exposes_mapping_configuration(): void
+    {
+        $condition = fn(array $data): bool => $data['enabled'] ?? false;
+        $transformer = fn($value): string => strtoupper($value);
+
+        $this->mapping
+            ->mapFrom('source')
+            ->using($transformer)
+            ->onlyIf($condition)
+            ->defaultValue('fallback');
+
+        $this->assertSame(
+            [
+                'source' => 'source',
+                'transformer' => $transformer,
+                'condition' => $condition,
+                'default' => 'fallback',
+                'hasDefault' => true,
+                'ignore' => false,
+            ],
+            $this->mapping->toConfig('destination'),
+        );
+    }
+
     public function test_as_collection_sets_collection_transformer(): void
     {
         $result = $this->mapping->asCollection('SimpleDTO');
