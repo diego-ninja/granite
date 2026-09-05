@@ -239,7 +239,7 @@ final class CarbonSupport
         // If timezone conversion is requested and it's a Carbon instance
         if (null !== $timezone && self::isCarbonInstance($carbon)) {
             if ($carbon instanceof Carbon) {
-                $carbon = $carbon->setTimezone($timezone);
+                $carbon = (clone $carbon)->setTimezone($timezone);
             } elseif ($carbon instanceof CarbonImmutable) {
                 $carbon = $carbon->setTimezone($timezone);
             }

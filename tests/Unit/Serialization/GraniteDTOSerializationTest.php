@@ -11,6 +11,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\GraniteDTO;
+use Ninja\Granite\Serialization\SerializationCache;
 use PHPUnit\Framework\Attributes\CoversClass;
 use stdClass;
 use Tests\Fixtures\DTOs\ComplexDTO;
@@ -26,6 +27,18 @@ use Tests\Helpers\TestCase;
  */
 #[CoversClass(GraniteDTO::class)] class GraniteDTOSerializationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        SerializationCache::clear();
+    }
+
+    protected function tearDown(): void
+    {
+        SerializationCache::clear();
+        parent::tearDown();
+    }
+
     public function test_serializes_simple_dto_to_array(): void
     {
         $dto = SerializableDTO::from([
@@ -175,6 +188,59 @@ use Tests\Helpers\TestCase;
         $this->assertSame('John', $decoded['items'][0]['object']['name']);
         $this->assertSame('active', $decoded['items'][1]['status']);
         $this->assertSame('2024-01-01T10:00:00+00:00', $decoded['items'][1]['date']);
+    }
+
+    public function test_mutable_carbon_is_not_cached(): void
+    {
+        $carbon = Carbon::parse('2024-01-01 12:00:00');
+        $dto = new readonly class ($carbon) extends GraniteDTO {
+            public function __construct(public Carbon $createdAt) {}
+        };
+
+        $first = $dto->array();
+        $carbon->addDay();
+        $second = $dto->array();
+
+        $this->assertNotSame($first['createdAt'], $second['createdAt']);
+        $this->assertStringContainsString('2024-01-02T12:00:00', $second['createdAt']);
+        $this->assertNull(SerializationCache::get($dto));
+    }
+
+    public function test_arrays_bypass_serialization_cache(): void
+    {
+        $carbon = Carbon::parse('2024-01-01 12:00:00');
+        $dto = new NestedSerializationDTO(['date' => $carbon]);
+
+        $dto->array();
+        $carbon->addDay();
+
+        $this->assertStringContainsString('2024-01-02T12:00:00', $dto->array()['items']['date']);
+        $this->assertNull(SerializationCache::get($dto));
+    }
+
+    public function test_scalar_dto_uses_serialization_cache(): void
+    {
+        $dto = new PersonDTO('Ada', 37, 'ada@example.com');
+
+        $first = $dto->array();
+        $second = $dto->array();
+
+        $this->assertSame($first, $second);
+        $this->assertSame($first, SerializationCache::get($dto));
+    }
+
+    public function test_nested_immutable_graph_uses_serialization_cache(): void
+    {
+        $dto = new readonly class (new PersonDTO('Ada', 37, 'ada@example.com'), new DateTimeImmutable('2024-01-01T00:00:00+00:00')) extends GraniteDTO {
+            public function __construct(
+                public PersonDTO $person,
+                public DateTimeImmutable $createdAt,
+            ) {}
+        };
+
+        $result = $dto->array();
+
+        $this->assertSame($result, SerializationCache::get($dto));
     }
 
     public function test_unsupported_nested_value_reports_full_property_path(): void

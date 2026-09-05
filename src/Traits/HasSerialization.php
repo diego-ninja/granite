@@ -9,6 +9,7 @@ use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\MetadataCache;
 use Ninja\Granite\Serialization\SerializationCache;
+use Ninja\Granite\Serialization\SerializationCachePolicy;
 use Ninja\Granite\Serialization\ValueSerializer;
 use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Support\ReflectionCache;
@@ -39,13 +40,18 @@ trait HasSerialization
      */
     public function array(): array
     {
-        $cached = SerializationCache::get($this);
-        if (null !== $cached) {
-            return $cached;
+        $cacheable = SerializationCachePolicy::isCacheable($this);
+        if ($cacheable) {
+            $cached = SerializationCache::get($this);
+            if (null !== $cached) {
+                return $cached;
+            }
         }
 
         $result = $this->computeArray();
-        SerializationCache::set($this, $result);
+        if ($cacheable) {
+            SerializationCache::set($this, $result);
+        }
 
         return $result;
     }
@@ -55,9 +61,12 @@ trait HasSerialization
      */
     public function json(): string
     {
-        $cached = SerializationCache::getJson($this);
-        if (null !== $cached) {
-            return $cached;
+        $cacheable = SerializationCachePolicy::isCacheable($this);
+        if ($cacheable) {
+            $cached = SerializationCache::getJson($this);
+            if (null !== $cached) {
+                return $cached;
+            }
         }
 
         $json = json_encode($this->array());
@@ -65,7 +74,9 @@ trait HasSerialization
             throw new RuntimeException('Failed to encode object to JSON');
         }
 
-        SerializationCache::setJson($this, $json);
+        if ($cacheable) {
+            SerializationCache::setJson($this, $json);
+        }
 
         return $json;
     }

@@ -1,7 +1,7 @@
 <?php
 
 // ABOUTME: WeakMap-based cache for serialized array and JSON results.
-// ABOUTME: Auto-cleans via GC since Granite objects are readonly/immutable.
+// ABOUTME: Auto-cleans via GC while allowing explicit resets for deterministic tests.
 
 namespace Ninja\Granite\Serialization;
 
@@ -43,5 +43,11 @@ final class SerializationCache
     {
         self::$jsonCache ??= new WeakMap();
         self::$jsonCache[$instance] = $result;
+    }
+
+    public static function clear(): void
+    {
+        self::$arrayCache = null;
+        self::$jsonCache = null;
     }
 }
