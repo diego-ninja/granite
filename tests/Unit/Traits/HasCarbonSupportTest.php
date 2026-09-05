@@ -22,6 +22,12 @@ class HasCarbonSupportTest extends TestCase
         $this->testClass = new TestClassWithCarbonSupport();
     }
 
+    protected function tearDown(): void
+    {
+        GraniteConfig::reset();
+        parent::tearDown();
+    }
+
     public function test_convert_to_carbon_when_carbon_not_available(): void
     {
         if ( ! CarbonSupport::isAvailable()) {
@@ -126,6 +132,21 @@ class HasCarbonSupportTest extends TestCase
         $this->assertInstanceOf(CarbonTransformer::class, $result);
     }
 
+    public function test_carbon_transformer_metadata_is_cached_until_configuration_changes(): void
+    {
+        $property = new ReflectionProperty(TestClassWithCarbonAttribute::class, 'carbonDate');
+
+        $first = $this->testClass->testGetCarbonTransformerFromAttributes($property);
+        $second = $this->testClass->testGetCarbonTransformerFromAttributes($property);
+
+        $this->assertSame($first, $second);
+
+        GraniteConfig::getInstance()->carbonSerializeTimezone('UTC');
+        $third = $this->testClass->testGetCarbonTransformerFromAttributes($property);
+
+        $this->assertNotSame($first, $third);
+    }
+
     public function test_get_carbon_transformer_from_class_provider(): void
     {
         $property = new ReflectionProperty(TestClassWithCarbonAttribute::class, 'regularDate');
@@ -141,6 +162,14 @@ class HasCarbonSupportTest extends TestCase
         $result = $this->testClass->testGetClassDateTimeProvider(TestClassWithDateTimeProvider::class);
 
         $this->assertInstanceOf(DateTimeProvider::class, $result);
+    }
+
+    public function test_class_datetime_provider_metadata_is_cached(): void
+    {
+        $first = $this->testClass->testGetClassDateTimeProvider(TestClassWithDateTimeProvider::class);
+        $second = $this->testClass->testGetClassDateTimeProvider(TestClassWithDateTimeProvider::class);
+
+        $this->assertSame($first, $second);
     }
 
     public function test_get_class_datetime_provider_without_attribute(): void

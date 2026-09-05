@@ -12,6 +12,12 @@ use ReflectionException;
  */
 class RuleExtractor
 {
+    /** @var array<class-string, array<string, ValidationRule[]>> */
+    private static array $rulesCache = [];
+
+    /** @var array<class-string, GraniteValidator> */
+    private static array $validatorCache = [];
+
     /**
      * Extract validation rules from a class's property attributes.
      *
@@ -21,6 +27,10 @@ class RuleExtractor
      */
     public static function extractRules(string $class): array
     {
+        if (isset(self::$rulesCache[$class])) {
+            return self::$rulesCache[$class];
+        }
+
         $properties = ReflectionCache::getPublicProperties($class);
         $rules = [];
 
@@ -48,6 +58,25 @@ class RuleExtractor
             }
         }
 
+        self::$rulesCache[$class] = $rules;
         return $rules;
+    }
+
+    public static function clearCache(): void
+    {
+        self::$rulesCache = [];
+        self::$validatorCache = [];
+    }
+
+    /** @param class-string $class */
+    public static function attributeValidator(string $class): ?GraniteValidator
+    {
+        $rules = self::extractRules($class);
+        if ([] === $rules) {
+            return null;
+        }
+
+        self::$validatorCache[$class] ??= GraniteValidator::fromArray($rules);
+        return self::$validatorCache[$class];
     }
 }

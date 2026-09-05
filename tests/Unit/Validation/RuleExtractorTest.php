@@ -23,6 +23,18 @@ use Tests\Helpers\TestCase;
 #[CoversClass(RuleExtractor::class)]
 class RuleExtractorTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        RuleExtractor::clearCache();
+    }
+
+    protected function tearDown(): void
+    {
+        RuleExtractor::clearCache();
+        parent::tearDown();
+    }
+
     public function test_extracts_rules_from_class_with_validation_attributes(): void
     {
         $rules = RuleExtractor::extractRules(ValidatedUserVO::class);
@@ -287,22 +299,15 @@ class RuleExtractorTest extends TestCase
 
     public function test_caching_behavior(): void
     {
-        // First extraction
-        $start1 = microtime(true);
         $rules1 = RuleExtractor::extractRules(ValidatedUserVO::class);
-        $time1 = microtime(true) - $start1;
-
-        // Second extraction (should potentially benefit from reflection caching)
-        $start2 = microtime(true);
         $rules2 = RuleExtractor::extractRules(ValidatedUserVO::class);
-        $time2 = microtime(true) - $start2;
 
-        // Results should be the same
-        $this->assertEquals($rules1, $rules2);
+        $this->assertSame($rules1['name'][0], $rules2['name'][0]);
 
-        // Second call might be faster due to reflection caching
-        // (This is not guaranteed but is likely in most cases)
-        $this->assertLessThanOrEqual($time1 * 2, $time2); // Allow some variance
+        RuleExtractor::clearCache();
+        $rules3 = RuleExtractor::extractRules(ValidatedUserVO::class);
+
+        $this->assertNotSame($rules1['name'][0], $rules3['name'][0]);
     }
 
     public function test_returns_validation_rule_instances(): void

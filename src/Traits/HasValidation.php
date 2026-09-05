@@ -106,9 +106,36 @@ trait HasValidation
      */
     protected static function validateData(array $data, string $objectName): void
     {
+        static::validateResolvedData($data, $objectName);
+    }
+
+    /**
+     * @param array<array-key, mixed> $data
+     * @param callable(array<array-key, mixed>): array<array-key, mixed>|null $normalizer
+     * @throws ValidationException
+     * @throws ReflectionException
+     */
+    protected static function validateResolvedData(
+        array $data,
+        string $objectName,
+        ?callable $normalizer = null,
+    ): void {
         // Get rules from both method and attributes
         $methodRules = static::rules();
         $attributeRules = RuleExtractor::extractRules(static::class);
+
+        if (empty($methodRules) && empty($attributeRules)) {
+            return;
+        }
+
+        if (null !== $normalizer) {
+            $data = $normalizer($data);
+        }
+
+        if (empty($methodRules)) {
+            RuleExtractor::attributeValidator(static::class)?->validate($data, $objectName);
+            return;
+        }
 
         // Merge rules, preferring method rules if defined for the same property
         $rules = $attributeRules;
@@ -116,10 +143,7 @@ trait HasValidation
             $rules[$property] = $propertyRules;
         }
 
-        // Only validate if we have rules
-        if ( ! empty($rules)) {
-            GraniteValidator::fromArray($rules)->validate($data, $objectName);
-        }
+        GraniteValidator::fromArray($rules)->validate($data, $objectName);
     }
 
     /**

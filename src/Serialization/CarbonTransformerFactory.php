@@ -9,21 +9,34 @@ declare(strict_types=1);
 
 namespace Ninja\Granite\Serialization;
 
+use Exception;
 use Ninja\Granite\Config\GraniteConfig;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\CarbonRange;
 use Ninja\Granite\Serialization\Attributes\CarbonRelative;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
+use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Transformers\CarbonTransformer;
 use ReflectionAttribute;
 use ReflectionProperty;
 
 final class CarbonTransformerFactory
 {
+    /** @var array<string, CarbonTransformer|null> */
+    private static array $cache = [];
+
+    /** @var array<class-string, DateTimeProvider|null> */
+    private static array $classProviderCache = [];
+
     public static function create(
         ReflectionProperty $property,
         ?DateTimeProvider $classProvider = null,
     ): ?CarbonTransformer {
+        $cacheKey = self::cacheKey($property, $classProvider);
+        if (array_key_exists($cacheKey, self::$cache)) {
+            return self::$cache[$cacheKey];
+        }
+
         $carbonDate = self::attribute($property, CarbonDate::class);
         $carbonRange = self::attribute($property, CarbonRange::class);
         $carbonRelative = self::attribute($property, CarbonRelative::class);
@@ -31,7 +44,8 @@ final class CarbonTransformerFactory
 
         if (null === $carbonDate && null === $carbonRange && null === $carbonRelative
             && (null === $classProvider || ! $classProvider->isCarbonProvider())) {
-            return null;
+            self::$cache[$cacheKey] = null;
+            return self::$cache[$cacheKey];
         }
 
         $format = null !== $carbonDate ? $carbonDate->format : null;
@@ -43,7 +57,7 @@ final class CarbonTransformerFactory
         $serializeFormat = null !== $carbonDate ? $carbonDate->serializeFormat : null;
         $serializeFormat ??= null !== $classProvider ? $classProvider->serializeFormat : $config->getCarbonSerializeFormat();
 
-        return new CarbonTransformer(
+        self::$cache[$cacheKey] = new CarbonTransformer(
             format: $format,
             timezone: $timezone,
             locale: $locale,
@@ -61,6 +75,31 @@ final class CarbonTransformerFactory
             max: null !== $carbonDate ? $carbonDate->max : (null !== $carbonRange ? $carbonRange->max : null),
             relativeBaseDate: null !== $carbonRelative ? $carbonRelative->baseDate : null,
         );
+
+        return self::$cache[$cacheKey];
+    }
+
+    public static function clearCache(): void
+    {
+        self::$cache = [];
+    }
+
+    /** @param class-string $class */
+    public static function classProvider(string $class): ?DateTimeProvider
+    {
+        if (array_key_exists($class, self::$classProviderCache)) {
+            return self::$classProviderCache[$class];
+        }
+
+        try {
+            $reflection = ReflectionCache::getClass($class);
+            $attributes = $reflection->getAttributes(DateTimeProvider::class, ReflectionAttribute::IS_INSTANCEOF);
+            self::$classProviderCache[$class] = [] === $attributes ? null : $attributes[0]->newInstance();
+        } catch (Exception) {
+            self::$classProviderCache[$class] = null;
+        }
+
+        return self::$classProviderCache[$class];
     }
 
     /**
@@ -77,5 +116,12 @@ final class CarbonTransformerFactory
 
         $attribute = $attributes[0]->newInstance();
         return $attribute instanceof $attributeClass ? $attribute : null;
+    }
+
+    private static function cacheKey(ReflectionProperty $property, ?DateTimeProvider $classProvider): string
+    {
+        return $property->getDeclaringClass()->getName()
+            . '::' . $property->getName()
+            . ':' . (null === $classProvider ? '' : serialize($classProvider));
     }
 }

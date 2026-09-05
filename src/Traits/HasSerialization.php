@@ -117,6 +117,7 @@ trait HasSerialization
         $result = [];
         $properties = ReflectionCache::getPublicProperties(static::class);
         $metadata = MetadataCache::getMetadata(static::class);
+        $classDateTimeProvider = self::getClassDateTimeProvider(static::class);
 
         foreach ($properties as $property) {
             $phpName = $property->getName();
@@ -132,7 +133,7 @@ trait HasSerialization
             }
 
             $value = $property->getValue($this);
-            $serializedValue = $this->serializeValue($phpName, $value, $property);
+            $serializedValue = $this->serializeValue($phpName, $value, $property, $classDateTimeProvider);
 
             // Use custom property name if defined (includes convention-applied names)
             $serializedName = $metadata->getSerializedName($phpName);
@@ -149,12 +150,17 @@ trait HasSerialization
      * @return mixed Serialized value
      * @throws SerializationException If the value cannot be serialized
      */
-    private function serializeValue(string $propertyName, mixed $value, ?ReflectionProperty $property = null): mixed
-    {
-        $carbonTransformer = self::getCarbonTransformerFromAttributes(
-            $property,
-            self::getClassDateTimeProvider(static::class),
-        );
+    private function serializeValue(
+        string $propertyName,
+        mixed $value,
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): mixed {
+        if (null === $value || is_scalar($value)) {
+            return $value;
+        }
+
+        $carbonTransformer = self::getCarbonTransformerFromAttributes($property, $classProvider);
         $config = GraniteConfig::getInstance();
         $dateFormatter = static function (DateTimeInterface $date) use ($carbonTransformer, $config): string {
             if (null !== $carbonTransformer) {

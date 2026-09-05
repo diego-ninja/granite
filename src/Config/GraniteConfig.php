@@ -4,6 +4,7 @@
 
 namespace Ninja\Granite\Config;
 
+use Ninja\Granite\Serialization\CarbonTransformerFactory;
 use Ninja\Granite\Serialization\SerializationCache;
 use Ninja\Granite\Support\CarbonSupport;
 
@@ -85,7 +86,7 @@ final class GraniteConfig
     public static function reset(): void
     {
         self::$instance = null;
-        SerializationCache::clear();
+        self::invalidateCaches();
     }
 
     // =============================================================================
@@ -425,6 +426,7 @@ final class GraniteConfig
 
     private static function invalidateCaches(): void
     {
+        CarbonTransformerFactory::clearCache();
         SerializationCache::clear();
     }
 }

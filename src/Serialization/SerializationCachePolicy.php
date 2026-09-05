@@ -12,9 +12,8 @@ namespace Ninja\Granite\Serialization;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Ninja\Granite\Contracts\GraniteObject;
-use ReflectionClass;
+use Ninja\Granite\Support\ReflectionCache;
 use ReflectionNamedType;
-use ReflectionProperty;
 use ReflectionType;
 use ReflectionUnionType;
 use UnitEnum;
@@ -47,8 +46,7 @@ final class SerializationCachePolicy
         }
         $this->visited[$objectId] = true;
 
-        $reflection = new ReflectionClass($instance);
-        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+        foreach (ReflectionCache::getPublicProperties($instance::class) as $property) {
             if ($this->declaresUnsupportedType($property->getType())) {
                 return false;
             }

@@ -153,7 +153,11 @@ trait HasDeserialization
             }
         }
 
-        static::validateData(self::normalizeValidationData($data), static::class);
+        static::validateResolvedData(
+            $data,
+            static::class,
+            static fn(array $validationData): array => self::normalizeValidationData($validationData),
+        );
 
         // Check if we need to use constructor due to readonly properties from parent classes
         if (self::hasReadonlyPropertiesFromParentClasses()) {
@@ -360,7 +364,11 @@ trait HasDeserialization
             unset($data['data']); // Remove the data parameter if it was null/empty
         }
 
-        static::validateData(self::normalizeValidationData($data), static::class);
+        static::validateResolvedData(
+            $data,
+            static::class,
+            static fn(array $validationData): array => self::normalizeValidationData($validationData),
+        );
 
         $instance = self::createEmptyInstance();
         return self::hydrateInstance($instance, $data);

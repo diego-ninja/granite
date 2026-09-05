@@ -12,9 +12,7 @@ use Ninja\Granite\Config\GraniteConfig;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\CarbonTransformerFactory;
 use Ninja\Granite\Support\CarbonSupport;
-use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Transformers\CarbonTransformer;
-use ReflectionAttribute;
 use ReflectionProperty;
 
 /**
@@ -126,18 +124,7 @@ trait HasCarbonSupport
      */
     protected static function getClassDateTimeProvider(string $class): ?DateTimeProvider
     {
-        try {
-            /** @var class-string $class */
-            $reflection = ReflectionCache::getClass($class);
-            $providerAttrs = $reflection->getAttributes(DateTimeProvider::class, ReflectionAttribute::IS_INSTANCEOF);
-
-            if (empty($providerAttrs)) {
-                return null;
-            }
-
-            return $providerAttrs[0]->newInstance();
-        } catch (Exception $e) {
-            return null;
-        }
+        /** @var class-string $class */
+        return CarbonTransformerFactory::classProvider($class);
     }
 }
