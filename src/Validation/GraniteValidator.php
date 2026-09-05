@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteValidator as part of validation rule definition and execution.
+// ABOUTME: Owns the GraniteValidator boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation;
 

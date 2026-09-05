@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ReflectionCache as part of shared reflection, comparison and date support.
+// ABOUTME: Owns the ReflectionCache boundary within shared reflection, comparison and date support.
 
 namespace Ninja\Granite\Support;
 

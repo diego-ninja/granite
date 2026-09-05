@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HasNamingConventions as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasNamingConventions boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 

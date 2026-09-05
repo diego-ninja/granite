@@ -5,7 +5,7 @@
     "array_indentation": true,
     "array_syntax": true,
     "blank_line_after_namespace": true,
-    "blank_line_after_opening_tag": true,
+    "blank_line_after_opening_tag": false,
     "combine_consecutive_issets": true,
     "combine_consecutive_unsets": true,
     "concat_space": {
@@ -78,4 +78,3 @@
       "sort_algorithm": "none"
     }
   }}
-

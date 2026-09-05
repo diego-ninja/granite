@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ConfigurationBuilder as part of the object mapping pipeline.
+// ABOUTME: Owns the ConfigurationBuilder boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Core;
 

@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ValueComparator as part of shared reflection, comparison and date support.
+// ABOUTME: Owns the ValueComparator boundary within shared reflection, comparison and date support.
 
 // ABOUTME: Compares Granite values using the same semantics across all execution paths.
 // ABOUTME: Handles nested objects, temporal precision, arrays, enums, scalars, and fallback objects.

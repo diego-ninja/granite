@@ -42,7 +42,7 @@ class PebbleTest extends TestCase
 
     public function test_can_create_from_object_with_public_properties(): void
     {
-        $obj = new class () {
+        $obj = new class {
             public string $name = 'Alice';
             public int $age = 28;
             public string $role = 'Developer';
@@ -57,7 +57,7 @@ class PebbleTest extends TestCase
 
     public function test_can_create_from_object_with_toarray_method(): void
     {
-        $obj = new class () {
+        $obj = new class {
             public function toArray(): array
             {
                 return [
@@ -77,7 +77,7 @@ class PebbleTest extends TestCase
 
     public function test_can_create_from_json_serializable_object(): void
     {
-        $obj = new class () implements JsonSerializable {
+        $obj = new class implements JsonSerializable {
             public function jsonSerialize(): array
             {
                 return [
@@ -97,7 +97,7 @@ class PebbleTest extends TestCase
 
     public function test_extracts_getters_from_object(): void
     {
-        $obj = new class () {
+        $obj = new class {
             public string $name = 'Charlie';
 
             public function getEmail(): string
@@ -126,7 +126,7 @@ class PebbleTest extends TestCase
 
     public function test_public_properties_take_precedence_over_getters(): void
     {
-        $obj = new class () {
+        $obj = new class {
             public string $name = 'Direct Property';
 
             public function getName(): string
@@ -423,7 +423,7 @@ class PebbleTest extends TestCase
 
     public function test_skips_getters_requiring_parameters(): void
     {
-        $obj = new class () {
+        $obj = new class {
             public function getValue(string $key): string
             {
                 return "value-{$key}";
@@ -444,7 +444,7 @@ class PebbleTest extends TestCase
 
     public function test_only_extracts_public_getters(): void
     {
-        $obj = new class () {
+        $obj = new class {
             protected function getProtected(): string
             {
                 return 'protected';

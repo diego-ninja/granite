@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteVO as part of the Granite runtime.
+// ABOUTME: Owns the GraniteVO boundary within the Granite runtime.
 
 namespace Ninja\Granite;
 

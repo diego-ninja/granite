@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines DateTimeTransformer as part of runtime value transformations.
+// ABOUTME: Owns the DateTimeTransformer boundary within runtime value transformations.
 
 namespace Ninja\Granite\Transformers;
 

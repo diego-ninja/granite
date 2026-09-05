@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines AttributeProcessor as part of the object mapping pipeline.
+// ABOUTME: Owns the AttributeProcessor boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Core;
 

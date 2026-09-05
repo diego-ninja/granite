@@ -59,6 +59,7 @@
         "test:support": "phpunit --testsuite=Support",
         "test:exceptions": "phpunit --testsuite=Exceptions",
         "analyse": "phpstan analyse --memory-limit=512M",
+        "check:aboutme": "php tools/check-aboutme.php",
         "cs:check": "pint --test src tests",
         "cs:fix": "pint src tests"
     },

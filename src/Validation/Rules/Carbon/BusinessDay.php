@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines BusinessDay as part of validation rule definition and execution.
+// ABOUTME: Owns the BusinessDay boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules\Carbon;
 

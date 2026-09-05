@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines SerializationCache as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the SerializationCache boundary between metadata and serialized values.
 
 // ABOUTME: WeakMap-based cache for serialized array and JSON results.
 // ABOUTME: Auto-cleans via GC while allowing explicit resets for deterministic tests.

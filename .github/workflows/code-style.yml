@@ -34,4 +34,6 @@ jobs:
         run: composer update --prefer-stable --prefer-dist --no-interaction
 
       - name: Check code style
-        run: composer run cs:check
+        run: |
+          composer run check:aboutme
+          composer run cs:check

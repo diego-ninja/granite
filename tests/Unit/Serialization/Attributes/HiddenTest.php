@@ -59,7 +59,7 @@ use Tests\Helpers\TestCase;
 
     public function test_can_be_used_in_reflection(): void
     {
-        $testClass = new readonly class () {
+        $testClass = new readonly class {
             #[Hidden]
             public string $hiddenProperty;
 

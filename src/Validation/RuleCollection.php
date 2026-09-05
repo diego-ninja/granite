@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines RuleCollection as part of validation rule definition and execution.
+// ABOUTME: Owns the RuleCollection boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation;
 

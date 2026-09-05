@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines EnumType as part of validation rule definition and execution.
+// ABOUTME: Owns the EnumType boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 

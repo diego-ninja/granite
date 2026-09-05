@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Metadata as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the Metadata boundary between metadata and serialized values.
 
 namespace Ninja\Granite\Serialization;
 

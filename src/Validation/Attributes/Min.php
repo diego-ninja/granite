@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Min as part of validation rule definition and execution.
+// ABOUTME: Owns the Min boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Attributes;
 

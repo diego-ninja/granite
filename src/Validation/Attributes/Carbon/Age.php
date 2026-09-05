@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Age as part of validation rule definition and execution.
+// ABOUTME: Owns the Age boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Attributes\Carbon;
 

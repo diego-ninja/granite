@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines PersistentMappingCache as part of the object mapping pipeline.
+// ABOUTME: Owns the PersistentMappingCache boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Cache;
 

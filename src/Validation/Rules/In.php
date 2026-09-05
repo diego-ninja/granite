@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines In as part of validation rule definition and execution.
+// ABOUTME: Owns the In boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 

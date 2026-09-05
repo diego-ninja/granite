@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HasDeserialization as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasDeserialization boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 

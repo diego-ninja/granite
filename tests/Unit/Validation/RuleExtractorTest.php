@@ -131,7 +131,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_class_without_attributes(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             public string $plainProperty;
             public int $anotherProperty;
         };
@@ -144,7 +144,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_class_with_mixed_attributes(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[\Ninja\Granite\Validation\Attributes\StringType]
             public string $validatedProperty;
@@ -168,7 +168,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_properties_with_non_validation_attributes(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[SerializedName('custom_name')]
             public string $mixedAttributesProperty;
@@ -187,7 +187,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_only_from_attributes_with_as_rule_method(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             public string $validAttribute;
 
@@ -203,7 +203,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_handles_attributes_that_return_non_validation_rules(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[TestAttributeWithWrongReturnType]
             public string $property;
@@ -218,7 +218,7 @@ class RuleExtractorTest extends TestCase
     public function test_extracts_rules_from_private_and_protected_properties(): void
     {
         // RuleExtractor should only work with public properties based on ReflectionCache usage
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             public string $publicProperty;
 
@@ -322,7 +322,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_preserves_rule_order(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[\Ninja\Granite\Validation\Attributes\StringType]
             #[\Ninja\Granite\Validation\Attributes\Min(5)]

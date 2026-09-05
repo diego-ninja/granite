@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ClassProfile as part of shared reflection, comparison and date support.
+// ABOUTME: Owns the ClassProfile boundary within shared reflection, comparison and date support.
 
 // ABOUTME: Pre-computed class metadata for fast-path object creation.
 // ABOUTME: Detects simple DTOs (primitive or Granite types, no attributes) to bypass the hydration pipeline.

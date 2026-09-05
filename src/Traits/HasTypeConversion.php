@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HasTypeConversion as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasTypeConversion boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 

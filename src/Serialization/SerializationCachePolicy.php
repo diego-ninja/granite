@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines SerializationCachePolicy as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the SerializationCachePolicy boundary between metadata and serialized values.
 
 // ABOUTME: Determines whether a Granite object graph is safe to cache.
 // ABOUTME: Rejects mutable containers and temporal values conservatively.

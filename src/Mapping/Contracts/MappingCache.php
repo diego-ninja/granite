@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines MappingCache as part of the object mapping pipeline.
+// ABOUTME: Owns the MappingCache boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Contracts;
 

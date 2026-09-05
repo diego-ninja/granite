@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines RuleExtractor as part of validation rule definition and execution.
+// ABOUTME: Owns the RuleExtractor boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation;
 

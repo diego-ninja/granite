@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines BidirectionalTypeMapping as part of the object mapping pipeline.
+// ABOUTME: Owns the BidirectionalTypeMapping boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping;
 

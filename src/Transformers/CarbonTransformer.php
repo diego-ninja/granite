@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines CarbonTransformer as part of runtime value transformations.
+// ABOUTME: Owns the CarbonTransformer boundary within runtime value transformations.
 
 namespace Ninja\Granite\Transformers;
 

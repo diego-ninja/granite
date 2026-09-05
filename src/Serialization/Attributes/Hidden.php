@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Hidden as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the Hidden boundary between metadata and serialized values.
 
 namespace Ninja\Granite\Serialization\Attributes;
 

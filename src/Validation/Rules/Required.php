@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Required as part of validation rule definition and execution.
+// ABOUTME: Owns the Required boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 

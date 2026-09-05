@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HasComparison as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasComparison boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 

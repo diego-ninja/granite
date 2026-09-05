@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Pebble as part of the Granite runtime.
+// ABOUTME: Owns the Pebble boundary within the Granite runtime.
 
 namespace Ninja\Granite;
 

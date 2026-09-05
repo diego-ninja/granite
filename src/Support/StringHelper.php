@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines StringHelper as part of shared reflection, comparison and date support.
+// ABOUTME: Owns the StringHelper boundary within shared reflection, comparison and date support.
 
 namespace Ninja\Granite\Support;
 

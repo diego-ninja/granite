@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines MapDefault as part of the object mapping pipeline.
+// ABOUTME: Owns the MapDefault boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Attributes;
 

@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ConventionRegistry as part of the object mapping pipeline.
+// ABOUTME: Owns the ConventionRegistry boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Conventions;
 

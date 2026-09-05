@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HasValidation as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasValidation boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 

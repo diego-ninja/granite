@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines CollectionTransformer as part of runtime value transformations.
+// ABOUTME: Owns the CollectionTransformer boundary within runtime value transformations.
 
 namespace Ninja\Granite\Transformers;
 

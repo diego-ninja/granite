@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines CarbonTransformerFactory as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the CarbonTransformerFactory boundary between metadata and serialized values.
 
 // ABOUTME: Combines Carbon property, class, and global configuration.
 // ABOUTME: Produces one transformer with deterministic precedence rules.

@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ConventionMapper as part of the object mapping pipeline.
+// ABOUTME: Owns the ConventionMapper boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping;
 

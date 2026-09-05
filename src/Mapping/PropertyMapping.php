@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines PropertyMapping as part of the object mapping pipeline.
+// ABOUTME: Owns the PropertyMapping boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping;
 

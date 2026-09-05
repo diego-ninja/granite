@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines SourceNormalizer as part of the object mapping pipeline.
+// ABOUTME: Owns the SourceNormalizer boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Core;
 

@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines CarbonRelative as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the CarbonRelative boundary between metadata and serialized values.
 
 namespace Ninja\Granite\Serialization\Attributes;
 

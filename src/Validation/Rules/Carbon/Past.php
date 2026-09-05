@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Past as part of validation rule definition and execution.
+// ABOUTME: Owns the Past boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules\Carbon;
 

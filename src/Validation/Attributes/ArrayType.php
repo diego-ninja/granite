@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ArrayType as part of validation rule definition and execution.
+// ABOUTME: Owns the ArrayType boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Attributes;
 
