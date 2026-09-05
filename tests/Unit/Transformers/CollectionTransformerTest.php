@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Transformers;
 
+use InvalidArgumentException;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Transformers\CollectionTransformer;
@@ -62,10 +63,12 @@ class CollectionTransformerTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function test_transform_non_array_returns_as_is(): void
+    public function test_transform_non_array_throws_invalid_argument_exception(): void
     {
-        $result = $this->transformer->transform('not an array');
-        $this->assertEquals('not an array', $result);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Collection value must be an array or null');
+
+        $this->transformer->transform('not an array');
     }
 
     public function test_transform_empty_array(): void
@@ -362,7 +365,7 @@ class CollectionTransformerTest extends TestCase
         $result = $transformer->transform($input);
 
         $this->assertCount(1, $result);
-        $this->assertEquals('MAPPED: Unknown', $result[0]->name);
+        $this->assertSame([], $result[0]);
     }
 
     public function test_constructor_with_all_parameters(): void

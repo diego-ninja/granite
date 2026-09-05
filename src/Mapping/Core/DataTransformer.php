@@ -2,8 +2,13 @@
 
 namespace Ninja\Granite\Mapping\Core;
 
+use Ninja\Granite\Mapping\Contracts\Mapper;
+use Ninja\Granite\Transformers\CollectionTransformer;
+
 final readonly class DataTransformer
 {
+    public function __construct(private ?Mapper $mapper = null) {}
+
     public function transform(array $sourceData, array $mappingConfig): array
     {
         $result = [];
@@ -70,6 +75,10 @@ final readonly class DataTransformer
 
         if (null === $transformer) {
             return $value;
+        }
+
+        if ($transformer instanceof CollectionTransformer && null !== $this->mapper) {
+            $transformer->setMapper($this->mapper);
         }
 
         return match (true) {

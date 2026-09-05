@@ -2,6 +2,7 @@
 
 namespace Ninja\Granite\Transformers;
 
+use InvalidArgumentException;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use RuntimeException;
@@ -39,7 +40,7 @@ final class CollectionTransformer implements Transformer
         }
 
         if ( ! is_array($value)) {
-            return $value; // Return as is if not an array
+            throw new InvalidArgumentException('Collection value must be an array or null');
         }
 
         $result = [];
@@ -111,9 +112,8 @@ final class CollectionTransformer implements Transformer
      */
     private function isAssociativeArray(array $array): bool
     {
-        // An empty array is considered associative for our purposes
-        if (empty($array)) {
-            return true;
+        if ([] === $array) {
+            return false;
         }
 
         // Check if array keys are sequential integers starting from 0

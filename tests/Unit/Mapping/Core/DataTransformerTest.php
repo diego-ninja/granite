@@ -2,7 +2,9 @@
 
 namespace Tests\Unit\Mapping\Core;
 
+use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Core\DataTransformer;
+use Ninja\Granite\Transformers\CollectionTransformer;
 use Tests\Helpers\TestCase;
 
 class DataTransformerTest extends TestCase
@@ -168,6 +170,27 @@ class DataTransformerTest extends TestCase
         $result = $this->transformer->transform($sourceData, $mappingConfig);
 
         $this->assertEquals(['fullName' => 'John Doe'], $result);
+    }
+
+    public function test_transform_injects_mapper_into_collection_transformer(): void
+    {
+        $mapper = $this->createMock(Mapper::class);
+        $mapper->method('map')->willReturn((object) ['name' => 'John']);
+        $transformer = new DataTransformer($mapper);
+        $collectionTransformer = new CollectionTransformer('stdClass');
+
+        $result = $transformer->transform(
+            ['members' => [['name' => 'John']]],
+            [
+                'members' => [
+                    'source' => 'members',
+                    'transformer' => $collectionTransformer,
+                ],
+            ],
+        );
+
+        $this->assertCount(1, $result['members']);
+        $this->assertSame('John', $result['members'][0]->name);
     }
 
     public function test_transform_skips_invalid_config(): void

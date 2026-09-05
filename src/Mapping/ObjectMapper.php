@@ -45,7 +45,7 @@ final class ObjectMapper implements Mapper, MappingStorage
             $config->conventionThreshold,
             $config->conventions,
         );
-        $this->engine = new MappingEngine($this->configBuilder);
+        $this->engine = new MappingEngine($this->configBuilder, $this);
 
         $this->registerProfiles($config->profiles);
 

@@ -4,6 +4,7 @@ namespace Ninja\Granite\Mapping\Core;
 
 use Exception;
 use Ninja\Granite\Exceptions\GraniteException;
+use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 
 /**
@@ -17,11 +18,11 @@ final class MappingEngine
     private ObjectFactory $objectFactory;
     private ConfigurationBuilder $configBuilder;
 
-    public function __construct(ConfigurationBuilder $configBuilder)
+    public function __construct(ConfigurationBuilder $configBuilder, Mapper $mapper)
     {
         $this->configBuilder = $configBuilder;
         $this->sourceNormalizer = new SourceNormalizer();
-        $this->dataTransformer = new DataTransformer();
+        $this->dataTransformer = new DataTransformer($mapper);
         $this->objectFactory = new ObjectFactory();
     }
 
