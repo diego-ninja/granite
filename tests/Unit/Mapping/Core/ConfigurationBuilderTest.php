@@ -224,6 +224,47 @@ class ConfigurationBuilderTest extends TestCase
         // Should return empty array
         $this->assertEquals([], $config);
     }
+
+    public function test_add_property_mapping_invalidates_configuration_cache(): void
+    {
+        $sourceType = TestSourceClass::class;
+        $destinationType = TestDestinationClass::class;
+
+        $this->builder->getConfiguration(new TestSourceClass(), $destinationType);
+        $this->assertTrue($this->cache->has($sourceType, $destinationType));
+
+        $this->builder->addPropertyMapping(
+            $sourceType,
+            $destinationType,
+            'name',
+            (new PropertyMapping())->mapFrom('age'),
+        );
+
+        $config = $this->builder->getConfiguration(new TestSourceClass(), $destinationType);
+
+        $this->assertSame('age', $config['name']['source']);
+    }
+
+    public function test_configuration_mutations_clear_mapping_and_convention_caches(): void
+    {
+        $builder = new ConfigurationBuilder($this->cache, true);
+        $source = new TestSourceClass();
+        $destination = TestDestinationClass::class;
+
+        $builder->getConfiguration($source, $destination);
+        $this->assertTrue($this->cache->has(TestSourceClass::class, $destination));
+
+        $builder->setConventionThreshold(0.9);
+        $this->assertFalse($this->cache->has(TestSourceClass::class, $destination));
+
+        $builder->getConfiguration($source, $destination);
+        $builder->registerConvention(new TestNamingConvention());
+        $this->assertFalse($this->cache->has(TestSourceClass::class, $destination));
+
+        $builder->getConfiguration($source, $destination);
+        $builder->enableConventions(false);
+        $this->assertFalse($this->cache->has(TestSourceClass::class, $destination));
+    }
 }
 
 class TestSourceClass

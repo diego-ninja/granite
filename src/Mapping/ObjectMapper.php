@@ -223,7 +223,6 @@ final class ObjectMapper implements Mapper, MappingStorage
 
     public function clearCache(): self
     {
-        $this->cache->clear();
         $this->configBuilder->clearCache();
         return $this;
     }

@@ -100,6 +100,18 @@ final class ConfigurationBuilder
     public function addProfile(MappingProfile $profile): void
     {
         $this->profiles[] = $profile;
+        $this->invalidateConfigurationCaches();
+    }
+
+    public function addPropertyMapping(
+        string $sourceType,
+        string $destinationType,
+        string $property,
+        PropertyMapping $mapping,
+    ): void {
+        $key = $sourceType . '->' . $destinationType;
+        $this->mappings[$key][$property] = $mapping;
+        $this->invalidateConfigurationCaches();
     }
 
     public function warmupCache(array $profiles): void
@@ -118,16 +130,19 @@ final class ConfigurationBuilder
     public function enableConventions(bool $enabled): void
     {
         $this->useConventions = $enabled;
+        $this->invalidateConfigurationCaches();
     }
 
     public function setConventionThreshold(float $threshold): void
     {
         $this->conventionMapper->setConfidenceThreshold($threshold);
+        $this->invalidateConfigurationCaches();
     }
 
     public function registerConvention(NamingConvention $convention): void
     {
         $this->conventionMapper->registerConvention($convention);
+        $this->invalidateConfigurationCaches();
     }
 
     // ==============
@@ -136,6 +151,13 @@ final class ConfigurationBuilder
 
     public function clearCache(): void
     {
+        $this->cache->clear();
+        $this->conventionMapper->clearMappingsCache();
+    }
+
+    private function invalidateConfigurationCaches(): void
+    {
+        $this->cache->clear();
         $this->conventionMapper->clearMappingsCache();
     }
 
