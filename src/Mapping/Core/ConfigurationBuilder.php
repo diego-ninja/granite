@@ -24,7 +24,7 @@ final class ConfigurationBuilder
     use MappingStorageTrait;
 
     private MappingCache $cache;
-    private ?ConventionMapper $conventionMapper;
+    private ConventionMapper $conventionMapper;
     private array $profiles = [];
     private bool $useConventions;
 
@@ -32,12 +32,16 @@ final class ConfigurationBuilder
         MappingCache $cache,
         bool $useConventions = false,
         float $conventionThreshold = 0.8,
+        array $conventions = [],
     ) {
         $this->cache = $cache;
         $this->useConventions = $useConventions;
-        $this->conventionMapper = $useConventions
-            ? new ConventionMapper(null, $conventionThreshold)
-            : null;
+        $this->conventionMapper = new ConventionMapper(null, $conventionThreshold);
+        foreach ($conventions as $convention) {
+            if ($convention instanceof NamingConvention) {
+                $this->conventionMapper->registerConvention($convention);
+            }
+        }
     }
 
     /**
@@ -114,20 +118,16 @@ final class ConfigurationBuilder
     public function enableConventions(bool $enabled): void
     {
         $this->useConventions = $enabled;
-
-        if ($enabled && null === $this->conventionMapper) {
-            $this->conventionMapper = new ConventionMapper();
-        }
     }
 
     public function setConventionThreshold(float $threshold): void
     {
-        $this->conventionMapper?->setConfidenceThreshold($threshold);
+        $this->conventionMapper->setConfidenceThreshold($threshold);
     }
 
     public function registerConvention(NamingConvention $convention): void
     {
-        $this->conventionMapper?->registerConvention($convention);
+        $this->conventionMapper->registerConvention($convention);
     }
 
     // ==============
@@ -136,7 +136,7 @@ final class ConfigurationBuilder
 
     public function clearCache(): void
     {
-        $this->conventionMapper?->clearMappingsCache();
+        $this->conventionMapper->clearMappingsCache();
     }
 
     /**
@@ -168,7 +168,7 @@ final class ConfigurationBuilder
         }
 
         // Apply convention-based mapping if enabled
-        if ($this->useConventions && null !== $this->conventionMapper) {
+        if ($this->useConventions) {
             $config = $this->applyConventionMappings($sourceType, $destinationType, $config);
         }
 
@@ -226,7 +226,7 @@ final class ConfigurationBuilder
      */
     private function applyConventionMappings(string $sourceType, string $destinationType, array $config): array
     {
-        if ('array' === $sourceType || ! class_exists($sourceType) || ! class_exists($destinationType) || null === $this->conventionMapper) {
+        if ('array' === $sourceType || ! class_exists($sourceType) || ! class_exists($destinationType)) {
             return $config;
         }
 

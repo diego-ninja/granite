@@ -2,6 +2,7 @@
 
 namespace Ninja\Granite\Mapping;
 
+use InvalidArgumentException;
 use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Exceptions\ReflectionException;
@@ -35,12 +36,14 @@ final class ObjectMapper implements Mapper, MappingStorage
     public function __construct(?MapperConfig $config = null)
     {
         $config ??= MapperConfig::default();
+        $config->validate();
 
         $this->cache = CacheFactory::create($config->cacheType);
         $this->configBuilder = new ConfigurationBuilder(
             $this->cache,
             $config->useConventions,
             $config->conventionThreshold,
+            $config->conventions,
         );
         $this->engine = new MappingEngine($this->configBuilder);
 
@@ -78,9 +81,13 @@ final class ObjectMapper implements Mapper, MappingStorage
     public static function configure(callable $configurator): void
     {
         $config = MapperConfig::default();
-        $configurator($config);
+        $configured = $configurator($config);
 
-        self::$globalInstance = new self($config);
+        if ( ! $configured instanceof MapperConfig) {
+            throw new InvalidArgumentException('ObjectMapper::configure() must return a MapperConfig instance');
+        }
+
+        self::$globalInstance = new self($configured);
         self::$isConfigured = true;
     }
 

@@ -153,13 +153,16 @@ class MapperConfigTest extends TestCase
         $this->assertEquals(0.95, $config->conventionThreshold);
     }
 
-    public function test_with_convention_threshold_clamps_to_range(): void
+    public function test_with_convention_threshold_preserves_invalid_value_for_validation(): void
     {
         $config1 = MapperConfig::create()->withConventionThreshold(1.5);
         $config2 = MapperConfig::create()->withConventionThreshold(-0.5);
 
-        $this->assertEquals(1.0, $config1->conventionThreshold);
-        $this->assertEquals(0.0, $config2->conventionThreshold);
+        $this->assertEquals(1.5, $config1->conventionThreshold);
+        $this->assertEquals(-0.5, $config2->conventionThreshold);
+
+        $this->expectException(InvalidArgumentException::class);
+        $config1->validate();
     }
 
     public function test_add_convention(): void

@@ -138,7 +138,7 @@ final readonly class MapperConfig
             $this->cacheType,
             $this->warmupCache,
             $this->useConventions,
-            max(0.0, min(1.0, $threshold)),
+            $threshold,
             $this->profiles,
             $this->conventions,
         );
