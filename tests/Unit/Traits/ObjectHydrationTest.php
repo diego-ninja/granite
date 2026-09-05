@@ -2,13 +2,17 @@
 
 namespace Tests\Unit\Traits;
 
+use DateTimeInterface;
 use JsonSerializable;
+use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Granite;
 use ReflectionMethod;
 use ReflectionProperty;
 use ReflectionType;
 use RuntimeException;
 use stdClass;
+use Tests\Fixtures\DTOs\InheritedReadonlyDTO;
+use Tests\Fixtures\Enums\UserStatus;
 use Tests\Helpers\TestCase;
 
 /**
@@ -20,6 +24,32 @@ use Tests\Helpers\TestCase;
  */
 class ObjectHydrationTest extends TestCase
 {
+    public function test_inherited_readonly_constructor_uses_aliases_and_type_conversion(): void
+    {
+        $result = InheritedReadonlyDTO::from([
+            'name' => 'Ada',
+            'status_value' => 'active',
+            'createdAt' => '2024-01-01T10:00:00Z',
+            'description' => null,
+        ]);
+
+        $this->assertSame('Ada', $result->name);
+        $this->assertSame(UserStatus::ACTIVE, $result->status);
+        $this->assertInstanceOf(DateTimeInterface::class, $result->createdAt);
+        $this->assertNull($result->description);
+    }
+
+    public function test_inherited_readonly_constructor_rejects_missing_required_parameter(): void
+    {
+        $this->expectException(SerializationException::class);
+        $this->expectExceptionMessage('name');
+
+        InheritedReadonlyDTO::from([
+            'status_value' => 'active',
+            'createdAt' => '2024-01-01T10:00:00Z',
+        ]);
+    }
+
     // ========================================================================
     // Phase 1 Tests: Basic Object Extraction
     // ========================================================================

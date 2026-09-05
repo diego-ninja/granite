@@ -13,6 +13,7 @@ use Ninja\Granite\Support\ReflectionCache;
 use ReflectionException;
 use ReflectionProperty;
 use ReflectionType;
+use Throwable;
 
 /**
  * Trait providing deserialization functionality for Granite objects.
@@ -470,27 +471,52 @@ trait HasDeserialization
 
             $parameters = $constructor->getParameters();
             $args = [];
+            $consumedProperties = [];
+            $metadata = MetadataCache::getMetadata(static::class);
+            $classConvention = self::getClassConvention(static::class);
+            $classDateTimeProvider = self::getClassDateTimeProvider(static::class);
 
-            // Map data to constructor parameters
             foreach ($parameters as $param) {
                 $paramName = $param->getName();
+                $property = $reflection->hasProperty($paramName)
+                    ? $reflection->getProperty($paramName)
+                    : null;
+                $phpName = $property?->getName() ?? $paramName;
+                $serializedName = $metadata->getSerializedName($phpName);
+                $hasValue = self::hasValueSetInData($data, $phpName, $serializedName, $classConvention);
 
-                if (array_key_exists($paramName, $data)) {
-                    $args[] = $data[$paramName];
+                if ($hasValue) {
+                    $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
+                    $args[] = self::convertValueToType(
+                        $value,
+                        $property?->getType() ?? $param->getType(),
+                        $property,
+                        $classDateTimeProvider,
+                    );
+                    if (null !== $property) {
+                        $consumedProperties[] = $phpName;
+                    }
                 } elseif ($param->isDefaultValueAvailable()) {
                     $args[] = $param->getDefaultValue();
                 } elseif ($param->allowsNull()) {
                     $args[] = null;
                 } else {
-                    // Required parameter not found in data, use null and let constructor handle it
-                    $args[] = null;
+                    throw Exceptions\SerializationException::missingRequiredValue(static::class, $paramName);
                 }
             }
 
-            $instance = $reflection->newInstanceArgs($args);
+            try {
+                $instance = $reflection->newInstanceArgs($args);
+            } catch (Throwable $e) {
+                throw Exceptions\SerializationException::deserializationFailed(
+                    static::class,
+                    'constructor hydration',
+                    $e,
+                );
+            }
 
             // Hydrate any remaining properties not handled by constructor
-            return self::hydrateRemainingProperties($instance, $data);
+            return self::hydrateRemainingProperties($instance, $data, $consumedProperties);
 
         } catch (ReflectionException $e) {
             throw Exceptions\ReflectionException::classNotFound(static::class);
@@ -506,12 +532,14 @@ trait HasDeserialization
      * @throws DateMalformedStringException
      * @throws Exceptions\ReflectionException
      */
-    protected static function hydrateRemainingProperties(object $instance, array $data): static
+    protected static function hydrateRemainingProperties(object $instance, array $data, array $consumedProperties = []): static
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
         $reflection = ReflectionCache::getClass(static::class);
         $constructor = $reflection->getConstructor();
-        $constructorParams = $constructor ? array_map(fn($p) => $p->getName(), $constructor->getParameters()) : [];
+        $constructorParams = empty($consumedProperties)
+            ? ($constructor ? array_map(fn($p) => $p->getName(), $constructor->getParameters()) : [])
+            : $consumedProperties;
 
         // Get serialization metadata and class convention
         $metadata = MetadataCache::getMetadata(static::class);

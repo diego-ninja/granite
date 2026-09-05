@@ -2,7 +2,7 @@
 
 namespace Ninja\Granite\Exceptions;
 
-use Exception;
+use Throwable;
 
 /**
  * Exception thrown when serialization/deserialization fails.
@@ -19,7 +19,7 @@ class SerializationException extends GraniteException
         string $message = "",
         ?string $propertyName = null,
         int $code = 0,
-        ?Exception $previous = null,
+        ?Throwable $previous = null,
     ) {
         $this->objectType = $objectType;
         $this->operation = $operation;
@@ -59,7 +59,7 @@ class SerializationException extends GraniteException
     /**
      * Create exception for deserialization errors.
      */
-    public static function deserializationFailed(string $objectType, string $reason, ?Exception $previous = null): self
+    public static function deserializationFailed(string $objectType, string $reason, ?Throwable $previous = null): self
     {
         return new self(
             $objectType,
@@ -68,6 +68,16 @@ class SerializationException extends GraniteException
             null,
             0,
             $previous,
+        );
+    }
+
+    public static function missingRequiredValue(string $objectType, string $parameter): self
+    {
+        return new self(
+            $objectType,
+            'deserialization',
+            sprintf('Missing required value for parameter "%s" in %s', $parameter, $objectType),
+            $parameter,
         );
     }
 

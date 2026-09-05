@@ -3,6 +3,7 @@
 namespace Ninja\Granite\Exceptions;
 
 use Exception;
+use Throwable;
 
 /**
  * Base exception for all Granite-related errors.
@@ -11,7 +12,7 @@ class GraniteException extends Exception
 {
     protected array $context = [];
 
-    public function __construct(string $message = "", int $code = 0, ?Exception $previous = null, array $context = [])
+    public function __construct(string $message = "", int $code = 0, ?Throwable $previous = null, array $context = [])
     {
         parent::__construct($message, $code, $previous);
         $this->context = $context;
