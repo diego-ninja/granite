@@ -1,4 +1,4 @@
-name: Pest Tests
+name: PHPUnit Tests
 on:
   push:
     branches: [ main, develop ]
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-version: ['8.3', '8.4']
+        php-version: ['8.3', '8.4', '8.5']
 
     steps:
       - name: Checkout code
@@ -23,20 +23,20 @@ jobs:
           extensions: mbstring, dom, fileinfo, mysql, redis
           coverage: xdebug
 
-      - name: Validate composer.json and composer.lock
-        run: composer validate --strict
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-lock
 
       - name: Cache Composer packages
         id: composer-cache
         uses: actions/cache@v4
         with:
-          path: vendor
-          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-composer-${{ hashFiles('composer.json') }}
           restore-keys: |
             ${{ runner.os }}-php-${{ matrix.php-version }}-composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: composer update --prefer-stable --prefer-dist --no-interaction
 
       - name: Run PHPUnit tests
         run: composer run test
@@ -51,3 +51,35 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: ./coverage/clover.xml
+
+  prefer-lowest:
+    runs-on: ubuntu-latest
+    name: PHPUnit Tests (prefer-lowest)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, mysql, redis
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-lock
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-8.3-composer-lowest-${{ hashFiles('composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.3-composer-lowest-
+
+      - name: Install lowest supported dependencies
+        run: composer update --prefer-lowest --prefer-stable --prefer-dist --no-interaction
+
+      - name: Run PHPUnit tests
+        run: composer run test
