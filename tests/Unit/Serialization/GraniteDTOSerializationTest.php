@@ -6,13 +6,18 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Serialization;
 
+use Carbon\Carbon;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\GraniteDTO;
 use PHPUnit\Framework\Attributes\CoversClass;
+use stdClass;
 use Tests\Fixtures\DTOs\ComplexDTO;
+use Tests\Fixtures\DTOs\NestedSerializationDTO;
+use Tests\Fixtures\DTOs\PersonDTO;
 use Tests\Fixtures\DTOs\SerializableDTO;
+use Tests\Fixtures\Enums\Color;
 use Tests\Fixtures\Enums\UserStatus;
 use Tests\Helpers\TestCase;
 
@@ -130,6 +135,60 @@ use Tests\Helpers\TestCase;
 
         $this->assertArrayHasKey('metadata', $array);
         $this->assertEquals($metadata, $array['metadata']);
+    }
+
+    public function test_serializes_nested_arrays_recursively_with_original_keys(): void
+    {
+        $date = new DateTimeImmutable('2024-01-01T10:00:00.123456Z');
+        $dto = new NestedSerializationDTO([
+            PersonDTO::from(name: 'John', age: 30, email: 'john@example.com'),
+            [
+                'status' => UserStatus::ACTIVE,
+                'color' => Color::RED,
+                'date' => $date,
+                'carbon' => Carbon::parse('2024-01-02T11:00:00Z'),
+                'nullable' => null,
+                'scalar' => 42,
+            ],
+        ]);
+
+        $array = $dto->array();
+
+        $this->assertSame('John', $array['items'][0]['name']);
+        $this->assertSame('active', $array['items'][1]['status']);
+        $this->assertSame('RED', $array['items'][1]['color']);
+        $this->assertSame('2024-01-01T10:00:00+00:00', $array['items'][1]['date']);
+        $this->assertSame('2024-01-02T11:00:00+00:00', $array['items'][1]['carbon']);
+        $this->assertNull($array['items'][1]['nullable']);
+        $this->assertSame(42, $array['items'][1]['scalar']);
+    }
+
+    public function test_json_contains_no_php_objects_after_recursive_serialization(): void
+    {
+        $dto = new NestedSerializationDTO([
+            ['object' => PersonDTO::from(name: 'John', age: 30, email: 'john@example.com')],
+            ['status' => UserStatus::ACTIVE, 'date' => new DateTimeImmutable('2024-01-01T10:00:00Z')],
+        ]);
+
+        $decoded = json_decode($dto->json(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame('John', $decoded['items'][0]['object']['name']);
+        $this->assertSame('active', $decoded['items'][1]['status']);
+        $this->assertSame('2024-01-01T10:00:00+00:00', $decoded['items'][1]['date']);
+    }
+
+    public function test_unsupported_nested_value_reports_full_property_path(): void
+    {
+        $dto = new NestedSerializationDTO([
+            ['payload' => 'ok'],
+            ['payload' => null],
+            ['payload' => new stdClass()],
+        ]);
+
+        $this->expectException(SerializationException::class);
+        $this->expectExceptionMessage('items.2.payload');
+
+        $dto->array();
     }
 
     public function test_skips_uninitialized_properties(): void

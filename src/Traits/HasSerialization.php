@@ -2,21 +2,19 @@
 
 namespace Ninja\Granite\Traits;
 
-use BackedEnum;
 use DateTimeInterface;
 use Ninja\Granite\Config\GraniteConfig;
-use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\MetadataCache;
 use Ninja\Granite\Serialization\SerializationCache;
+use Ninja\Granite\Serialization\ValueSerializer;
 use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Transformers\CarbonTransformer;
 use ReflectionProperty;
 use RuntimeException;
-use UnitEnum;
 
 /**
  * Trait providing serialization functionality for Granite objects.
@@ -142,47 +140,24 @@ trait HasSerialization
      */
     private function serializeValue(string $propertyName, mixed $value, ?ReflectionProperty $property = null): mixed
     {
-        if (null === $value) {
-            return null;
-        }
-
-        if (is_scalar($value) || is_array($value)) {
-            return $value;
-        }
-
-        // Handle Carbon instances with custom serialization
-        if (CarbonSupport::isCarbonInstance($value)) {
-            $carbonTransformer = self::getCarbonTransformerFromAttributes($property, null);
+        $carbonTransformer = self::getCarbonTransformerFromAttributes($property, null);
+        $config = GraniteConfig::getInstance();
+        $dateFormatter = static function (DateTimeInterface $date) use ($carbonTransformer, $config): string {
             if (null !== $carbonTransformer) {
-                /** @var DateTimeInterface $value */
-                return $carbonTransformer->serialize($value);
+                return (string) $carbonTransformer->serialize($date);
             }
 
-            // Fallback to global config
-            $config = GraniteConfig::getInstance();
-            /** @var DateTimeInterface $value */
-            return CarbonSupport::serialize(
-                $value,
-                $config->getCarbonSerializeFormat(),
-                $config->getCarbonSerializeTimezone(),
-            );
-        }
-
-        if ($value instanceof DateTimeInterface) {
-            return $value->format(DateTimeInterface::ATOM);
-        }
-
-        if (interface_exists('UnitEnum') && $value instanceof UnitEnum) {
-            if ($value instanceof BackedEnum) {
-                return $value->value;
+            if (CarbonSupport::isCarbonInstance($date)) {
+                return CarbonSupport::serialize(
+                    $date,
+                    $config->getCarbonSerializeFormat(),
+                    $config->getCarbonSerializeTimezone(),
+                );
             }
-            return $value->name;
-        }
 
-        if ($value instanceof GraniteObject) {
-            return $value->array();
-        }
+            return $date->format(DateTimeInterface::ATOM);
+        };
 
-        throw SerializationException::unsupportedType(static::class, $propertyName, get_debug_type($value));
+        return ValueSerializer::serialize($value, static::class, $propertyName, $dateFormatter);
     }
 }
