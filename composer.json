@@ -51,6 +51,7 @@
         "squizlabs/php_codesniffer": "^3.13.6"
     },
     "scripts": {
+        "bench:objects": "@php -d opcache.enable_cli=1 benchmarks/ObjectPipelineBench.php",
         "test": "phpunit",
         "test:unit": "phpunit --testsuite=Unit",
         "test:integration": "phpunit --testsuite=Integration",
