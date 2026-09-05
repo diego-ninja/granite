@@ -6,9 +6,12 @@ use DateTime;
 use DateTimeImmutable;
 use DateTimeZone;
 use Ninja\Granite\Exceptions\ComparisonException;
+use ReflectionProperty;
 use Tests\Fixtures\DTOs\ComplexDTO;
 use Tests\Fixtures\DTOs\NestedDTO;
+use Tests\Fixtures\DTOs\PersonDTO;
 use Tests\Fixtures\DTOs\SimpleDTO;
+use Tests\Fixtures\DTOs\UninitializedDTO;
 use Tests\Fixtures\DTOs\UserDTO;
 use Tests\Fixtures\Enums\UserStatus;
 use Tests\Helpers\TestCase;
@@ -164,6 +167,17 @@ final class HasComparisonTest extends TestCase
         $this->assertTrue($dto1->equals($dto2));
     }
 
+    public function test_equals_detects_different_datetime_microseconds(): void
+    {
+        $date1 = new DateTimeImmutable('2024-01-15 10:00:00.123456', new DateTimeZone('UTC'));
+        $date2 = new DateTimeImmutable('2024-01-15 10:00:00.123457', new DateTimeZone('UTC'));
+
+        $dto1 = ComplexDTO::from(['id' => 1, 'createdAt' => $date1]);
+        $dto2 = ComplexDTO::from(['id' => 1, 'createdAt' => $date2]);
+
+        $this->assertFalse($dto1->equals($dto2));
+    }
+
     public function test_equals_detects_different_timezones(): void
     {
         $date1 = new DateTime('2024-01-15 10:00:00', new DateTimeZone('UTC'));
@@ -214,6 +228,66 @@ final class HasComparisonTest extends TestCase
         ]);
 
         $this->assertFalse($dto1->equals($dto2));
+    }
+
+    public function test_equals_compares_nested_arrays_with_granite_enums_and_dates(): void
+    {
+        $nested = static fn(): NestedDTO => new NestedDTO(
+            1,
+            'Post',
+            null,
+            [
+                'author' => PersonDTO::from(name: 'John', age: 30, email: 'john@example.com'),
+                'status' => UserStatus::ACTIVE,
+                'createdAt' => new DateTimeImmutable('2024-01-15 10:00:00.123456', new DateTimeZone('UTC')),
+            ],
+        );
+
+        $this->assertTrue($nested()->equals($nested()));
+    }
+
+    public function test_equals_distinguishes_initialized_from_uninitialized_properties(): void
+    {
+        $uninitialized = new UninitializedDTO('Test');
+        $initialized = new UninitializedDTO('Test');
+
+        $property = new ReflectionProperty(UninitializedDTO::class, 'uninitializedProperty');
+        $property->setValue($initialized, 'initialized');
+
+        $this->assertFalse($uninitialized->equals($initialized));
+        $this->assertNotEmpty($uninitialized->differs($initialized));
+        $this->assertSame(
+            ['__uninitialized' => true],
+            $uninitialized->differs($initialized)['uninitializedProperty']['current'],
+        );
+    }
+
+    public function test_comparison_fast_and_general_paths_have_same_result(): void
+    {
+        $fastLeft = PersonDTO::from(name: 'John', age: 30, email: 'john@example.com');
+        $fastRight = PersonDTO::from(name: 'John', age: 30, email: 'john@example.com');
+        $generalLeft = ComplexDTO::from([
+            'id' => 1,
+            'name' => 'John',
+            'createdAt' => new DateTimeImmutable('2024-01-15 10:00:00.123456', new DateTimeZone('UTC')),
+        ]);
+        $generalRight = ComplexDTO::from([
+            'id' => 1,
+            'name' => 'John',
+            'createdAt' => new DateTimeImmutable('2024-01-15 10:00:00.123456', new DateTimeZone('UTC')),
+        ]);
+
+        $this->assertTrue($fastLeft->equals($fastRight));
+        $this->assertTrue($generalLeft->equals($generalRight));
+
+        $generalRight = ComplexDTO::from([
+            'id' => 1,
+            'name' => 'John',
+            'createdAt' => new DateTimeImmutable('2024-01-15 10:00:00.123457', new DateTimeZone('UTC')),
+        ]);
+
+        $this->assertFalse($fastLeft->equals(PersonDTO::from(name: 'John', age: 31, email: 'john@example.com')));
+        $this->assertFalse($generalLeft->equals($generalRight));
     }
 
     public function test_differs_returns_empty_array_for_equal_objects(): void

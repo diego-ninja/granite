@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Support;
 
 use Ninja\Granite\Support\ClassProfile;
+use Ninja\Granite\Support\ValueComparator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Fixtures\DTOs\NestedDTO;
 use Tests\Fixtures\DTOs\PersonDTO;
@@ -16,6 +17,8 @@ use Tests\Fixtures\DTOs\SimpleDTO;
 use Tests\Fixtures\DTOs\TeamDTO;
 use Tests\Fixtures\DTOs\TestHiddenDto;
 use Tests\Fixtures\DTOs\TestSnakeCaseDto;
+use Tests\Fixtures\Enums\Priority;
+use Tests\Fixtures\Enums\UserStatus;
 use Tests\Fixtures\VOs\ValidatedUserVO;
 use Tests\Helpers\TestCase;
 
@@ -29,11 +32,11 @@ class ClassProfileTest extends TestCase
         $this->assertTrue($profile->canUseFastPath);
     }
 
-    public function test_detects_fast_path_for_dto_with_all_scalar_types(): void
+    public function test_rejects_fast_path_for_dto_with_array_type(): void
     {
         $profile = ClassProfile::build(ScalarDTO::class);
 
-        $this->assertTrue($profile->canUseFastPath);
+        $this->assertFalse($profile->canUseFastPath);
     }
 
     public function test_rejects_fast_path_for_nested_object_types(): void
@@ -148,19 +151,13 @@ class ClassProfileTest extends TestCase
         $this->assertEquals($slow->array(), $fast->array());
     }
 
-    public function test_fast_path_with_all_scalar_types(): void
+    public function test_array_typed_dto_avoids_fast_path(): void
     {
         $data = ['id' => 1, 'name' => 'Product', 'price' => 9.99, 'active' => true, 'tags' => ['a', 'b']];
         $profile = ClassProfile::build(ScalarDTO::class);
 
-        $result = $profile->tryFastPath([$data]);
-
-        $this->assertInstanceOf(ScalarDTO::class, $result);
-        $this->assertSame(1, $result->id);
-        $this->assertSame('Product', $result->name);
-        $this->assertSame(9.99, $result->price);
-        $this->assertTrue($result->active);
-        $this->assertSame(['a', 'b'], $result->tags);
+        $this->assertFalse($profile->canUseFastPath);
+        $this->assertNull($profile->tryFastPath([$data]));
     }
 
     public function test_fast_path_returns_null_for_positional_args(): void
@@ -242,5 +239,27 @@ class ClassProfileTest extends TestCase
 
         $this->assertNotNull($fastDirect);
         $this->assertEquals($fast->array(), $fastDirect->array());
+    }
+
+    public function test_rejects_fast_path_when_property_names_do_not_match_constructor_names(): void
+    {
+        $instance = new class ('value') {
+            public string $propertyName;
+
+            public function __construct(string $constructorName)
+            {
+                $this->propertyName = $constructorName;
+            }
+        };
+
+        $profile = ClassProfile::build($instance::class);
+
+        $this->assertFalse($profile->canUseFastPath);
+    }
+
+    public function test_comparison_requires_enum_classes_to_match(): void
+    {
+        $this->assertFalse(ValueComparator::equals(UserStatus::ACTIVE, Priority::HIGH));
+        $this->assertTrue(ValueComparator::equals(UserStatus::ACTIVE, UserStatus::ACTIVE));
     }
 }

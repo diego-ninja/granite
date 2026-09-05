@@ -7,7 +7,6 @@ namespace Ninja\Granite\Support;
 
 use Error;
 use Ninja\Granite\Contracts\GraniteObject;
-use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\Attributes\Hidden;
@@ -23,7 +22,7 @@ use stdClass;
 
 final class ClassProfile
 {
-    private const array BUILTIN_TYPES = ['int', 'string', 'float', 'bool', 'array', 'null'];
+    private const array BUILTIN_TYPES = ['int', 'string', 'float', 'bool', 'null'];
 
     /** @var array<string, mixed> Ordered map of param name => default value or REQUIRED sentinel */
     public readonly array $constructorParams;
@@ -92,7 +91,15 @@ final class ClassProfile
         // Ensure all public properties are covered by constructor params
         if ($canUseFastPath) {
             $publicProps = $reflection->getProperties(ReflectionProperty::IS_PUBLIC);
-            if (count($publicProps) !== count($params)) {
+            $publicPropertyNames = array_map(
+                static fn(ReflectionProperty $property): string => $property->getName(),
+                $publicProps,
+            );
+            $constructorParamNames = array_keys($params);
+            sort($publicPropertyNames);
+            sort($constructorParamNames);
+
+            if ($publicPropertyNames !== $constructorParamNames) {
                 $canUseFastPath = false;
             }
         }
@@ -109,6 +116,10 @@ final class ClassProfile
      */
     public function tryFastPath(array $args): ?object
     {
+        if ( ! $this->canUseFastPath) {
+            return null;
+        }
+
         if (array_is_list($args)) {
             if (1 === count($args) && is_array($args[0])) {
                 $data = $args[0];
@@ -160,25 +171,8 @@ final class ClassProfile
      */
     public function areEqual(object $a, object $b): bool
     {
-        if (empty($this->graniteParams)) {
-            foreach ($this->paramNames as $name) {
-                if ($a->{$name} !== $b->{$name}) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         foreach ($this->paramNames as $name) {
-            $va = $a->{$name};
-            $vb = $b->{$name};
-
-            if ($va instanceof Granite && $vb instanceof Granite) {
-                if ( ! $va->equals($vb)) {
-                    return false;
-                }
-            } elseif ($va !== $vb) {
+            if ( ! ValueComparator::equals($a->{$name}, $b->{$name})) {
                 return false;
             }
         }
