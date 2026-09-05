@@ -6,6 +6,7 @@ use DateTimeInterface;
 use JsonSerializable;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Granite;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
 use ReflectionMethod;
 use ReflectionProperty;
 use ReflectionType;
@@ -151,6 +152,15 @@ class ObjectHydrationTest extends TestCase
         $this->assertEquals('Granite', $result['name']);
         $this->assertEquals('granite@example.com', $result['email']);
         $this->assertEquals(70, $result['age']);
+    }
+
+    public function test_granite_hydrator_result_is_not_overwritten_by_generic_object_hydrator(): void
+    {
+        $source = new ClassWithSerializedGraniteProperty('Ada Lovelace');
+
+        $result = TestHydrationTarget::testExtractDataFromObject($source);
+
+        $this->assertSame(['full_name' => 'Ada Lovelace'], $result);
     }
 
     public function test_normalize_input_data_with_object(): void
@@ -321,6 +331,14 @@ class ObjectHydrationTest extends TestCase
         $this->assertEquals('from_public', $result->name);
         // No public property, so getter is used
         $this->assertEquals('from_getter', $result->email);
+    }
+
+    public function test_null_public_property_takes_precedence_over_getter(): void
+    {
+        $result = TestHydrationTarget::testExtractDataFromObject(new ClassWithNullPublicPropertyAndGetter());
+
+        $this->assertArrayHasKey('name', $result);
+        $this->assertNull($result['name']);
     }
 
     public function test_getter_throws_exception_tries_next_pattern(): void
@@ -723,6 +741,24 @@ class ClassWithBothPublicAndGetters
     }
 
     public function getEmail(): string
+    {
+        return 'from_getter';
+    }
+}
+
+final readonly class ClassWithSerializedGraniteProperty extends Granite
+{
+    public function __construct(
+        #[SerializedName('full_name')]
+        public string $fullName,
+    ) {}
+}
+
+class ClassWithNullPublicPropertyAndGetter
+{
+    public ?string $name = null;
+
+    public function getName(): string
     {
         return 'from_getter';
     }

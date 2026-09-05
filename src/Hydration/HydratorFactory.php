@@ -161,19 +161,25 @@ class HydratorFactory
         $extractedData = [];
 
         foreach ($this->getHydrators() as $hydrator) {
+            if ($hydrator instanceof GetterHydrator) {
+                continue;
+            }
+
             if ( ! $hydrator->supports($data, $targetClass)) {
                 continue;
             }
 
-            // Special handling for GetterHydrator - pass existing data
-            if ($hydrator instanceof GetterHydrator) {
-                $additionalData = $hydrator->extractViaGetters($data, $extractedData, $targetClass);
-                $extractedData = array_merge($extractedData, $additionalData);
-            } else {
-                // For other hydrators, use their result and stop chain
-                $extractedData = $hydrator->hydrate($data, $targetClass);
-                // Don't break - let GetterHydrator enrich the data
+            $extractedData = $hydrator->hydrate($data, $targetClass);
+            break;
+        }
+
+        foreach ($this->getHydrators() as $hydrator) {
+            if ( ! $hydrator instanceof GetterHydrator || ! $hydrator->supports($data, $targetClass)) {
+                continue;
             }
+
+            $additionalData = $hydrator->extractViaGetters($data, $extractedData, $targetClass);
+            return array_merge($extractedData, $additionalData);
         }
 
         return $extractedData;

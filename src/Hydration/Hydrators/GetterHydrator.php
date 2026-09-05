@@ -64,7 +64,7 @@ class GetterHydrator extends AbstractHydrator
             $propertyName = $property->getName();
 
             // Skip if we already have this property
-            if (isset($existingData[$propertyName])) {
+            if (array_key_exists($propertyName, $existingData)) {
                 continue;
             }
 

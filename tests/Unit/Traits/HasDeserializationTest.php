@@ -4,6 +4,7 @@ namespace Tests\Unit\Traits;
 
 use Error;
 use InvalidArgumentException;
+use JsonException;
 use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
@@ -214,6 +215,16 @@ class HasDeserializationTest extends TestCase
         $this->expectExceptionMessage('Invalid JSON string provided');
 
         TestDeserializationClass::from('{invalid json}');
+    }
+
+    public function test_invalid_json_wraps_the_decoder_exception(): void
+    {
+        try {
+            TestDeserializationClass::from('{invalid json}');
+            $this->fail('Expected invalid JSON to fail hydration.');
+        } catch (InvalidArgumentException $exception) {
+            $this->assertInstanceOf(JsonException::class, $exception->getPrevious());
+        }
     }
 
     public function test_normalize_input_data_invalid_json(): void
