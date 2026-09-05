@@ -139,7 +139,9 @@ $post1->equals($post3); // false - different array values
 
 ### DateTime Comparison
 
-DateTime objects are compared with timezone awareness:
+DateTime objects are compared with timezone and microsecond awareness. Two
+values with the same second but different microseconds are different, and a
+different timezone name is also significant even when the instant matches.
 
 ```php
 use DateTime;
@@ -342,8 +344,9 @@ The comparison uses efficient algorithms:
 
 1. **Arrays**: Recursive deep comparison without JSON encoding (efficient for large arrays)
 2. **Objects**: Class check first, then property-by-property comparison
-3. **DateTime**: Compares both timestamp and timezone
-4. **Enums**: Compares the underlying value (for BackedEnum) or name (for UnitEnum)
+3. **DateTime**: Compares `U.u` (seconds plus microseconds) and the timezone name
+4. **Enums**: Requires the same enum class before comparing its backed value or case name
+5. **Uninitialized properties**: Two uninitialized properties compare equal; one initialized and one uninitialized compare different
 
 ## Advanced Examples
 

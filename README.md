@@ -38,7 +38,7 @@ $snapshot->equals($other); // O(1) fingerprint comparison
 - **ObjectMapper** — Convention-based property mapping between objects with custom transformations
 - **Smart Serialization** — Custom property names, naming conventions, hidden fields, Carbon date formats
 - **Object Comparison** — Deep equality with `equals()`, detailed diffs with `differs()`
-- **Performance Optimized** — Fast path for simple DTOs (~3.5x vs plain PHP), WeakMap caching, direct property access
+- **Performance Optimized** — Conservative fast path for simple DTOs, deep immutable WeakMap caching, direct property access
 
 ## 🚀 Quick Start
 
@@ -141,7 +141,7 @@ Granite recursively applies the fast path to nested Granite-typed properties, so
 | Plain PHP `json_encode(array)` | 0.25 | — |
 | `Granite json()` | 0.26 | 1.0x |
 
-Both `array()` and `json()` results are cached in a `WeakMap`. Since Granite objects are readonly, the serialized representation never changes, so repeated calls return instantly. The `json()` method effectively matches native `json_encode` performance.
+Both `array()` and `json()` may be cached in a `WeakMap` when the complete value graph is demonstrably immutable. Arrays, mutable dates and unknown objects bypass the cache so later mutations cannot return stale data.
 
 #### Equality Check
 
@@ -175,9 +175,9 @@ Granite uses native PHP readonly promoted properties — property access is **id
 
 Granite's performance comes from three layers of optimization:
 
-1. **Fast path detection** (`ClassProfile`) — At class-load time, Granite analyzes each class and determines if it can skip the full hydration pipeline. A class qualifies when all constructor parameters are either primitive types (`int`, `string`, `float`, `bool`, `array`) or other Granite subclasses, and the class has no special attributes (`#[Hidden]`, `#[SerializedName]`, validation rules, etc.).
+1. **Fast path detection** (`ClassProfile`) — At class-load time, Granite analyzes each class and determines if it can skip the full hydration pipeline. A class qualifies when all constructor parameters are scalar/null-compatible primitives or other Granite subclasses, and the class has no special attributes (`#[Hidden]`, `#[SerializedName]`, validation rules, etc.). Arrays use the general path until their element semantics can be proven equivalent.
 
-2. **WeakMap caching** — `array()` and `json()` results are cached in a `WeakMap` keyed by object instance. Since Granite objects are readonly, the cache is always valid. When the object is garbage collected, the cache entry is automatically cleaned up.
+2. **WeakMap caching** — `array()` and `json()` results are cached only for deeply immutable graphs. A readonly outer object does not make mutable arrays or dates immutable. When the object is garbage collected, the cache entry is automatically cleaned up.
 
 3. **Direct property access** — For serialization and comparison, Granite reads properties directly by name (`$instance->$name`) instead of going through reflection, metadata lookups, and type conversion.
 

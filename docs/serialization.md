@@ -522,9 +522,16 @@ public Carbon $publishedAt;
 public Carbon $eventDate;
 ```
 
+`CarbonDate` accepts `format`, `timezone`, `locale`, `immutable`,
+`parseRelative`, `serializeFormat`, `serializeTimezone`, `min` and `max`.
+`format`/`timezone` configure input parsing; `serializeFormat`/
+`serializeTimezone` configure output. A property attribute overrides the class
+provider and global Carbon configuration. Serialization formats a clone, so a
+mutable `Carbon` instance is never modified.
+
 **`#[CarbonRelative]`** - Enable relative date parsing
 ```php
-#[CarbonRelative]
+#[CarbonRelative(baseDate: '2024-01-01')]
 public ?Carbon $dueDate;
 
 // Accepts: 'tomorrow', 'next week', '2 hours ago', 'first day of next month'
@@ -533,7 +540,7 @@ $task = Task::from(['dueDate' => 'next Friday at 5pm']);
 
 **`#[CarbonRange]`** - Validate date ranges
 ```php
-#[CarbonRange(min: 'now', max: '+1 year')]
+#[CarbonRange(min: 'now', max: '+1 year', message: 'Date is outside the allowed range')]
 public Carbon $eventDate;  // Must be between now and next year
 
 #[CarbonRange(min: '2024-01-01', max: '2024-12-31')]
@@ -581,9 +588,12 @@ use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Carbon\Carbon;
 
 #[DateTimeProvider(
-    defaultTimezone: 'UTC',
-    defaultFormat: 'Y-m-d H:i:s',
-    parseFormats: ['Y-m-d H:i:s', 'Y-m-d\TH:i:s\Z', 'Y-m-d']
+    provider: Carbon::class,
+    timezone: 'UTC',
+    locale: 'en',
+    format: 'Y-m-d H:i:s',
+    serializeFormat: 'c',
+    parseRelative: true,
 )]
 final readonly class GlobalEvent extends Granite
 {
@@ -610,8 +620,8 @@ final readonly class TimezoneEvent extends Granite
         #[CarbonDate(format: 'c', timezone: 'UTC')]
         public Carbon $utcTime,
         
-        // Preserve original timezone
-        #[CarbonDate(format: 'c', preserveTimezone: true)]
+        // Emit in a chosen timezone without modifying the source instance
+        #[CarbonDate(format: 'c', serializeTimezone: 'Europe/Madrid')]
         public Carbon $localTime,
         
         // Convert to specific timezone for serialization
@@ -768,7 +778,9 @@ $team = Team::from([
     ]
 ]);
 
-// members array will contain User objects
+// Serialization recursively normalizes members. During hydration, PHPDoc
+// such as @var User[] is not enough to infer the element class; use
+// #[MapCollection], asCollection(), or explicit mapping configuration.
 // office will be an Address object
 $array = $team->array();
 ```
