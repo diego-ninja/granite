@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines SerializationException as part of the library exception taxonomy.
+// ABOUTME: Owns the SerializationException boundary within the library exception taxonomy.
 
 namespace Ninja\Granite\Exceptions;
 

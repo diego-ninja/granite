@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ValidationException as part of the library exception taxonomy.
+// ABOUTME: Owns the ValidationException boundary within the library exception taxonomy.
 
 namespace Ninja\Granite\Exceptions;
 

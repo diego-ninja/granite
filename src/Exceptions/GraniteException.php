@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteException as part of the library exception taxonomy.
+// ABOUTME: Owns the GraniteException boundary within the library exception taxonomy.
 
 namespace Ninja\Granite\Exceptions;
 

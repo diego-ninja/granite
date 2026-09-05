@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines JsonHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the JsonHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 

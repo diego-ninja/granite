@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ArrayHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the ArrayHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 

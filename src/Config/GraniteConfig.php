@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteConfig as part of the library-wide runtime configuration.
+// ABOUTME: Owns the GraniteConfig boundary within the library-wide runtime configuration.
 
 namespace Ninja\Granite\Config;
 

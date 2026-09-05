@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HydratorFactory as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the HydratorFactory boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration;
 

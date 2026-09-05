@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the GraniteHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 
