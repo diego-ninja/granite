@@ -8,6 +8,7 @@ use Ninja\Granite\Mapping\Exceptions\MappingException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use stdClass;
 use Tests\Helpers\TestCase;
+use TypeError;
 
 #[CoversClass(ObjectFactory::class)]
 class ObjectFactoryTest extends TestCase
@@ -78,18 +79,12 @@ class ObjectFactoryTest extends TestCase
         $this->assertNull($result->email);
     }
 
-    public function test_create_with_typed_parameters(): void
+    public function test_create_with_missing_required_typed_parameter_fails(): void
     {
-        $data = ['name' => 'David'];
-        $result = $this->factory->create($data, TestClassWithTypedParams::class);
+        $this->expectException(MappingException::class);
+        $this->expectExceptionMessage('Missing required value');
 
-        $this->assertInstanceOf(TestClassWithTypedParams::class, $result);
-        $this->assertEquals('David', $result->name);
-        $this->assertEquals(0, $result->age);
-        $this->assertEquals(0.0, $result->score);
-        $this->assertFalse($result->active);
-        $this->assertEquals('', $result->description);
-        $this->assertEquals([], $result->tags);
+        $this->factory->create(['name' => 'David'], TestClassWithTypedParams::class);
     }
 
     public function test_populate_existing_object(): void
@@ -143,15 +138,19 @@ class ObjectFactoryTest extends TestCase
         $this->assertEquals('Valid', $result->title);
     }
 
-    public function test_populate_handles_exceptions_gracefully(): void
+    public function test_populate_reports_property_type_error(): void
     {
         $object = new TestClassWithThrowingProperty();
-        $data = ['title' => 'Valid'];
+        $data = ['title' => ['invalid']];
 
-        // Should not throw exception and should complete successfully
-        $result = $this->factory->populate($object, $data);
-
-        $this->assertSame($object, $result);
+        try {
+            $this->factory->populate($object, $data);
+            $this->fail('Expected a MappingException');
+        } catch (MappingException $exception) {
+            $this->assertSame('title', $exception->getPropertyName());
+            $this->assertInstanceOf(TypeError::class, $exception->getPrevious());
+            $this->assertStringContainsString('Failed to populate property "title"', $exception->getMessage());
+        }
     }
 
     public function test_create_with_constructor_and_extra_properties(): void
@@ -184,30 +183,48 @@ class ObjectFactoryTest extends TestCase
         $this->factory->create(['test' => 'data'], 'NonExistentClass');
     }
 
-    public function test_populate_throws_exception_on_error(): void
+    public function test_populate_throws_exception_on_type_error(): void
     {
         $object = new TestClassWithBadProperty();
         $data = ['title' => 'test'];
 
-        // This should work fine since we handle exceptions gracefully
-        $result = $this->factory->populate($object, $data);
-        $this->assertSame($object, $result);
+        $this->expectException(MappingException::class);
+        $this->expectExceptionMessage('title');
+
+        $this->factory->populate($object, $data);
     }
 
-    public function test_get_default_value_for_all_types(): void
+    public function test_create_does_not_invent_defaults_for_required_parameters(): void
     {
-        // Test by creating objects with various typed parameters that have no data
-        $data = ['name' => 'TypeTest'];
-        $result = $this->factory->create($data, TestClassWithAllTypes::class);
+        $this->expectException(MappingException::class);
+        $this->expectExceptionMessage('Missing required value');
 
-        $this->assertInstanceOf(TestClassWithAllTypes::class, $result);
-        $this->assertEquals('TypeTest', $result->name);
-        $this->assertEquals(0, $result->intValue);
-        $this->assertEquals(0.0, $result->floatValue);
-        $this->assertFalse($result->boolValue);
-        $this->assertEquals('', $result->stringValue);
-        $this->assertEquals([], $result->arrayValue);
-        $this->assertNull($result->objectValue);
+        $this->factory->create(['name' => 'TypeTest'], TestClassWithAllTypes::class);
+    }
+
+    public function test_create_preserves_constructor_type_error(): void
+    {
+        try {
+            $this->factory->create(['age' => 'not-an-int'], TestClassWithStrictType::class);
+            $this->fail('Expected a MappingException');
+        } catch (MappingException $exception) {
+            $this->assertInstanceOf(TypeError::class, $exception->getPrevious());
+            $this->assertStringContainsString('Failed to create instance', $exception->getMessage());
+        }
+    }
+
+    public function test_create_rejects_abstract_class(): void
+    {
+        $this->expectException(MappingException::class);
+
+        $this->factory->create(['test' => 'value'], TestAbstractClass::class);
+    }
+
+    public function test_create_rejects_private_constructor(): void
+    {
+        $this->expectException(MappingException::class);
+
+        $this->factory->create([], TestClassWithPrivateConstructor::class);
     }
 }
 
@@ -305,7 +322,17 @@ abstract class TestAbstractClass
 
 class TestClassWithBadProperty
 {
-    public string $title;
+    public int $title;
+}
+
+class TestClassWithStrictType
+{
+    public function __construct(public int $age) {}
+}
+
+class TestClassWithPrivateConstructor
+{
+    private function __construct() {}
 }
 
 class TestClassWithAllTypes

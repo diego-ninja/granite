@@ -106,6 +106,32 @@ class MappingException extends GraniteException
         );
     }
 
+    public static function missingRequiredValue(string $sourceType, string $destinationType, string $propertyName): self
+    {
+        return new self(
+            $sourceType,
+            $destinationType,
+            sprintf('Missing required value for property "%s"', $propertyName),
+            $propertyName,
+        );
+    }
+
+    public static function propertyHydrationFailed(
+        string $sourceType,
+        string $destinationType,
+        string $propertyName,
+        Throwable $previous,
+    ): self {
+        return new self(
+            $sourceType,
+            $destinationType,
+            sprintf('Failed to populate property "%s": %s', $propertyName, $previous->getMessage()),
+            $propertyName,
+            0,
+            $previous,
+        );
+    }
+
     public function getSourceType(): string
     {
         return $this->sourceType;

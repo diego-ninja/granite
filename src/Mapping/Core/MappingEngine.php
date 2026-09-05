@@ -2,10 +2,10 @@
 
 namespace Ninja\Granite\Mapping\Core;
 
-use Exception;
 use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Throwable;
 
 /**
  * Core mapping engine responsible for executing mapping operations.
@@ -49,7 +49,7 @@ final class MappingEngine
 
         } catch (GraniteException $e) {
             throw $e;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             throw $this->createMappingException($source, $destinationType, $e);
         }
     }
@@ -67,7 +67,9 @@ final class MappingEngine
 
             return $this->objectFactory->populate($destination, $transformedData);
 
-        } catch (Exception $e) {
+        } catch (GraniteException $e) {
+            throw $e;
+        } catch (Throwable $e) {
             throw $this->createMappingException($source, get_class($destination), $e);
         }
     }
@@ -86,7 +88,7 @@ final class MappingEngine
     /**
      * Create a mapping exception with context.
      */
-    private function createMappingException(mixed $source, string $destinationType, Exception $previous): MappingException
+    private function createMappingException(mixed $source, string $destinationType, Throwable $previous): MappingException
     {
         $sourceType = is_object($source) ? get_class($source) : gettype($source);
 

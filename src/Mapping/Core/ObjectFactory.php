@@ -2,15 +2,11 @@
 
 namespace Ninja\Granite\Mapping\Core;
 
-use Exception;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Support\ReflectionCache;
 use ReflectionClass;
-use ReflectionException;
 use ReflectionMethod;
-use ReflectionNamedType;
-use ReflectionType;
 use Throwable;
 
 final readonly class ObjectFactory
@@ -22,15 +18,28 @@ final readonly class ObjectFactory
      */
     public function create(array $data, string $className): object
     {
-        if ('stdClass' === $className) {
-            return (object) $data;
-        }
+        try {
+            if ('stdClass' === $className) {
+                return (object) $data;
+            }
 
-        if (is_subclass_of($className, GraniteObject::class)) {
-            return $className::from($data);
-        }
+            if (is_subclass_of($className, GraniteObject::class)) {
+                return $className::from($data);
+            }
 
-        return $this->createFromReflection($data, $className);
+            return $this->createFromReflection($data, $className);
+        } catch (MappingException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new MappingException(
+                'array',
+                $className,
+                'Failed to create instance: ' . $e->getMessage(),
+                null,
+                0,
+                $e,
+            );
+        }
     }
 
     /**
@@ -42,17 +51,39 @@ final readonly class ObjectFactory
             $reflection = ReflectionCache::getClass(get_class($object));
 
             foreach ($data as $propName => $propValue) {
-                if ($reflection->hasProperty($propName)) {
-                    $property = $reflection->getProperty($propName);
-                    if ($property->isPublic() && ! $property->isReadOnly()) {
-                        $property->setValue($object, $propValue);
-                    }
+                if ( ! is_string($propName) || ! $reflection->hasProperty($propName)) {
+                    continue;
+                }
+
+                $property = $reflection->getProperty($propName);
+                if ( ! $property->isPublic() || $property->isReadOnly()) {
+                    continue;
+                }
+
+                try {
+                    $property->setValue($object, $propValue);
+                } catch (Throwable $e) {
+                    throw MappingException::propertyHydrationFailed(
+                        'array',
+                        get_class($object),
+                        $propName,
+                        $e,
+                    );
                 }
             }
 
             return $object;
-        } catch (Exception $e) {
-            throw new MappingException('array', get_class($object), "Failed to populate object: " . $e->getMessage());
+        } catch (MappingException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new MappingException(
+                'array',
+                get_class($object),
+                'Failed to populate object: ' . $e->getMessage(),
+                null,
+                0,
+                $e,
+            );
         }
     }
 
@@ -77,14 +108,20 @@ final readonly class ObjectFactory
             $this->setRemainingProperties($instance, $data, $reflection);
 
             return $instance;
-        } catch (Exception $e) {
-            throw new MappingException('array', $className, "Failed to create instance: " . $e->getMessage());
+        } catch (MappingException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new MappingException(
+                'array',
+                $className,
+                'Failed to create instance: ' . $e->getMessage(),
+                null,
+                0,
+                $e,
+            );
         }
     }
 
-    /**
-     * @throws ReflectionException
-     */
     private function createWithConstructor(ReflectionClass $reflection, ReflectionMethod $constructor, array &$data): object
     {
         $args = [];
@@ -101,7 +138,7 @@ final readonly class ObjectFactory
             } elseif ($param->allowsNull()) {
                 $args[] = null;
             } else {
-                $args[] = $this->getDefaultValueForType($param->getType());
+                throw MappingException::missingRequiredValue('array', $reflection->getName(), $paramName);
             }
         }
 
@@ -111,32 +148,25 @@ final readonly class ObjectFactory
     private function setRemainingProperties(object $instance, array $data, ReflectionClass $reflection): void
     {
         foreach ($data as $propName => $propValue) {
+            if ( ! is_string($propName) || ! $reflection->hasProperty($propName)) {
+                continue;
+            }
+
+            $property = $reflection->getProperty($propName);
+            if ( ! $property->isPublic() || $property->isReadOnly()) {
+                continue;
+            }
+
             try {
-                if ($reflection->hasProperty($propName)) {
-                    $property = $reflection->getProperty($propName);
-                    if ($property->isPublic() && ! $property->isReadOnly()) {
-                        $property->setValue($instance, $propValue);
-                    }
-                }
-            } catch (Throwable) {
-                // Ignore errors when setting properties
+                $property->setValue($instance, $propValue);
+            } catch (Throwable $e) {
+                throw MappingException::propertyHydrationFailed(
+                    'array',
+                    $reflection->getName(),
+                    $propName,
+                    $e,
+                );
             }
         }
-    }
-
-    private function getDefaultValueForType(?ReflectionType $type): mixed
-    {
-        if ( ! $type instanceof ReflectionNamedType) {
-            return null;
-        }
-
-        return match ($type->getName()) {
-            'int' => 0,
-            'float' => 0.0,
-            'bool' => false,
-            'string' => '',
-            'array' => [],
-            default => null,
-        };
     }
 }
