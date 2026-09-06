@@ -14,6 +14,7 @@ use Ninja\Granite\GraniteDTO;
 use Ninja\Granite\Serialization\SerializationCache;
 use PHPUnit\Framework\Attributes\CoversClass;
 use stdClass;
+use Tests\Fixtures\DTOs\AliasedValidatedDTO;
 use Tests\Fixtures\DTOs\ComplexDTO;
 use Tests\Fixtures\DTOs\NestedSerializationDTO;
 use Tests\Fixtures\DTOs\PersonDTO;
@@ -62,6 +63,13 @@ use Tests\Helpers\TestCase;
         $this->assertEquals('John', $array['first_name']);
         $this->assertEquals('Doe', $array['last_name']);
         $this->assertEquals('john@example.com', $array['email']);
+    }
+
+    public function test_serializes_validated_scalar_dto_with_method_metadata(): void
+    {
+        $dto = new AliasedValidatedDTO('Ada', 'secret-token');
+
+        $this->assertSame(['display_name' => 'Ada'], $dto->array());
     }
 
     public function test_serializes_to_json(): void

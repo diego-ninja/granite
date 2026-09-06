@@ -10,6 +10,7 @@ namespace Tests\Unit\Support;
 use Ninja\Granite\Support\ClassProfile;
 use Ninja\Granite\Support\ValueComparator;
 use PHPUnit\Framework\Attributes\CoversClass;
+use Tests\Fixtures\DTOs\AliasedValidatedDTO;
 use Tests\Fixtures\DTOs\NestedDTO;
 use Tests\Fixtures\DTOs\PersonDTO;
 use Tests\Fixtures\DTOs\ScalarDTO;
@@ -54,6 +55,13 @@ class ClassProfileTest extends TestCase
         $profile = ClassProfile::build(ValidatedUserVO::class);
 
         $this->assertFalse($profile->canUseFastPath);
+    }
+
+    public function test_rejects_serialization_fast_path_for_overridden_metadata_methods(): void
+    {
+        $profile = ClassProfile::build(AliasedValidatedDTO::class);
+
+        $this->assertFalse($profile->canSerializeFastPath);
     }
 
     public function test_rejects_fast_path_for_serialization_convention(): void

@@ -9,6 +9,7 @@ namespace Ninja\Granite\Support;
 
 use Error;
 use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\CarbonRange;
 use Ninja\Granite\Serialization\Attributes\CarbonRelative;
@@ -95,7 +96,9 @@ final class ClassProfile
         $canHydrateFastPath = ! $hasDisqualifyingClassAttributes
             && ! self::hasOverriddenRules($reflection)
             && ! $hasReadonlyParentProperties;
-        $canSerializeFastPath = ! $hasDisqualifyingClassAttributes && ! $hasReadonlyParentProperties;
+        $canSerializeFastPath = ! $hasDisqualifyingClassAttributes
+            && ! self::hasCustomSerializationMetadata($reflection)
+            && ! $hasReadonlyParentProperties;
         $canCompareFastPath = ! $hasReadonlyParentProperties;
 
         foreach ($constructor->getParameters() as $param) {
@@ -401,6 +404,24 @@ final class ClassProfile
         } catch (ReflectionException) {
             return false;
         }
+    }
+
+    /**
+     * @param ReflectionClass<object> $reflection
+     */
+    private static function hasCustomSerializationMetadata(ReflectionClass $reflection): bool
+    {
+        foreach (['serializedNames', 'hiddenProperties'] as $methodName) {
+            try {
+                if (Granite::class !== $reflection->getMethod($methodName)->getDeclaringClass()->getName()) {
+                    return true;
+                }
+            } catch (ReflectionException) {
+                continue;
+            }
+        }
+
+        return false;
     }
 
     /**
