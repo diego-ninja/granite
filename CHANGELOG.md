@@ -11,6 +11,7 @@
 
 ### Changed
 - CI now resolves dependencies consistently across PHP 8.3, 8.4, and 8.5.
+- Non-coverage CI jobs now disable coverage reporting explicitly.
 - Serialization caching is now conservative: only deeply immutable graphs are cached.
 - `ObjectMapper::configure()` now requires the callback to return the immutable `MapperConfig`.
 
