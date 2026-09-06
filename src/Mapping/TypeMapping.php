@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines TypeMapping as part of the object mapping pipeline.
+// ABOUTME: Owns the TypeMapping boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping;
 
@@ -148,7 +150,7 @@ final class TypeMapping
     /**
      * Validate that all destination properties exist.
      *
-     * @param array $mappings Property mappings to validate
+     * @param array<string, PropertyMapping> $mappings Property mappings to validate
      * @throws MappingException If a destination property doesn't exist
      */
     private function validateDestinationProperties(array $mappings): void
@@ -190,7 +192,7 @@ final class TypeMapping
     /**
      * Validate that all source properties exist.
      *
-     * @param array $mappings Property mappings to validate
+     * @param array<string, PropertyMapping> $mappings Property mappings to validate
      * @throws MappingException If a source property doesn't exist
      */
     private function validateSourceProperties(array $mappings): void
@@ -210,7 +212,7 @@ final class TypeMapping
                 $sourceProp = $mapping->getSourceProperty();
 
                 // Skip if no explicit source property or using dot notation (nested properties)
-                if (null === $sourceProp || ! is_string($sourceProp) || str_contains($sourceProp, '.')) {
+                if (null === $sourceProp || str_contains($sourceProp, '.')) {
                     continue;
                 }
 
@@ -235,7 +237,7 @@ final class TypeMapping
     /**
      * Validate transformers and conditions.
      *
-     * @param array $mappings Property mappings to validate
+     * @param array<string, PropertyMapping> $mappings Property mappings to validate
      * @throws MappingException If a transformer or condition is invalid
      */
     private function validateTransformersAndConditions(array $mappings): void
@@ -260,7 +262,7 @@ final class TypeMapping
     /**
      * Detect redundant or conflicting mappings.
      *
-     * @param array $mappings Property mappings to check
+     * @param array<string, PropertyMapping> $mappings Property mappings to check
      * @throws MappingException If conflicts are found
      */
     private function detectConflicts(array $mappings): void
@@ -276,7 +278,7 @@ final class TypeMapping
             }
 
             $sourceProp = $mapping->getSourceProperty();
-            if (null !== $sourceProp && (is_string($sourceProp) || is_int($sourceProp))) {
+            if (null !== $sourceProp) {
                 $sourceProps[$sourceProp][] = $destProp;
             }
         }

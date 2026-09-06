@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines CarbonTransformer as part of runtime value transformations.
+// ABOUTME: Owns the CarbonTransformer boundary within runtime value transformations.
 
 namespace Ninja\Granite\Transformers;
 
@@ -37,6 +39,7 @@ final readonly class CarbonTransformer implements Transformer
         private ?string $serializeTimezone = null,
         private DateTimeInterface|string|null $min = null,
         private DateTimeInterface|string|null $max = null,
+        private DateTimeInterface|string|null $relativeBaseDate = null,
     ) {}
 
     /**
@@ -44,6 +47,7 @@ final readonly class CarbonTransformer implements Transformer
      *
      * @param mixed $value Source value
      * @param array $sourceData Complete source data for context
+     * @param array<array-key, mixed> $sourceData
      * @return DateTimeInterface|null Transformed Carbon instance
      */
     public function transform(mixed $value, array $sourceData = []): ?DateTimeInterface
@@ -200,6 +204,11 @@ final readonly class CarbonTransformer implements Transformer
         return $this->max;
     }
 
+    public function getRelativeBaseDate(): DateTimeInterface|string|null
+    {
+        return $this->relativeBaseDate;
+    }
+
     /**
      * Create Carbon instance from various input types.
      *
@@ -218,6 +227,27 @@ final readonly class CarbonTransformer implements Transformer
 
         // Get effective format (attribute > global config > null)
         $format = $this->format ?? GraniteConfig::getInstance()->getCarbonParseFormat() ?? null;
+
+        if (null !== $this->relativeBaseDate && is_string($value) && $this->isRelativeString($value)) {
+            $baseDate = CarbonSupport::create($this->relativeBaseDate, null, $timezone, $this->immutable);
+            if (null === $baseDate) {
+                return null;
+            }
+
+            if ('now' === strtolower(trim($value))) {
+                return $baseDate;
+            }
+
+            if ($baseDate instanceof \Carbon\Carbon) {
+                return $baseDate->modify($value);
+            }
+
+            if ($baseDate instanceof \Carbon\CarbonImmutable) {
+                return $baseDate->modify($value);
+            }
+
+            return null;
+        }
 
         return CarbonSupport::create(
             $value,

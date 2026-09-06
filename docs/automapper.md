@@ -356,7 +356,8 @@ $config = MapperConfig::create()->withCacheType(CacheType::Memory);
 // Shared cache - shared across requests in same process
 $config = MapperConfig::create()->withCacheType(CacheType::Shared);
 
-// Persistent cache - file-based, survives restarts
+// Persistent cache - validated JSON for safe scalar/array configurations;
+// closures and transformer objects remain in memory and are not persisted.
 $config = MapperConfig::create()->withCacheType(CacheType::Persistent);
 ```
 
@@ -398,16 +399,17 @@ Configure a global mapper instance for application-wide use:
 
 ```php
 // Configure once at application startup
-ObjectMapper::configure(function(MapperConfig $config) {
-    $config->withSharedCache()
-           ->withConventions(true, 0.8)
-           ->withProfiles([
-               new UserMappingProfile(),
-               new ProductMappingProfile(),
-               new OrderMappingProfile()
-           ])
-           ->withWarmup();
-});
+ObjectMapper::configure(
+    fn(MapperConfig $config): MapperConfig => $config
+        ->withSharedCache()
+        ->withConventions(true, 0.8)
+        ->withProfiles([
+            new UserMappingProfile(),
+            new ProductMappingProfile(),
+            new OrderMappingProfile(),
+        ])
+        ->withWarmup(),
+);
 
 // Use anywhere in your application
 $mapper = ObjectMapper::getInstance();
@@ -499,9 +501,8 @@ $mapper = new ObjectMapper(
 $stats = $mapper->getCache()->getStats();
 echo "Hit Rate: " . $stats['hit_rate'];
 
-// Check discovered conventions
-$conventionMapper = $mapper->getConventionMapper();
-$mappings = $conventionMapper->discoverMappings(SourceClass::class, DestClass::class);
+// Verify conventions through the public mapping result
+$destination = $mapper->map($source, DestClass::class);
 ```
 
 ## 📊 Performance Improvements

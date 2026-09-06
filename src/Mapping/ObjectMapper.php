@@ -1,7 +1,10 @@
 <?php
+// ABOUTME: Defines ObjectMapper as part of the object mapping pipeline.
+// ABOUTME: Owns the ObjectMapper boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping;
 
+use InvalidArgumentException;
 use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Exceptions\ReflectionException;
@@ -23,6 +26,7 @@ final class ObjectMapper implements Mapper, MappingStorage
     private MappingEngine $engine;
     private ConfigurationBuilder $configBuilder;
     private MappingCache $cache;
+    /** @var array<int, MappingProfile> */
     private array $profiles = [];
 
     // Singleton support
@@ -35,14 +39,16 @@ final class ObjectMapper implements Mapper, MappingStorage
     public function __construct(?MapperConfig $config = null)
     {
         $config ??= MapperConfig::default();
+        $config->validate();
 
         $this->cache = CacheFactory::create($config->cacheType);
         $this->configBuilder = new ConfigurationBuilder(
             $this->cache,
             $config->useConventions,
             $config->conventionThreshold,
+            $config->conventions,
         );
-        $this->engine = new MappingEngine($this->configBuilder);
+        $this->engine = new MappingEngine($this->configBuilder, $this);
 
         $this->registerProfiles($config->profiles);
 
@@ -78,9 +84,13 @@ final class ObjectMapper implements Mapper, MappingStorage
     public static function configure(callable $configurator): void
     {
         $config = MapperConfig::default();
-        $configurator($config);
+        $configured = $configurator($config);
 
-        self::$globalInstance = new self($config);
+        if ( ! $configured instanceof MapperConfig) {
+            throw new InvalidArgumentException('ObjectMapper::configure() must return a MapperConfig instance');
+        }
+
+        self::$globalInstance = new self($configured);
         self::$isConfigured = true;
     }
 
@@ -129,7 +139,7 @@ final class ObjectMapper implements Mapper, MappingStorage
 
     /**
      * @template T of object
-     * @param array $source Source array
+     * @param array<array-key, mixed> $source Source array
      * @param class-string<T> $destinationType Destination type
      * @return array<T> Array of mapped objects
      * @throws GraniteException
@@ -216,7 +226,6 @@ final class ObjectMapper implements Mapper, MappingStorage
 
     public function clearCache(): self
     {
-        $this->cache->clear();
         $this->configBuilder->clearCache();
         return $this;
     }
@@ -251,6 +260,7 @@ final class ObjectMapper implements Mapper, MappingStorage
         return $this->configBuilder->getMappingsForTypes($sourceType, $destinationType);
     }
 
+    /** @param array<int, mixed> $profiles */
     private function registerProfiles(array $profiles): void
     {
         foreach ($profiles as $profile) {

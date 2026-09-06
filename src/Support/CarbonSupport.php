@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines CarbonSupport as part of shared reflection, comparison and date support.
+// ABOUTME: Owns the CarbonSupport boundary within shared reflection, comparison and date support.
 
 namespace Ninja\Granite\Support;
 
@@ -141,7 +143,6 @@ final class CarbonSupport
                     /** @var CarbonImmutable $value */
                     return Carbon::instance($value);
                 }
-                /** @var DateTimeInterface $value */
                 return $value;
             }
 
@@ -239,7 +240,7 @@ final class CarbonSupport
         // If timezone conversion is requested and it's a Carbon instance
         if (null !== $timezone && self::isCarbonInstance($carbon)) {
             if ($carbon instanceof Carbon) {
-                $carbon = $carbon->setTimezone($timezone);
+                $carbon = (clone $carbon)->setTimezone($timezone);
             } elseif ($carbon instanceof CarbonImmutable) {
                 $carbon = $carbon->setTimezone($timezone);
             }

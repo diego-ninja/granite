@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines BooleanType as part of validation rule definition and execution.
+// ABOUTME: Owns the BooleanType boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -8,7 +10,7 @@ class BooleanType extends AbstractRule
      * Check if the value is a boolean.
      *
      * @param mixed $value
-     * @param array|null $allData
+     * @param array<array-key, mixed>|null $allData
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

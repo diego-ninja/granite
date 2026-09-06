@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Regex as part of validation rule definition and execution.
+// ABOUTME: Owns the Regex boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -17,7 +19,7 @@ class Regex extends AbstractRule
      * Check if the value matches the pattern.
      *
      * @param mixed $value
-     * @param array|null $allData
+     * @param array<array-key, mixed>|null $allData
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

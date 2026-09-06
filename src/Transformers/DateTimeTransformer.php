@@ -1,11 +1,13 @@
 <?php
+// ABOUTME: Defines DateTimeTransformer as part of runtime value transformations.
+// ABOUTME: Owns the DateTimeTransformer boundary within runtime value transformations.
 
 namespace Ninja\Granite\Transformers;
 
 use DateTimeImmutable;
 use DateTimeInterface;
-use Exception;
 use Ninja\Granite\Mapping\Contracts\Transformer;
+use Throwable;
 
 final readonly class DateTimeTransformer implements Transformer
 {
@@ -13,6 +15,7 @@ final readonly class DateTimeTransformer implements Transformer
         private string $format = DateTimeInterface::ATOM,
     ) {}
 
+    /** @param array<array-key, mixed> $sourceData */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
         if (null === $value) {
@@ -25,8 +28,15 @@ final readonly class DateTimeTransformer implements Transformer
 
         if (is_string($value)) {
             try {
-                return new DateTimeImmutable($value);
-            } catch (Exception $e) {
+                $result = DateTimeImmutable::createFromFormat($this->format, $value);
+                $errors = DateTimeImmutable::getLastErrors();
+
+                if (false === $result || (false !== $errors && (0 < $errors['warning_count'] || 0 < $errors['error_count']))) {
+                    return null;
+                }
+
+                return $result;
+            } catch (Throwable) {
                 return null;
             }
         }

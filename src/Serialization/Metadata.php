@@ -1,11 +1,18 @@
 <?php
+// ABOUTME: Defines Metadata as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the Metadata boundary between metadata and serialized values.
 
 namespace Ninja\Granite\Serialization;
 
 class Metadata
 {
+    /** @var array<string, bool> */
     private array $hiddenProperties;
 
+    /**
+     * @param array<string, string> $propertyNames
+     * @param array<int, string> $hiddenProperties
+     */
     public function __construct(private array $propertyNames = [], array $hiddenProperties = [])
     {
         $this->hiddenProperties = empty($hiddenProperties) ? [] : array_fill_keys($hiddenProperties, true);
@@ -14,7 +21,7 @@ class Metadata
     public function getSerializedName(string $propertyName): string
     {
         $serializedName = $this->propertyNames[$propertyName] ?? $propertyName;
-        return is_string($serializedName) ? $serializedName : $propertyName;
+        return $serializedName;
     }
 
     public function isHidden(string $propertyName): bool
@@ -34,6 +41,7 @@ class Metadata
         return $this;
     }
 
+    /** @return array<string, array<string, string>|list<string>> */
     public function debug(): array
     {
         return [

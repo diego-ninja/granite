@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Range as part of validation rule definition and execution.
+// ABOUTME: Owns the Range boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules\Carbon;
 
@@ -29,7 +31,7 @@ final class Range extends AbstractRule
      * Validate that the Carbon date is within the specified range.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines MapWhen as part of the object mapping pipeline.
+// ABOUTME: Owns the MapWhen boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Attributes;
 

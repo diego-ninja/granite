@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines KebabCaseConvention as part of the object mapping pipeline.
+// ABOUTME: Owns the KebabCaseConvention boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Conventions;
 

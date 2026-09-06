@@ -1,9 +1,12 @@
 <?php
+// ABOUTME: Defines CarbonRange as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the CarbonRange boundary between metadata and serialized values.
 
 namespace Ninja\Granite\Serialization\Attributes;
 
 use Attribute;
 use DateTimeInterface;
+use Ninja\Granite\Validation\Rules\Carbon\Range as RangeRule;
 
 /**
  * Attribute to specify date range validation for Carbon instances.
@@ -23,4 +26,14 @@ final readonly class CarbonRange
         public DateTimeInterface|string|null $max = null,
         public ?string $message = null,
     ) {}
+
+    public function asRule(): RangeRule
+    {
+        $rule = new RangeRule(min: $this->min, max: $this->max);
+        if (null !== $this->message) {
+            $rule->withMessage($this->message);
+        }
+
+        return $rule;
+    }
 }

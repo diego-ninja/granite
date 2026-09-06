@@ -22,8 +22,18 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip
           coverage: none
 
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-8.4-composer-${{ hashFiles('composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.4-composer-
+
       - name: Install dependencies
         run: composer update --prefer-stable --prefer-dist --no-interaction
 
       - name: Check code style
-        run: composer run cs:check
+        run: |
+          composer run check:aboutme
+          composer run cs:check

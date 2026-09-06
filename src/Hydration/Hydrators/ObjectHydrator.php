@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ObjectHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the ObjectHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 
@@ -22,6 +24,7 @@ class ObjectHydrator extends AbstractHydrator
         return is_object($data);
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         /** @var object $data */

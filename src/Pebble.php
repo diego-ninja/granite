@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Pebble as part of the Granite runtime.
+// ABOUTME: Owns the Pebble boundary within the Granite runtime.
 
 namespace Ninja\Granite;
 
@@ -42,6 +44,7 @@ use UnitEnum;
  *
  * @since 2.1.0
  */
+/** @implements ArrayAccess<int|string, mixed> */
 final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
 {
     /**
@@ -596,7 +599,6 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
         }
 
         if ($value instanceof UnitEnum) {
-            /** @phpstan-ignore-next-line */
             return property_exists($value, 'value') ? $value->value : $value->name;
         }
 

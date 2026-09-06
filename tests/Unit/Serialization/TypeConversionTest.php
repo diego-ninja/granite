@@ -9,6 +9,7 @@ namespace Tests\Unit\Serialization;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
+use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\GraniteDTO;
 use PHPUnit\Framework\Attributes\CoversClass;
 use Tests\Fixtures\DTOs\BackedEnumDTO;
@@ -124,17 +125,14 @@ use Tests\Helpers\TestCase;
 
     public function test_handles_invalid_enum_values(): void
     {
+        $this->expectException(SerializationException::class);
+
         $dto = ComplexDTO::from([
             'id' => 1,
             'name' => 'Test',
             'status' => 'invalid_status',
         ]);
 
-        // Should handle gracefully - might be null or throw exception depending on implementation
-        $this->assertTrue(
-            null === $dto->status || $dto->status instanceof UserStatus,
-            'Invalid enum value should result in null or valid enum',
-        );
     }
 
     public function test_preserves_existing_enum_instances(): void

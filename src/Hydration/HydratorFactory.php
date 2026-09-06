@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HydratorFactory as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the HydratorFactory boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration;
 
@@ -108,7 +110,7 @@ class HydratorFactory
      *
      * @param mixed $data Source data
      * @param string $targetClass Target class being hydrated
-     * @return array Normalized data
+     * @return array<array-key, mixed> Normalized data
      * @throws RuntimeException If no suitable hydrator is found
      */
     public function hydrateWith(mixed $data, string $targetClass): array
@@ -152,26 +154,32 @@ class HydratorFactory
      *
      * @param object $data Source object
      * @param string $targetClass Target class
-     * @return array Combined extracted data
+     * @return array<array-key, mixed> Combined extracted data
      */
     private function hydrateObjectWithChain(object $data, string $targetClass): array
     {
         $extractedData = [];
 
         foreach ($this->getHydrators() as $hydrator) {
+            if ($hydrator instanceof GetterHydrator) {
+                continue;
+            }
+
             if ( ! $hydrator->supports($data, $targetClass)) {
                 continue;
             }
 
-            // Special handling for GetterHydrator - pass existing data
-            if ($hydrator instanceof GetterHydrator) {
-                $additionalData = $hydrator->extractViaGetters($data, $extractedData, $targetClass);
-                $extractedData = array_merge($extractedData, $additionalData);
-            } else {
-                // For other hydrators, use their result and stop chain
-                $extractedData = $hydrator->hydrate($data, $targetClass);
-                // Don't break - let GetterHydrator enrich the data
+            $extractedData = $hydrator->hydrate($data, $targetClass);
+            break;
+        }
+
+        foreach ($this->getHydrators() as $hydrator) {
+            if ( ! $hydrator instanceof GetterHydrator || ! $hydrator->supports($data, $targetClass)) {
+                continue;
             }
+
+            $additionalData = $hydrator->extractViaGetters($data, $extractedData, $targetClass);
+            return array_merge($extractedData, $additionalData);
         }
 
         return $extractedData;

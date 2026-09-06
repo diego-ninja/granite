@@ -120,13 +120,11 @@ use Tests\Helpers\TestCase;
 
         if ($reflection->hasProperty('classCache')) {
             $classCache = $reflection->getProperty('classCache');
-            $classCache->setAccessible(true);
             $classCache->setValue(null, []);
         }
 
         if ($reflection->hasProperty('propertiesCache')) {
             $propertiesCache = $reflection->getProperty('propertiesCache');
-            $propertiesCache->setAccessible(true);
             $propertiesCache->setValue(null, []);
         }
     }

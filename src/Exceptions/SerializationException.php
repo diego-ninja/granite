@@ -1,8 +1,10 @@
 <?php
+// ABOUTME: Defines SerializationException as part of the library exception taxonomy.
+// ABOUTME: Owns the SerializationException boundary within the library exception taxonomy.
 
 namespace Ninja\Granite\Exceptions;
 
-use Exception;
+use Throwable;
 
 /**
  * Exception thrown when serialization/deserialization fails.
@@ -19,7 +21,7 @@ class SerializationException extends GraniteException
         string $message = "",
         ?string $propertyName = null,
         int $code = 0,
-        ?Exception $previous = null,
+        ?Throwable $previous = null,
     ) {
         $this->objectType = $objectType;
         $this->operation = $operation;
@@ -59,13 +61,39 @@ class SerializationException extends GraniteException
     /**
      * Create exception for deserialization errors.
      */
-    public static function deserializationFailed(string $objectType, string $reason, ?Exception $previous = null): self
+    public static function deserializationFailed(string $objectType, string $reason, ?Throwable $previous = null): self
     {
         return new self(
             $objectType,
             'deserialization',
             sprintf('Failed to deserialize %s: %s', $objectType, $reason),
             null,
+            0,
+            $previous,
+        );
+    }
+
+    public static function missingRequiredValue(string $objectType, string $parameter): self
+    {
+        return new self(
+            $objectType,
+            'deserialization',
+            sprintf('Missing required value for parameter "%s" in %s', $parameter, $objectType),
+            $parameter,
+        );
+    }
+
+    public static function conversionFailed(
+        string $objectType,
+        string $propertyName,
+        string $targetType,
+        ?Throwable $previous = null,
+    ): self {
+        return new self(
+            $objectType,
+            'deserialization',
+            sprintf('Failed to convert property "%s" to "%s"', $propertyName, $targetType),
+            $propertyName,
             0,
             $previous,
         );

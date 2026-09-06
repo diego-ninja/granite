@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Each as part of validation rule definition and execution.
+// ABOUTME: Owns the Each boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -29,7 +31,7 @@ class Each extends AbstractRule
      * Check if each element in the array passes the validation rules.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

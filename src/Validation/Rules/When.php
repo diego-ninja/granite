@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines When as part of validation rule definition and execution.
+// ABOUTME: Owns the When boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -21,7 +23,7 @@ class When extends AbstractRule
      * Check if the value passes the validation rule.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

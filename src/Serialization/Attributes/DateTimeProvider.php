@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines DateTimeProvider as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the DateTimeProvider boundary between metadata and serialized values.
 
 namespace Ninja\Granite\Serialization\Attributes;
 

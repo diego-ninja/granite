@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Range as part of validation rule definition and execution.
+// ABOUTME: Owns the Range boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Attributes\Carbon;
 

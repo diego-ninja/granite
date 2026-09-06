@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines MapperConfig as part of the object mapping pipeline.
+// ABOUTME: Owns the MapperConfig boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping;
 
@@ -8,6 +10,10 @@ use Ninja\Granite\Mapping\Contracts\NamingConvention;
 
 final readonly class MapperConfig
 {
+    /**
+     * @param array<int, mixed> $profiles
+     * @param array<int, mixed> $conventions
+     */
     private function __construct(
         public CacheType $cacheType = CacheType::Memory,
         public bool $warmupCache = true,
@@ -138,7 +144,7 @@ final readonly class MapperConfig
             $this->cacheType,
             $this->warmupCache,
             $this->useConventions,
-            max(0.0, min(1.0, $threshold)),
+            $threshold,
             $this->profiles,
             $this->conventions,
         );
@@ -172,6 +178,7 @@ final readonly class MapperConfig
         );
     }
 
+    /** @param array<int, mixed> $profiles */
     public function withProfiles(array $profiles): self
     {
         return new self(

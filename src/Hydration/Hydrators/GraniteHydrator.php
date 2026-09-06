@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the GraniteHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 
@@ -18,6 +20,7 @@ class GraniteHydrator extends AbstractHydrator
         return $data instanceof GraniteObject;
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         /** @var GraniteObject $data */

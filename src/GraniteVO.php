@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteVO as part of the Granite runtime.
+// ABOUTME: Owns the GraniteVO boundary within the Granite runtime.
 
 namespace Ninja\Granite;
 
@@ -84,7 +86,7 @@ abstract readonly class GraniteVO extends Granite
      * Create a new instance with some properties modified.
      * This respects immutability by creating a new instance.
      *
-     * @param array $modifications Properties to modify
+     * @param array<array-key, mixed> $modifications Properties to modify
      * @return static New Value Object with modifications
      * @throws InvalidArgumentException If validation fails
      * @throws DateMalformedStringException

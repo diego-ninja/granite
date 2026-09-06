@@ -1,7 +1,10 @@
 <?php
+// ABOUTME: Defines RuleParser as part of validation rule definition and execution.
+// ABOUTME: Owns the RuleParser boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation;
 
+use InvalidArgumentException;
 use Ninja\Granite\Validation\Rules\ArrayType;
 use Ninja\Granite\Validation\Rules\BooleanType;
 use Ninja\Granite\Validation\Rules\Email;
@@ -29,26 +32,30 @@ class RuleParser
      */
     public static function parse(string $ruleString): array
     {
+        if ('' === $ruleString) {
+            return [];
+        }
+
         $rules = [];
         $ruleParts = explode('|', $ruleString);
 
-        foreach ($ruleParts as $rulePart) {
-            // Skip empty parts
-            if (empty($rulePart)) {
+        foreach ($ruleParts as $position => $rulePart) {
+            if ('' === $rulePart) {
                 continue;
             }
 
-            // Check if rule has parameters
             if (str_contains($rulePart, ':')) {
                 [$ruleName, $parameters] = explode(':', $rulePart, 2);
-                $rule = self::createRuleWithParameters($ruleName, $parameters);
+                $rule = self::createRuleWithParameters($ruleName, $parameters, $position + 1);
             } else {
-                $rule = self::createSimpleRule($rulePart);
+                $rule = self::createSimpleRule($rulePart, $position + 1);
             }
 
-            if (null !== $rule) {
-                $rules[] = $rule;
-            }
+            $rules[] = $rule;
+        }
+
+        if ([] === $rules) {
+            throw new InvalidArgumentException('No valid validation rules found in input');
         }
 
         return $rules;
@@ -58,11 +65,11 @@ class RuleParser
      * Create a simple validation rule without parameters.
      *
      * @param string $ruleName Rule name
-     * @return ValidationRule|null Rule object or null if invalid
+     * @return ValidationRule Rule object
      */
-    private static function createSimpleRule(string $ruleName): ?ValidationRule
+    private static function createSimpleRule(string $ruleName, int $position): ValidationRule
     {
-        return match ($ruleName) {
+        $rule = match ($ruleName) {
             'required' => new Required(),
             'string' => new StringType(),
             'int', 'integer' => new IntegerType(),
@@ -74,6 +81,12 @@ class RuleParser
             'ip' => new IpAddress(),
             default => null,
         };
+
+        if (null === $rule) {
+            throw self::invalidRule($ruleName, $position, 'unknown rule');
+        }
+
+        return $rule;
     }
 
     /**
@@ -81,19 +94,61 @@ class RuleParser
      *
      * @param string $ruleName Rule name
      * @param string $parameters Rule parameters
-     * @return ValidationRule|null Rule object or null if invalid
+     * @return ValidationRule Rule object
      */
-    private static function createRuleWithParameters(string $ruleName, string $parameters): ?ValidationRule
+    private static function createRuleWithParameters(string $ruleName, string $parameters, int $position): ValidationRule
     {
-        // Split parameters by comma if multiple parameters
-        $params = str_contains($parameters, ',') ? explode(',', $parameters) : [$parameters];
-
         return match ($ruleName) {
-            'min' => new Min((int) $params[0]),
-            'max' => new Max((int) $params[0]),
-            'in' => new In($params),
-            'regex' => new Regex($params[0]),
-            default => null,
+            'min' => new Min(self::parseBoundary($ruleName, $parameters, $position)),
+            'max' => new Max(self::parseBoundary($ruleName, $parameters, $position)),
+            'in' => new In(self::parseInValues($parameters, $position)),
+            'regex' => self::createRegex($parameters, $position),
+            default => throw self::invalidRule($ruleName, $position, 'unknown rule'),
         };
+    }
+
+    private static function parseBoundary(string $ruleName, string $parameter, int $position): int|float
+    {
+        if ('' === $parameter || str_contains($parameter, ',') || $parameter !== trim($parameter) || ! is_numeric($parameter)) {
+            throw self::invalidRule($ruleName, $position, 'requires one numeric parameter');
+        }
+
+        $normalized = strtolower($parameter);
+
+        return str_contains($parameter, '.') || str_contains($normalized, 'e')
+            ? (float) $parameter
+            : (int) $parameter;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function parseInValues(string $parameters, int $position): array
+    {
+        $values = explode(',', $parameters);
+        if (in_array('', $values, true)) {
+            throw self::invalidRule('in', $position, 'requires one or more non-empty values');
+        }
+
+        return $values;
+    }
+
+    private static function createRegex(string $pattern, int $position): Regex
+    {
+        if ('' === $pattern) {
+            throw self::invalidRule('regex', $position, 'requires a non-empty pattern');
+        }
+
+        return new Regex($pattern);
+    }
+
+    private static function invalidRule(string $ruleName, int $position, string $reason): InvalidArgumentException
+    {
+        return new InvalidArgumentException(sprintf(
+            'Invalid validation rule "%s" at position %d: %s',
+            $ruleName,
+            $position,
+            $reason,
+        ));
     }
 }

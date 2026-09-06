@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ConfigurationBuilder as part of the object mapping pipeline.
+// ABOUTME: Owns the ConfigurationBuilder boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Core;
 
@@ -12,7 +14,6 @@ use Ninja\Granite\Mapping\PropertyMapping;
 use Ninja\Granite\Mapping\Traits\MappingStorageTrait;
 use Ninja\Granite\Mapping\TypeMapping;
 use Ninja\Granite\Support\ReflectionCache;
-use ReflectionClass;
 use ReflectionProperty;
 
 /**
@@ -24,24 +25,32 @@ final class ConfigurationBuilder
     use MappingStorageTrait;
 
     private MappingCache $cache;
-    private ?ConventionMapper $conventionMapper;
+    private ConventionMapper $conventionMapper;
+    /** @var array<int, MappingProfile> */
     private array $profiles = [];
     private bool $useConventions;
 
+    /** @param array<int, mixed> $conventions */
     public function __construct(
         MappingCache $cache,
         bool $useConventions = false,
         float $conventionThreshold = 0.8,
+        array $conventions = [],
     ) {
         $this->cache = $cache;
         $this->useConventions = $useConventions;
-        $this->conventionMapper = $useConventions
-            ? new ConventionMapper(null, $conventionThreshold)
-            : null;
+        $this->conventionMapper = new ConventionMapper(null, $conventionThreshold);
+        foreach ($conventions as $convention) {
+            if ( ! $convention instanceof NamingConvention) {
+                continue;
+            }
+            $this->conventionMapper->registerConvention($convention);
+        }
     }
 
     /**
      * Get mapping configuration for source to destination.
+     * @return array<string, array<string, mixed>>
      */
     public function getConfiguration(mixed $source, string $destinationType): array
     {
@@ -49,8 +58,7 @@ final class ConfigurationBuilder
 
         // Check cache first
         if ($this->cache->has($sourceType, $destinationType)) {
-            $cached = $this->cache->get($sourceType, $destinationType);
-            return is_array($cached) ? $cached : [];
+            return $this->cache->get($sourceType, $destinationType) ?? [];
         }
 
         // Build new configuration
@@ -71,21 +79,15 @@ final class ConfigurationBuilder
         $originalConfig = $this->getConfiguration($sourceType, $destinationType);
 
         foreach ($originalConfig as $destProp => $config) {
-            if ( ! is_array($config)) {
-                continue;
-            }
-
             $sourceProp = $config['source'] ?? null;
 
             // Skip if no explicit source property or complex transformers
-            if (null === $sourceProp || $sourceProp === $destProp || ($config['transformer'] ?? null) !== null) {
+            if ( ! is_string($sourceProp) || $sourceProp === $destProp || ($config['transformer'] ?? null) !== null) {
                 continue;
             }
 
-            if (is_string($sourceProp) && is_string($destProp)) {
-                // Create reverse mapping
-                $reverseMapping->forMember($sourceProp, fn($m) => $m->mapFrom($destProp));
-            }
+            // Create reverse mapping
+            $reverseMapping->forMember($sourceProp, fn(PropertyMapping $mapping) => $mapping->mapFrom($destProp));
         }
     }
 
@@ -96,8 +98,21 @@ final class ConfigurationBuilder
     public function addProfile(MappingProfile $profile): void
     {
         $this->profiles[] = $profile;
+        $this->invalidateConfigurationCaches();
     }
 
+    public function addPropertyMapping(
+        string $sourceType,
+        string $destinationType,
+        string $property,
+        PropertyMapping $mapping,
+    ): void {
+        $key = $sourceType . '->' . $destinationType;
+        $this->mappings[$key][$property] = $mapping;
+        $this->invalidateConfigurationCaches();
+    }
+
+    /** @param array<int, mixed> $profiles */
     public function warmupCache(array $profiles): void
     {
         foreach ($profiles as $profile) {
@@ -114,20 +129,19 @@ final class ConfigurationBuilder
     public function enableConventions(bool $enabled): void
     {
         $this->useConventions = $enabled;
-
-        if ($enabled && null === $this->conventionMapper) {
-            $this->conventionMapper = new ConventionMapper();
-        }
+        $this->invalidateConfigurationCaches();
     }
 
     public function setConventionThreshold(float $threshold): void
     {
-        $this->conventionMapper?->setConfidenceThreshold($threshold);
+        $this->conventionMapper->setConfidenceThreshold($threshold);
+        $this->invalidateConfigurationCaches();
     }
 
     public function registerConvention(NamingConvention $convention): void
     {
-        $this->conventionMapper?->registerConvention($convention);
+        $this->conventionMapper->registerConvention($convention);
+        $this->invalidateConfigurationCaches();
     }
 
     // ==============
@@ -136,11 +150,19 @@ final class ConfigurationBuilder
 
     public function clearCache(): void
     {
-        $this->conventionMapper?->clearMappingsCache();
+        $this->cache->clear();
+        $this->conventionMapper->clearMappingsCache();
+    }
+
+    private function invalidateConfigurationCaches(): void
+    {
+        $this->cache->clear();
+        $this->conventionMapper->clearMappingsCache();
     }
 
     /**
      * Build mapping configuration from profiles and conventions.
+     * @return array<string, array<string, mixed>>
      */
     private function buildConfiguration(string $sourceType, string $destinationType): array
     {
@@ -150,10 +172,6 @@ final class ConfigurationBuilder
         $properties = $this->getDestinationProperties($destinationType);
 
         foreach ($properties as $property) {
-            if ( ! ($property instanceof ReflectionProperty)) {
-                continue;
-            }
-
             $propertyName = $property->getName();
 
             // Check for explicit mapping from profiles
@@ -168,7 +186,7 @@ final class ConfigurationBuilder
         }
 
         // Apply convention-based mapping if enabled
-        if ($this->useConventions && null !== $this->conventionMapper) {
+        if ($this->useConventions) {
             $config = $this->applyConventionMappings($sourceType, $destinationType, $config);
         }
 
@@ -200,21 +218,16 @@ final class ConfigurationBuilder
     /**
      * Build property configuration from PropertyMapping.
      */
+    /** @return array<string, mixed> */
     private function buildPropertyConfig(PropertyMapping $mapping, string $propertyName): array
     {
-        return [
-            'source' => $mapping->getSourceProperty() ?? $propertyName,
-            'transformer' => $mapping->getTransformer(),
-            'condition' => $mapping->getCondition(),
-            'default' => $mapping->getDefaultValue(),
-            'hasDefault' => $mapping->hasDefaultValue(),
-            'ignore' => $mapping->isIgnored(),
-        ];
+        return $mapping->toConfig($propertyName);
     }
 
     /**
      * Build property configuration from attributes.
      */
+    /** @return array<string, mixed> */
     private function buildPropertyFromAttributes(ReflectionProperty $property, string $sourceType, string $destinationType): array
     {
         $attributeProcessor = new AttributeProcessor();
@@ -224,9 +237,12 @@ final class ConfigurationBuilder
     /**
      * Apply convention-based mappings.
      */
+    /** @param array<string, array<string, mixed>> $config
+     * @return array<string, array<string, mixed>>
+     */
     private function applyConventionMappings(string $sourceType, string $destinationType, array $config): array
     {
-        if ('array' === $sourceType || ! class_exists($sourceType) || ! class_exists($destinationType) || null === $this->conventionMapper) {
+        if ('array' === $sourceType || ! class_exists($sourceType) || ! class_exists($destinationType)) {
             return $config;
         }
 
@@ -234,14 +250,7 @@ final class ConfigurationBuilder
 
         foreach ($conventionMappings as $destProperty => $sourceProperty) {
             // Only apply if no explicit mapping exists
-            if ( ! isset($config[$destProperty]) || (
-                is_array($config[$destProperty])
-                && isset($config[$destProperty]['source'])
-                && $config[$destProperty]['source'] === $destProperty
-            )) {
-                if ( ! is_array($config[$destProperty])) {
-                    $config[$destProperty] = [];
-                }
+            if ( ! isset($config[$destProperty]) || $config[$destProperty]['source'] === $destProperty) {
                 $config[$destProperty]['source'] = $sourceProperty;
             }
         }
@@ -254,34 +263,19 @@ final class ConfigurationBuilder
      * @param string $destinationType
      * @throws ReflectionException
      */
+    /** @return array<int, ReflectionProperty> */
     private function getDestinationProperties(string $destinationType): array
     {
         if ( ! class_exists($destinationType)) {
             return [];
         }
 
-        return ReflectionCache::getPublicProperties($destinationType);
+        return array_values(ReflectionCache::getPublicProperties($destinationType));
     }
 
     private function warmupProfileCache(MappingProfile $profile): void
     {
-        // Extract mappings from profile and warm up cache
-        $reflection = new ReflectionClass($profile);
-        $mappingsProperty = $reflection->getProperty('mappings');
-        $mappingsProperty->setAccessible(true);
-
-        $mappings = $mappingsProperty->getValue($profile);
-
-        if ( ! is_array($mappings)) {
-            return;
-        }
-
-        foreach ($mappings as $key => $propertyMappings) {
-            if ( ! is_string($key)) {
-                continue;
-            }
-            [$sourceType, $destinationType] = explode('->', $key);
-
+        foreach ($profile->configuredTypePairs() as [$sourceType, $destinationType]) {
             if ( ! $this->cache->has($sourceType, $destinationType)) {
                 $config = $this->buildConfiguration($sourceType, $destinationType);
                 $this->cache->put($sourceType, $destinationType, $config);

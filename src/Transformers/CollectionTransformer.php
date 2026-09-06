@@ -1,7 +1,10 @@
 <?php
+// ABOUTME: Defines CollectionTransformer as part of runtime value transformations.
+// ABOUTME: Owns the CollectionTransformer boundary within runtime value transformations.
 
 namespace Ninja\Granite\Transformers;
 
+use InvalidArgumentException;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use RuntimeException;
@@ -32,6 +35,7 @@ final class CollectionTransformer implements Transformer
     /**
      * Transform a collection.
      */
+    /** @param array<array-key, mixed> $sourceData */
     public function transform(mixed $value, array $sourceData = []): mixed
     {
         if (null === $value) {
@@ -39,7 +43,7 @@ final class CollectionTransformer implements Transformer
         }
 
         if ( ! is_array($value)) {
-            return $value; // Return as is if not an array
+            throw new InvalidArgumentException('Collection value must be an array or null');
         }
 
         $result = [];
@@ -109,11 +113,11 @@ final class CollectionTransformer implements Transformer
     /**
      * Check if an array is associative (vs sequential).
      */
+    /** @param array<array-key, mixed> $array */
     private function isAssociativeArray(array $array): bool
     {
-        // An empty array is considered associative for our purposes
-        if (empty($array)) {
-            return true;
+        if ([] === $array) {
+            return false;
         }
 
         // Check if array keys are sequential integers starting from 0

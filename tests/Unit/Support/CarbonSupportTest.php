@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Ninja\Granite\Support\CarbonSupport;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -210,10 +211,21 @@ final class CarbonSupportTest extends TestCase
         $this->assertStringContainsString('07:00:00', $result); // UTC-5 offset
     }
 
-    /**
-     * @dataProvider invalidInputProvider
-     * @param mixed $input
-     */
+    public function testSerializeWithTimezoneDoesNotMutateMutableCarbon(): void
+    {
+        $carbon = Carbon::parse('2023-01-01 12:00:00.123456', 'Europe/Madrid');
+        $timestamp = $carbon->getTimestamp();
+        $microseconds = $carbon->format('u');
+        $timezone = $carbon->getTimezone()->getName();
+
+        CarbonSupport::serialize($carbon, 'Y-m-d H:i:s.uP', 'UTC');
+
+        $this->assertSame($timestamp, $carbon->getTimestamp());
+        $this->assertSame($microseconds, $carbon->format('u'));
+        $this->assertSame($timezone, $carbon->getTimezone()->getName());
+    }
+
+    #[DataProvider('invalidInputProvider')]
     public function testCreateHandlesInvalidInputGracefully(mixed $input): void
     {
         $result = CarbonSupport::create($input);

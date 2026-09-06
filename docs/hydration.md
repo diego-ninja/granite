@@ -105,6 +105,12 @@ $graniteObject = SomeDTO::from($stdObject);
 
 The traditional approach using associative arrays:
 
+Validation resolves `SerializedName` aliases and enabled naming conventions to
+canonical PHP property names before applying rules. If both the PHP name and
+an alias are present, the PHP name wins; explicit `null` is still treated as a
+present value. Hydration then uses the original input keys with the same
+precedence.
+
 ```php
 <?php
 
@@ -126,7 +132,8 @@ $user = User::from([
     'createdAt' => '2024-01-15T10:30:00Z'
 ]);
 
-// Nested arrays for complex objects
+// Nested arrays for complex objects. Typed object properties are hydrated
+// recursively; an array property does not infer its element class from PHPDoc.
 final readonly class Order extends Granite
 {
     public function __construct(

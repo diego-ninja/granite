@@ -1,10 +1,13 @@
 <?php
+// ABOUTME: Defines HasValidation as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasValidation boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Exceptions\ValidationException;
 use Ninja\Granite\Validation\GraniteValidator;
+use Ninja\Granite\Validation\RuleCollection;
 use Ninja\Granite\Validation\RuleExtractor;
 use Ninja\Granite\Validation\Rules\AbstractRule;
 use ReflectionAttribute;
@@ -21,7 +24,7 @@ trait HasValidation
      * Validate the object's properties using the unified validation system.
      * This method validates the current object state.
      *
-     * @param array|null $data Optional data context for validation
+     * @param array<array-key, mixed>|null $data Optional data context for validation
      * @return bool True if validation passes
      * @throws ReflectionException
      * @throws \Ninja\Granite\Exceptions\ReflectionException
@@ -41,7 +44,7 @@ trait HasValidation
     /**
      * Check if the object is valid without throwing exceptions.
      *
-     * @param array|null $data Optional data context for validation
+     * @param array<array-key, mixed>|null $data Optional data context for validation
      * @return bool True if validation passes, false otherwise
      * @throws ReflectionException
      * @throws SerializationException
@@ -55,8 +58,8 @@ trait HasValidation
     /**
      * Get validation errors without throwing exceptions.
      *
-     * @param array|null $data Optional data context for validation
-     * @return array<array<string>> Validation errors by property name
+     * @param array<array-key, mixed>|null $data Optional data context for validation
+     * @return array<string, array<int, string>> Validation errors by property name
      * @throws ReflectionException
      * @throws SerializationException
      * @throws \Ninja\Granite\Exceptions\ReflectionException
@@ -76,7 +79,7 @@ trait HasValidation
      * Validate data and return ValidationException if it fails.
      * Useful for getting the full exception with all details.
      *
-     * @param array|null $data Optional data context for validation
+     * @param array<array-key, mixed>|null $data Optional data context for validation
      * @return ValidationException|null ValidationException if validation fails, null if passes
      * @throws ReflectionException
      * @throws SerializationException
@@ -96,16 +99,43 @@ trait HasValidation
      * Validate data using the unified validation system.
      * Uses both attribute-based rules and method-based rules.
      *
-     * @param array $data Data to validate
+     * @param array<array-key, mixed> $data Data to validate
      * @param string $objectName Object name for error messages
      * @throws ValidationException If validation fails
      * @throws ReflectionException
      */
     protected static function validateData(array $data, string $objectName): void
     {
+        static::validateResolvedData($data, $objectName);
+    }
+
+    /**
+     * @param array<array-key, mixed> $data
+     * @param callable(array<array-key, mixed>): array<array-key, mixed>|null $normalizer
+     * @throws ValidationException
+     * @throws ReflectionException
+     */
+    protected static function validateResolvedData(
+        array $data,
+        string $objectName,
+        ?callable $normalizer = null,
+    ): void {
         // Get rules from both method and attributes
         $methodRules = static::rules();
         $attributeRules = RuleExtractor::extractRules(static::class);
+
+        if (empty($methodRules) && empty($attributeRules)) {
+            return;
+        }
+
+        if (null !== $normalizer) {
+            $data = $normalizer($data);
+        }
+
+        if (empty($methodRules)) {
+            RuleExtractor::attributeValidator(static::class)?->validate($data, $objectName);
+            return;
+        }
 
         // Merge rules, preferring method rules if defined for the same property
         $rules = $attributeRules;
@@ -113,10 +143,7 @@ trait HasValidation
             $rules[$property] = $propertyRules;
         }
 
-        // Only validate if we have rules
-        if ( ! empty($rules)) {
-            GraniteValidator::fromArray($rules)->validate($data, $objectName);
-        }
+        GraniteValidator::fromArray($rules)->validate($data, $objectName);
     }
 
     /**
@@ -140,7 +167,7 @@ trait HasValidation
      * This method provides programmatic validation rules that complement
      * attribute-based validation rules defined on properties.
      *
-     * @return array<string, array> Validation rules by property name
+     * @return array<string, RuleCollection> Validation rules by property name
      */
     protected static function rules(): array
     {
@@ -154,7 +181,7 @@ trait HasValidation
      *
      * @param ReflectionProperty $property Property to validate
      * @param mixed $value Property value
-     * @param array $allData All object data for context
+     * @param array<array-key, mixed> $allData All object data for context
      * @return array<string> Validation error messages
      * @deprecated Use the unified validation system instead
      */

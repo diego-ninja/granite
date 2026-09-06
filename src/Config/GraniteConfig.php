@@ -1,7 +1,11 @@
 <?php
+// ABOUTME: Defines GraniteConfig as part of the library-wide runtime configuration.
+// ABOUTME: Owns the GraniteConfig boundary within the library-wide runtime configuration.
 
 namespace Ninja\Granite\Config;
 
+use Ninja\Granite\Serialization\CarbonTransformerFactory;
+use Ninja\Granite\Serialization\SerializationCache;
 use Ninja\Granite\Support\CarbonSupport;
 
 /**
@@ -82,6 +86,7 @@ final class GraniteConfig
     public static function reset(): void
     {
         self::$instance = null;
+        self::invalidateCaches();
     }
 
     // =============================================================================
@@ -119,7 +124,12 @@ final class GraniteConfig
      */
     public function preferCarbon(bool $prefer = true): self
     {
+        if ($this->preferCarbon === $prefer) {
+            return $this;
+        }
+
         $this->preferCarbon = $prefer;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -131,7 +141,12 @@ final class GraniteConfig
      */
     public function preferCarbonImmutable(bool $prefer = true): self
     {
+        if ($this->preferCarbonImmutable === $prefer) {
+            return $this;
+        }
+
         $this->preferCarbonImmutable = $prefer;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -143,7 +158,12 @@ final class GraniteConfig
      */
     public function carbonTimezone(?string $timezone): self
     {
+        if ($this->carbonTimezone === $timezone) {
+            return $this;
+        }
+
         $this->carbonTimezone = $timezone;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -155,7 +175,12 @@ final class GraniteConfig
      */
     public function carbonLocale(?string $locale): self
     {
+        if ($this->carbonLocale === $locale) {
+            return $this;
+        }
+
         $this->carbonLocale = $locale;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -167,7 +192,12 @@ final class GraniteConfig
      */
     public function carbonParseFormat(?string $format): self
     {
+        if ($this->carbonParseFormat === $format) {
+            return $this;
+        }
+
         $this->carbonParseFormat = $format;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -179,7 +209,12 @@ final class GraniteConfig
      */
     public function carbonSerializeFormat(?string $format): self
     {
+        if ($this->carbonSerializeFormat === $format) {
+            return $this;
+        }
+
         $this->carbonSerializeFormat = $format;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -191,7 +226,12 @@ final class GraniteConfig
      */
     public function carbonSerializeTimezone(?string $timezone): self
     {
+        if ($this->carbonSerializeTimezone === $timezone) {
+            return $this;
+        }
+
         $this->carbonSerializeTimezone = $timezone;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -203,7 +243,12 @@ final class GraniteConfig
      */
     public function carbonParseRelative(bool $enable = true): self
     {
+        if ($this->carbonParseRelative === $enable) {
+            return $this;
+        }
+
         $this->carbonParseRelative = $enable;
+        self::invalidateCaches();
         return $this;
     }
 
@@ -377,5 +422,11 @@ final class GraniteConfig
 
         // Auto-convert DateTimeInterface to Carbon if preferred
         return 'DateTimeInterface' === $typeName;
+    }
+
+    private static function invalidateCaches(): void
+    {
+        CarbonTransformerFactory::clearCache();
+        SerializationCache::clear();
     }
 }

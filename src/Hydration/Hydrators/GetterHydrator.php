@@ -1,10 +1,12 @@
 <?php
+// ABOUTME: Defines GetterHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the GetterHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 
+use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Hydration\AbstractHydrator;
 use Ninja\Granite\Support\ReflectionCache;
-use ReflectionException;
 use ReflectionNamedType;
 use ReflectionType;
 use Throwable;
@@ -30,6 +32,7 @@ class GetterHydrator extends AbstractHydrator
         return is_object($data);
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         /** @var object $data */
@@ -40,9 +43,9 @@ class GetterHydrator extends AbstractHydrator
      * Extract data from object using getter methods.
      *
      * @param object $source Source object
-     * @param array $existingData Already extracted data (to avoid duplicates)
+     * @param array<array-key, mixed> $existingData Already extracted data (to avoid duplicates)
      * @param string $targetClass Target class being hydrated
-     * @return array Additional data extracted via getters
+     * @return array<array-key, mixed> Additional data extracted via getters
      */
     public function extractViaGetters(object $source, array $existingData, string $targetClass): array
     {
@@ -61,7 +64,7 @@ class GetterHydrator extends AbstractHydrator
             $propertyName = $property->getName();
 
             // Skip if we already have this property
-            if (isset($existingData[$propertyName])) {
+            if (array_key_exists($propertyName, $existingData)) {
                 continue;
             }
 

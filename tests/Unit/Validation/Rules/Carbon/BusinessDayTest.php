@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Ninja\Granite\Validation\Rules\Carbon\BusinessDay;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -193,9 +194,7 @@ final class BusinessDayTest extends TestCase
         }
     }
 
-    /**
-     * @dataProvider edgeCaseProvider
-     */
+    #[DataProvider('edgeCaseProvider')]
     public function testEdgeCases(mixed $input): void
     {
         $rule = new BusinessDay();

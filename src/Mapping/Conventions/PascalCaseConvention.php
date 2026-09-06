@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines PascalCaseConvention as part of the object mapping pipeline.
+// ABOUTME: Owns the PascalCaseConvention boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Conventions;
 

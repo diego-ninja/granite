@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Min as part of validation rule definition and execution.
+// ABOUTME: Owns the Min boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -17,7 +19,7 @@ class Min extends AbstractRule
      * Check if the value meets the minimum requirement.
      *
      * @param mixed $value
-     * @param array|null $allData
+     * @param array<array-key, mixed>|null $allData
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

@@ -38,7 +38,7 @@
     ],
     "minimum-stability": "stable",
     "require": {
-        "php": "^8.3|^8.4"
+        "php": "^8.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -48,17 +48,19 @@
         "phpstan/phpstan": "^2",
         "phpunit/phpunit": "^11.0",
         "rector/rector": "^2.0",
-        "squizlabs/php_codesniffer": "^3.7"
+        "squizlabs/php_codesniffer": "^3.13.6"
     },
     "scripts": {
+        "bench:objects": "@php -d opcache.enable_cli=1 benchmarks/ObjectPipelineBench.php",
         "test": "phpunit",
         "test:unit": "phpunit --testsuite=Unit",
         "test:integration": "phpunit --testsuite=Integration",
-        "test:coverage": "phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html --coverage-text coverage/coverage.txt",
+        "test:coverage": "phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html --coverage-text=coverage/coverage.txt",
         "test:coverage-clover": "phpunit --coverage-clover coverage/clover.xml",
         "test:support": "phpunit --testsuite=Support",
         "test:exceptions": "phpunit --testsuite=Exceptions",
         "analyse": "phpstan analyse --memory-limit=512M",
+        "check:aboutme": "php tools/check-aboutme.php",
         "cs:check": "pint --test src tests",
         "cs:fix": "pint src tests"
     },

@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Ninja\Granite\Validation\Rules\Carbon\Age;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
@@ -198,9 +199,7 @@ final class AgeTest extends TestCase
         $this->assertEquals('Custom age validation message', $rule->message('field'));
     }
 
-    /**
-     * @dataProvider edgeCaseProvider
-     */
+    #[DataProvider('edgeCaseProvider')]
     public function testEdgeCases(mixed $input): void
     {
         $rule = new Age(minAge: 18, maxAge: 65);

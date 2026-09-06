@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ValidationRule as part of validation rule definition and execution.
+// ABOUTME: Owns the ValidationRule boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation;
 
@@ -8,7 +10,7 @@ interface ValidationRule
      * Check if the value passes this validation rule.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool;

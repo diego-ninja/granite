@@ -1,9 +1,11 @@
 <?php
+// ABOUTME: Defines MappingException as part of the object mapping pipeline.
+// ABOUTME: Owns the MappingException boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Exceptions;
 
-use Exception;
 use Ninja\Granite\Exceptions\GraniteException;
+use Throwable;
 
 /**
  * Exception thrown when ObjectMapper operations fail.
@@ -20,7 +22,7 @@ class MappingException extends GraniteException
         string $message = "",
         ?string $propertyName = null,
         int $code = 0,
-        ?Exception $previous = null,
+        ?Throwable $previous = null,
     ) {
         $this->sourceType = $sourceType;
         $this->destinationType = $destinationType;
@@ -64,7 +66,7 @@ class MappingException extends GraniteException
         string $destinationType,
         string $propertyName,
         string $reason,
-        ?Exception $previous = null,
+        ?Throwable $previous = null,
     ): self {
         return new self(
             $sourceType,
@@ -87,6 +89,48 @@ class MappingException extends GraniteException
             $sourceType,
             'unknown',
             sprintf('Unsupported source type: %s', $sourceType),
+        );
+    }
+
+    public static function normalizationFailed(object $source, string $strategy, Throwable $previous): self
+    {
+        return new self(
+            get_class($source),
+            'array',
+            sprintf(
+                'Failed to normalize source using %s: %s',
+                $strategy,
+                $previous->getMessage(),
+            ),
+            null,
+            0,
+            $previous,
+        );
+    }
+
+    public static function missingRequiredValue(string $sourceType, string $destinationType, string $propertyName): self
+    {
+        return new self(
+            $sourceType,
+            $destinationType,
+            sprintf('Missing required value for property "%s"', $propertyName),
+            $propertyName,
+        );
+    }
+
+    public static function propertyHydrationFailed(
+        string $sourceType,
+        string $destinationType,
+        string $propertyName,
+        Throwable $previous,
+    ): self {
+        return new self(
+            $sourceType,
+            $destinationType,
+            sprintf('Failed to populate property "%s": %s', $propertyName, $previous->getMessage()),
+            $propertyName,
+            0,
+            $previous,
         );
     }
 

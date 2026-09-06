@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines MappingStorage as part of the object mapping pipeline.
+// ABOUTME: Owns the MappingStorage boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Contracts;
 

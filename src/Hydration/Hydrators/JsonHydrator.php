@@ -1,8 +1,11 @@
 <?php
+// ABOUTME: Defines JsonHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the JsonHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 
 use InvalidArgumentException;
+use JsonException;
 use Ninja\Granite\Hydration\AbstractHydrator;
 
 /**
@@ -26,15 +29,16 @@ class JsonHydrator extends AbstractHydrator
         return str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[');
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         /** @var string $data */
-        // Validate the JSON string
-        if ( ! json_validate($data)) {
-            throw new InvalidArgumentException('Invalid JSON string provided');
+        try {
+            $decoded = json_decode($data, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new InvalidArgumentException('Invalid JSON string provided', previous: $exception);
         }
 
-        $decoded = json_decode($data, true);
         return $this->ensureArray($decoded);
     }
 }

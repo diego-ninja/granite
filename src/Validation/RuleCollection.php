@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines RuleCollection as part of validation rule definition and execution.
+// ABOUTME: Owns the RuleCollection boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation;
 
@@ -53,8 +55,8 @@ class RuleCollection
      * Validate a value against all rules in the collection.
      *
      * @param mixed $value The value to validate
-     * @param array|null $allData All data being validated (optional)
-     * @return string[] Array of error messages, empty if valid
+     * @param array<array-key, mixed>|null $allData All data being validated (optional)
+     * @return array<int, string> Array of error messages, empty if valid
      */
     public function validate(mixed $value, ?array $allData = null): array
     {

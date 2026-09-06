@@ -20,17 +20,18 @@ jobs:
         with:
           php-version: '8.4'
           extensions: mbstring, dom, fileinfo
+          coverage: none
 
       - name: Cache Composer packages
         uses: actions/cache@v4
         with:
-          path: vendor
-          key: ${{ runner.os }}-php-8.4-composer-${{ hashFiles('**/composer.lock') }}
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-8.4-composer-${{ hashFiles('composer.json') }}
           restore-keys: |
             ${{ runner.os }}-php-8.4-composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: composer update --prefer-stable --prefer-dist --no-interaction
 
       - name: Security audit
         run: composer audit

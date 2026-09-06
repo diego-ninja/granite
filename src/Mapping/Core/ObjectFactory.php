@@ -1,63 +1,124 @@
 <?php
+// ABOUTME: Defines ObjectFactory as part of the object mapping pipeline.
+// ABOUTME: Owns the ObjectFactory boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Core;
 
-use Exception;
 use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Support\ReflectionCache;
 use ReflectionClass;
-use ReflectionException;
 use ReflectionMethod;
-use ReflectionNamedType;
-use ReflectionType;
+use ReflectionProperty;
 use Throwable;
 
 final readonly class ObjectFactory
 {
     /**
-     * @param array $data
+     * @param array<array-key, mixed> $data
      * @param class-string $className
      * @throws MappingException
      */
     public function create(array $data, string $className): object
     {
-        if ('stdClass' === $className) {
-            return (object) $data;
-        }
+        try {
+            if ('stdClass' === $className) {
+                return (object) $data;
+            }
 
-        if (is_subclass_of($className, GraniteObject::class)) {
-            return $className::from($data);
-        }
+            if (is_subclass_of($className, GraniteObject::class)) {
+                return $className::from($data);
+            }
 
-        return $this->createFromReflection($data, $className);
+            return $this->createFromReflection($data, $className);
+        } catch (MappingException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new MappingException(
+                'array',
+                $className,
+                'Failed to create instance: ' . $e->getMessage(),
+                null,
+                0,
+                $e,
+            );
+        }
     }
 
     /**
+     * @param array<array-key, mixed> $data
      * @throws MappingException
      */
     public function populate(object $object, array $data): object
     {
         try {
             $reflection = ReflectionCache::getClass(get_class($object));
+            /** @var list<array{property: ReflectionProperty, initialized: bool, value: mixed}> $changes */
+            $changes = [];
 
             foreach ($data as $propName => $propValue) {
-                if ($reflection->hasProperty($propName)) {
-                    $property = $reflection->getProperty($propName);
-                    if ($property->isPublic() && ! $property->isReadOnly()) {
-                        $property->setValue($object, $propValue);
-                    }
+                if ( ! is_string($propName) || ! $reflection->hasProperty($propName)) {
+                    continue;
+                }
+
+                $property = $reflection->getProperty($propName);
+                if ( ! $property->isPublic() || $property->isReadOnly()) {
+                    continue;
+                }
+
+                $initialized = $property->isInitialized($object);
+                $changes[] = [
+                    'property' => $property,
+                    'initialized' => $initialized,
+                    'value' => $initialized ? $property->getValue($object) : null,
+                ];
+
+                try {
+                    $property->setValue($object, $propValue);
+                } catch (Throwable $e) {
+                    $this->rollback($object, $changes);
+                    throw MappingException::propertyHydrationFailed(
+                        'array',
+                        get_class($object),
+                        $propName,
+                        $e,
+                    );
                 }
             }
 
             return $object;
-        } catch (Exception $e) {
-            throw new MappingException('array', get_class($object), "Failed to populate object: " . $e->getMessage());
+        } catch (MappingException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new MappingException(
+                'array',
+                get_class($object),
+                'Failed to populate object: ' . $e->getMessage(),
+                null,
+                0,
+                $e,
+            );
         }
     }
 
     /**
-     * @param array $data Source data
+     * @param list<array{property: ReflectionProperty, initialized: bool, value: mixed}> $changes
+     */
+    private function rollback(object $object, array $changes): void
+    {
+        foreach (array_reverse($changes) as $change) {
+            if ($change['initialized']) {
+                $change['property']->setValue($object, $change['value']);
+                continue;
+            }
+
+            $propertyName = $change['property']->getName();
+            unset($object->{$propertyName});
+        }
+    }
+
+    /**
+     * @param array<array-key, mixed> $data Source data
      * @param class-string $className Target class name
      * @throws MappingException
      */
@@ -77,13 +138,23 @@ final readonly class ObjectFactory
             $this->setRemainingProperties($instance, $data, $reflection);
 
             return $instance;
-        } catch (Exception $e) {
-            throw new MappingException('array', $className, "Failed to create instance: " . $e->getMessage());
+        } catch (MappingException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new MappingException(
+                'array',
+                $className,
+                'Failed to create instance: ' . $e->getMessage(),
+                null,
+                0,
+                $e,
+            );
         }
     }
 
     /**
-     * @throws ReflectionException
+     * @param ReflectionClass<object> $reflection
+     * @param array<array-key, mixed> $data
      */
     private function createWithConstructor(ReflectionClass $reflection, ReflectionMethod $constructor, array &$data): object
     {
@@ -101,42 +172,39 @@ final readonly class ObjectFactory
             } elseif ($param->allowsNull()) {
                 $args[] = null;
             } else {
-                $args[] = $this->getDefaultValueForType($param->getType());
+                throw MappingException::missingRequiredValue('array', $reflection->getName(), $paramName);
             }
         }
 
         return $reflection->newInstanceArgs($args);
     }
 
+    /**
+     * @param array<array-key, mixed> $data
+     * @param ReflectionClass<object> $reflection
+     */
     private function setRemainingProperties(object $instance, array $data, ReflectionClass $reflection): void
     {
         foreach ($data as $propName => $propValue) {
+            if ( ! is_string($propName) || ! $reflection->hasProperty($propName)) {
+                continue;
+            }
+
+            $property = $reflection->getProperty($propName);
+            if ( ! $property->isPublic() || $property->isReadOnly()) {
+                continue;
+            }
+
             try {
-                if ($reflection->hasProperty($propName)) {
-                    $property = $reflection->getProperty($propName);
-                    if ($property->isPublic() && ! $property->isReadOnly()) {
-                        $property->setValue($instance, $propValue);
-                    }
-                }
-            } catch (Throwable) {
-                // Ignore errors when setting properties
+                $property->setValue($instance, $propValue);
+            } catch (Throwable $e) {
+                throw MappingException::propertyHydrationFailed(
+                    'array',
+                    $reflection->getName(),
+                    $propName,
+                    $e,
+                );
             }
         }
-    }
-
-    private function getDefaultValueForType(?ReflectionType $type): mixed
-    {
-        if ( ! $type instanceof ReflectionNamedType) {
-            return null;
-        }
-
-        return match ($type->getName()) {
-            'int' => 0,
-            'float' => 0.0,
-            'bool' => false,
-            'string' => '',
-            'array' => [],
-            default => null,
-        };
     }
 }

@@ -23,6 +23,18 @@ use Tests\Helpers\TestCase;
 #[CoversClass(RuleExtractor::class)]
 class RuleExtractorTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        RuleExtractor::clearCache();
+    }
+
+    protected function tearDown(): void
+    {
+        RuleExtractor::clearCache();
+        parent::tearDown();
+    }
+
     public function test_extracts_rules_from_class_with_validation_attributes(): void
     {
         $rules = RuleExtractor::extractRules(ValidatedUserVO::class);
@@ -131,7 +143,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_class_without_attributes(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             public string $plainProperty;
             public int $anotherProperty;
         };
@@ -144,7 +156,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_class_with_mixed_attributes(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[\Ninja\Granite\Validation\Attributes\StringType]
             public string $validatedProperty;
@@ -168,7 +180,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_from_properties_with_non_validation_attributes(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[SerializedName('custom_name')]
             public string $mixedAttributesProperty;
@@ -187,7 +199,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_extracts_rules_only_from_attributes_with_as_rule_method(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             public string $validAttribute;
 
@@ -203,7 +215,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_handles_attributes_that_return_non_validation_rules(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[TestAttributeWithWrongReturnType]
             public string $property;
@@ -218,7 +230,7 @@ class RuleExtractorTest extends TestCase
     public function test_extracts_rules_from_private_and_protected_properties(): void
     {
         // RuleExtractor should only work with public properties based on ReflectionCache usage
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             public string $publicProperty;
 
@@ -287,22 +299,15 @@ class RuleExtractorTest extends TestCase
 
     public function test_caching_behavior(): void
     {
-        // First extraction
-        $start1 = microtime(true);
         $rules1 = RuleExtractor::extractRules(ValidatedUserVO::class);
-        $time1 = microtime(true) - $start1;
-
-        // Second extraction (should potentially benefit from reflection caching)
-        $start2 = microtime(true);
         $rules2 = RuleExtractor::extractRules(ValidatedUserVO::class);
-        $time2 = microtime(true) - $start2;
 
-        // Results should be the same
-        $this->assertEquals($rules1, $rules2);
+        $this->assertSame($rules1['name'][0], $rules2['name'][0]);
 
-        // Second call might be faster due to reflection caching
-        // (This is not guaranteed but is likely in most cases)
-        $this->assertLessThanOrEqual($time1 * 2, $time2); // Allow some variance
+        RuleExtractor::clearCache();
+        $rules3 = RuleExtractor::extractRules(ValidatedUserVO::class);
+
+        $this->assertNotSame($rules1['name'][0], $rules3['name'][0]);
     }
 
     public function test_returns_validation_rule_instances(): void
@@ -322,7 +327,7 @@ class RuleExtractorTest extends TestCase
 
     public function test_preserves_rule_order(): void
     {
-        $testClass = new class () {
+        $testClass = new class {
             #[\Ninja\Granite\Validation\Attributes\Required]
             #[\Ninja\Granite\Validation\Attributes\StringType]
             #[\Ninja\Granite\Validation\Attributes\Min(5)]

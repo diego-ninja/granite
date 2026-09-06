@@ -1,22 +1,23 @@
 <?php
+// ABOUTME: Defines HasSerialization as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasSerialization boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 
-use BackedEnum;
 use DateTimeInterface;
 use Ninja\Granite\Config\GraniteConfig;
-use Ninja\Granite\Contracts\GraniteObject;
 use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
 use Ninja\Granite\Serialization\MetadataCache;
 use Ninja\Granite\Serialization\SerializationCache;
+use Ninja\Granite\Serialization\SerializationCachePolicy;
+use Ninja\Granite\Serialization\ValueSerializer;
 use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Transformers\CarbonTransformer;
 use ReflectionProperty;
 use RuntimeException;
-use UnitEnum;
 
 /**
  * Trait providing serialization functionality for Granite objects.
@@ -39,6 +40,7 @@ trait HasSerialization
      * @throws RuntimeException If a property cannot be serialized
      * @throws SerializationException|ReflectionException
      */
+    /** @return array<array-key, mixed> */
     public function array(): array
     {
         $cached = SerializationCache::get($this);
@@ -46,8 +48,11 @@ trait HasSerialization
             return $cached;
         }
 
+        $cacheable = SerializationCachePolicy::isCacheable($this);
         $result = $this->computeArray();
-        SerializationCache::set($this, $result);
+        if ($cacheable) {
+            SerializationCache::set($this, $result);
+        }
 
         return $result;
     }
@@ -62,12 +67,25 @@ trait HasSerialization
             return $cached;
         }
 
-        $json = json_encode($this->array());
+        $array = SerializationCache::get($this);
+        if (null === $array) {
+            $cacheable = SerializationCachePolicy::isCacheable($this);
+            $array = $this->computeArray();
+            if ($cacheable) {
+                SerializationCache::set($this, $array);
+            }
+        } else {
+            $cacheable = true;
+        }
+
+        $json = json_encode($array);
         if (false === $json) {
             throw new RuntimeException('Failed to encode object to JSON');
         }
 
-        SerializationCache::setJson($this, $json);
+        if ($cacheable) {
+            SerializationCache::setJson($this, $json);
+        }
 
         return $json;
     }
@@ -98,16 +116,18 @@ trait HasSerialization
      * @return array Serialized array
      * @throws SerializationException|ReflectionException
      */
+    /** @return array<array-key, mixed> */
     private function computeArray(): array
     {
         $profile = ReflectionCache::getClassProfile(static::class);
-        if ($profile->canUseFastPath) {
+        if ($profile->canSerializeFastPath) {
             return $profile->toArray($this);
         }
 
         $result = [];
         $properties = ReflectionCache::getPublicProperties(static::class);
         $metadata = MetadataCache::getMetadata(static::class);
+        $classDateTimeProvider = self::getClassDateTimeProvider(static::class);
 
         foreach ($properties as $property) {
             $phpName = $property->getName();
@@ -123,7 +143,7 @@ trait HasSerialization
             }
 
             $value = $property->getValue($this);
-            $serializedValue = $this->serializeValue($phpName, $value, $property);
+            $serializedValue = $this->serializeValue($phpName, $value, $property, $classDateTimeProvider);
 
             // Use custom property name if defined (includes convention-applied names)
             $serializedName = $metadata->getSerializedName($phpName);
@@ -140,49 +160,34 @@ trait HasSerialization
      * @return mixed Serialized value
      * @throws SerializationException If the value cannot be serialized
      */
-    private function serializeValue(string $propertyName, mixed $value, ?ReflectionProperty $property = null): mixed
-    {
-        if (null === $value) {
-            return null;
-        }
-
-        if (is_scalar($value) || is_array($value)) {
+    private function serializeValue(
+        string $propertyName,
+        mixed $value,
+        ?ReflectionProperty $property = null,
+        ?DateTimeProvider $classProvider = null,
+    ): mixed {
+        if (null === $value || is_scalar($value)) {
             return $value;
         }
 
-        // Handle Carbon instances with custom serialization
-        if (CarbonSupport::isCarbonInstance($value)) {
-            $carbonTransformer = self::getCarbonTransformerFromAttributes($property, null);
+        $carbonTransformer = self::getCarbonTransformerFromAttributes($property, $classProvider);
+        $config = GraniteConfig::getInstance();
+        $dateFormatter = static function (DateTimeInterface $date) use ($carbonTransformer, $config): string {
             if (null !== $carbonTransformer) {
-                /** @var DateTimeInterface $value */
-                return $carbonTransformer->serialize($value);
+                return (string) $carbonTransformer->serialize($date);
             }
 
-            // Fallback to global config
-            $config = GraniteConfig::getInstance();
-            /** @var DateTimeInterface $value */
-            return CarbonSupport::serialize(
-                $value,
-                $config->getCarbonSerializeFormat(),
-                $config->getCarbonSerializeTimezone(),
-            );
-        }
-
-        if ($value instanceof DateTimeInterface) {
-            return $value->format(DateTimeInterface::ATOM);
-        }
-
-        if (interface_exists('UnitEnum') && $value instanceof UnitEnum) {
-            if ($value instanceof BackedEnum) {
-                return $value->value;
+            if (CarbonSupport::isCarbonInstance($date)) {
+                return CarbonSupport::serialize(
+                    $date,
+                    $config->getCarbonSerializeFormat(),
+                    $config->getCarbonSerializeTimezone(),
+                );
             }
-            return $value->name;
-        }
 
-        if ($value instanceof GraniteObject) {
-            return $value->array();
-        }
+            return $date->format(DateTimeInterface::ATOM);
+        };
 
-        throw SerializationException::unsupportedType(static::class, $propertyName, get_debug_type($value));
+        return ValueSerializer::serialize($value, static::class, $propertyName, $dateFormatter);
     }
 }

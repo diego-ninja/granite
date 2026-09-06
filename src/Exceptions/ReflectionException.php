@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines ReflectionException as part of the library exception taxonomy.
+// ABOUTME: Owns the ReflectionException boundary within the library exception taxonomy.
 
 namespace Ninja\Granite\Exceptions;
 

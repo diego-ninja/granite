@@ -2,13 +2,18 @@
 
 namespace Tests\Unit\Traits;
 
+use DateTimeInterface;
 use JsonSerializable;
+use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Granite;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
 use ReflectionMethod;
 use ReflectionProperty;
 use ReflectionType;
 use RuntimeException;
 use stdClass;
+use Tests\Fixtures\DTOs\InheritedReadonlyDTO;
+use Tests\Fixtures\Enums\UserStatus;
 use Tests\Helpers\TestCase;
 
 /**
@@ -20,6 +25,32 @@ use Tests\Helpers\TestCase;
  */
 class ObjectHydrationTest extends TestCase
 {
+    public function test_inherited_readonly_constructor_uses_aliases_and_type_conversion(): void
+    {
+        $result = InheritedReadonlyDTO::from([
+            'name' => 'Ada',
+            'status_value' => 'active',
+            'createdAt' => '2024-01-01T10:00:00Z',
+            'description' => null,
+        ]);
+
+        $this->assertSame('Ada', $result->name);
+        $this->assertSame(UserStatus::ACTIVE, $result->status);
+        $this->assertInstanceOf(DateTimeInterface::class, $result->createdAt);
+        $this->assertNull($result->description);
+    }
+
+    public function test_inherited_readonly_constructor_rejects_missing_required_parameter(): void
+    {
+        $this->expectException(SerializationException::class);
+        $this->expectExceptionMessage('name');
+
+        InheritedReadonlyDTO::from([
+            'status_value' => 'active',
+            'createdAt' => '2024-01-01T10:00:00Z',
+        ]);
+    }
+
     // ========================================================================
     // Phase 1 Tests: Basic Object Extraction
     // ========================================================================
@@ -121,6 +152,15 @@ class ObjectHydrationTest extends TestCase
         $this->assertEquals('Granite', $result['name']);
         $this->assertEquals('granite@example.com', $result['email']);
         $this->assertEquals(70, $result['age']);
+    }
+
+    public function test_granite_hydrator_result_is_not_overwritten_by_generic_object_hydrator(): void
+    {
+        $source = new ClassWithSerializedGraniteProperty('Ada Lovelace');
+
+        $result = TestHydrationTarget::testExtractDataFromObject($source);
+
+        $this->assertSame(['full_name' => 'Ada Lovelace'], $result);
     }
 
     public function test_normalize_input_data_with_object(): void
@@ -291,6 +331,14 @@ class ObjectHydrationTest extends TestCase
         $this->assertEquals('from_public', $result->name);
         // No public property, so getter is used
         $this->assertEquals('from_getter', $result->email);
+    }
+
+    public function test_null_public_property_takes_precedence_over_getter(): void
+    {
+        $result = TestHydrationTarget::testExtractDataFromObject(new ClassWithNullPublicPropertyAndGetter());
+
+        $this->assertArrayHasKey('name', $result);
+        $this->assertNull($result['name']);
     }
 
     public function test_getter_throws_exception_tries_next_pattern(): void
@@ -698,6 +746,24 @@ class ClassWithBothPublicAndGetters
     }
 }
 
+final readonly class ClassWithSerializedGraniteProperty extends Granite
+{
+    public function __construct(
+        #[SerializedName('full_name')]
+        public string $fullName,
+    ) {}
+}
+
+class ClassWithNullPublicPropertyAndGetter
+{
+    public ?string $name = null;
+
+    public function getName(): string
+    {
+        return 'from_getter';
+    }
+}
+
 /**
  * Class where getter throws exception
  */
@@ -815,7 +881,6 @@ final readonly class TestHydrationTarget extends Granite
     {
         $hydrator = new \Ninja\Granite\Hydration\Hydrators\GetterHydrator();
         $reflection = new ReflectionMethod($hydrator, 'buildGetterPatterns');
-        $reflection->setAccessible(true);
         return $reflection->invoke($hydrator, $propertyName, $type);
     }
 
@@ -823,7 +888,6 @@ final readonly class TestHydrationTarget extends Granite
     {
         $hydrator = new \Ninja\Granite\Hydration\Hydrators\GetterHydrator();
         $reflection = new ReflectionMethod($hydrator, 'snakeToCamel');
-        $reflection->setAccessible(true);
         return $reflection->invoke($hydrator, $string);
     }
 }

@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines MetadataCache as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the MetadataCache boundary between metadata and serialized values.
 
 namespace Ninja\Granite\Serialization;
 

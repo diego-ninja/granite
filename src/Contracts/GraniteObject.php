@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines GraniteObject as part of the public library contracts.
+// ABOUTME: Owns the GraniteObject boundary within the public library contracts.
 
 namespace Ninja\Granite\Contracts;
 
@@ -15,7 +17,7 @@ interface GraniteObject
     /**
      * Convert the object to an array.
      *
-     * @return array Array representation
+     * @return array<array-key, mixed> Array representation
      */
     public function array(): array;
 

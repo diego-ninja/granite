@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines AbstractHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the AbstractHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration;
 
@@ -23,7 +25,7 @@ abstract class AbstractHydrator implements Hydrator
      * Validate that the result is a valid array.
      *
      * @param mixed $result Result from extraction
-     * @return array Valid array or empty array
+     * @return array<array-key, mixed> Valid array or empty array
      */
     protected function ensureArray(mixed $result): array
     {

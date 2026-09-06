@@ -736,13 +736,15 @@ final readonly class User extends Granite
 
 ### 📅 Carbon Date Attributes
 
-### `#[CarbonDate(string $format, ?string $timezone = null, bool $preserveTimezone = false)]` ✨ NEW
+### `#[CarbonDate(?string $format = null, ?string $timezone = null, ?string $locale = null, bool $immutable = false, bool $parseRelative = true, ?string $serializeFormat = null, ?string $serializeTimezone = null, DateTimeInterface|string|null $min = null, DateTimeInterface|string|null $max = null)`
 Controls Carbon date serialization format and timezone handling.
 
 **Parameters:**
-- `$format` - PHP date format string (e.g., 'Y-m-d H:i:s', 'c', 'd/m/Y')
-- `$timezone` - Target timezone for serialization (e.g., 'UTC', 'America/New_York')
-- `$preserveTimezone` - Whether to preserve the original timezone
+- `$format` / `$timezone` - Input format and timezone
+- `$locale` / `$immutable` - Carbon locale and mutable/immutable result
+- `$parseRelative` - Whether relative input such as `tomorrow` is accepted
+- `$serializeFormat` / `$serializeTimezone` - Output format and timezone
+- `$min` / `$max` - Optional date bounds used by conversion/validation
 
 ```php
 use Carbon\Carbon;
@@ -760,18 +762,18 @@ public Carbon $eventDate;
 public Carbon $easternTime;
 ```
 
-### `#[CarbonRelative]` ✨ NEW
+### `#[CarbonRelative(bool $enabled = true, ?string $baseDate = null)]`
 Enables relative date parsing for Carbon properties.
 
 ```php
-#[CarbonRelative]
+#[CarbonRelative(baseDate: '2024-01-01')]
 public ?Carbon $dueDate;
 
 // Accepts: 'tomorrow', 'next week', '2 hours ago', 'first day of next month'
 $task = Task::from(['dueDate' => 'next Friday at 5pm']);
 ```
 
-### `#[CarbonRange(string $min, string $max, ?string $message = null)]` ✨ NEW
+### `#[CarbonRange(DateTimeInterface|string|null $min = null, DateTimeInterface|string|null $max = null, ?string $message = null)]`
 Validates that Carbon dates fall within a specified range.
 
 **Parameters:**
@@ -787,19 +789,23 @@ public Carbon $eventDate;
 public Carbon $fiscalDate;
 ```
 
-### `#[DateTimeProvider(string $defaultTimezone, string $defaultFormat, array $parseFormats)]` ✨ NEW
+### `#[DateTimeProvider(string $provider, ?string $timezone = null, ?string $locale = null, ?string $format = null, ?string $serializeFormat = null, bool $parseRelative = true)]`
 Configures default Carbon behavior at the class level.
 
 **Parameters:**
-- `$defaultTimezone` - Default timezone for all Carbon properties
-- `$defaultFormat` - Default serialization format
-- `$parseFormats` - Array of acceptable input formats for parsing
+- `$provider` - Provider class, normally `Carbon::class` or `CarbonImmutable::class`
+- `$timezone` / `$locale` - Default timezone and locale
+- `$format` / `$serializeFormat` - Default input and output formats
+- `$parseRelative` - Whether relative input is accepted by default
 
 ```php
 #[DateTimeProvider(
-    defaultTimezone: 'UTC',
-    defaultFormat: 'Y-m-d H:i:s',
-    parseFormats: ['Y-m-d H:i:s', 'Y-m-d\TH:i:s\Z', 'Y-m-d']
+    provider: Carbon::class,
+    timezone: 'UTC',
+    locale: 'en',
+    format: 'Y-m-d H:i:s',
+    serializeFormat: 'c',
+    parseRelative: true,
 )]
 final readonly class Event extends Granite
 {

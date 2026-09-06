@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Mapping;
 
+use InvalidArgumentException;
 use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Mapping\BidirectionalTypeMapping;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
@@ -45,15 +46,21 @@ class ObjectMapperExtendedTest extends TestCase
 
     public function test_configure_creates_new_global_instance(): void
     {
-        ObjectMapper::configure(function (MapperConfig $config): void {
-            $config->withCacheType(CacheType::Memory)
-                ->withConventions(false);
-        });
+        ObjectMapper::configure(fn(MapperConfig $config): MapperConfig => $config->withCacheType(CacheType::Memory)
+            ->withConventions(false));
 
         $this->assertTrue(ObjectMapper::isConfigured());
 
         $instance = ObjectMapper::getInstance();
         $this->assertInstanceOf(ObjectMapper::class, $instance);
+    }
+
+    public function test_configure_rejects_callbacks_without_mapper_config_return(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('must return a MapperConfig instance');
+
+        ObjectMapper::configure(static fn(MapperConfig $config): null => null);
     }
 
     public function test_is_configured_returns_false_by_default(): void
@@ -63,9 +70,7 @@ class ObjectMapperExtendedTest extends TestCase
 
     public function test_is_configured_returns_true_after_configure(): void
     {
-        ObjectMapper::configure(function (MapperConfig $config): void {
-            // Empty configuration
-        });
+        ObjectMapper::configure(fn(MapperConfig $config): MapperConfig => $config);
 
         $this->assertTrue(ObjectMapper::isConfigured());
     }
@@ -341,22 +346,18 @@ class ObjectMapperExtendedTest extends TestCase
         $this->assertSame($mapper, $result);
     }
 
-    public function test_register_profiles_with_non_profile_items(): void
+    public function test_constructor_rejects_non_profile_items(): void
     {
-        // Test that non-profile items in profiles array are ignored
+        $this->expectException(InvalidArgumentException::class);
+
         $config = MapperConfig::create()
             ->withProfile(new ExtendedTestMappingProfile())
             ->withProfiles([
                 new ExtendedTestMappingProfile(),
-                'not_a_profile',  // This should be ignored
-                123,              // This should be ignored
-                null,              // This should be ignored
+                'not_a_profile',
             ]);
 
-        $mapper = new ObjectMapper($config);
-
-        // Should not throw any errors
-        $this->assertInstanceOf(ObjectMapper::class, $mapper);
+        new ObjectMapper($config);
     }
 }
 

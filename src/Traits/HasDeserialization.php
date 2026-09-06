@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines HasDeserialization as part of reusable Granite object behavior.
+// ABOUTME: Owns the HasDeserialization boundary within reusable Granite object behavior.
 
 namespace Ninja\Granite\Traits;
 
@@ -13,6 +15,7 @@ use Ninja\Granite\Support\ReflectionCache;
 use ReflectionException;
 use ReflectionProperty;
 use ReflectionType;
+use Throwable;
 
 /**
  * Trait providing deserialization functionality for Granite objects.
@@ -105,7 +108,7 @@ trait HasDeserialization
         }
 
         $profile = ReflectionCache::getClassProfile(static::class);
-        if ($profile->canUseFastPath) {
+        if ($profile->canHydrateFastPath) {
             $result = $profile->tryFastPath($args);
             if (null !== $result) {
                 /** @var static $result */
@@ -142,7 +145,19 @@ trait HasDeserialization
             $data = self::resolveArgumentsToData($args);
         }
 
-        static::validateData($data, static::class);
+        if ($profile->canHydrateFastPath) {
+            $result = $profile->tryFastPath([$data]);
+            if (null !== $result) {
+                /** @var static $result */
+                return $result;
+            }
+        }
+
+        static::validateResolvedData(
+            $data,
+            static::class,
+            static fn(array $validationData): array => self::normalizeValidationData($validationData),
+        );
 
         // Check if we need to use constructor due to readonly properties from parent classes
         if (self::hasReadonlyPropertiesFromParentClasses()) {
@@ -157,6 +172,10 @@ trait HasDeserialization
      * Resolve function arguments to normalized data array.
      * Handles automatic detection of named parameters vs regular arguments.
      * @throws Exceptions\ReflectionException
+     */
+    /**
+     * @param array<array-key, mixed> $args
+     * @return array<array-key, mixed>
      */
     protected static function resolveArgumentsToData(array $args): array
     {
@@ -204,9 +223,44 @@ trait HasDeserialization
     }
 
     /**
+     * Copy resolved values to canonical PHP property names for validation.
+     * Extra input keys remain available for cross-field rules.
+     */
+    /**
+     * @param array<array-key, mixed> $data
+     * @return array<array-key, mixed>
+     */
+    protected static function normalizeValidationData(array $data): array
+    {
+        $normalized = $data;
+        $metadata = MetadataCache::getMetadata(static::class);
+        $convention = self::getClassConvention(static::class);
+
+        foreach (ReflectionCache::getPublicProperties(static::class) as $property) {
+            $phpName = $property->getName();
+            $serializedName = $metadata->getSerializedName($phpName);
+            $value = self::findValueInData($data, $phpName, $serializedName, $convention);
+            $found = null !== $value
+                || array_key_exists($phpName, $data)
+                || ($phpName !== $serializedName && array_key_exists($serializedName, $data));
+
+            if (in_array(HasNamingConventions::class, class_uses(static::class), true)) {
+                $found = static::hasValueSetInData($data, $phpName, $serializedName, $convention);
+            }
+
+            if ($found) {
+                $normalized[$phpName] = $value;
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
      * Map a single scalar value to the first property of the class.
      * @throws Exceptions\ReflectionException
      */
+    /** @return array<array-key, mixed> */
     protected static function mapScalarToFirstProperty(mixed $value): array
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
@@ -253,8 +307,8 @@ trait HasDeserialization
      * Build data array from positional arguments.
      * Maps arguments to class properties by order.
      *
-     * @param array $args All arguments passed to from()
-     * @return array Associative array with property names as keys
+     * @param array<array-key, mixed> $args All arguments passed to from()
+     * @return array<array-key, mixed> Associative array with property names as keys
      * @throws Exceptions\ReflectionException
      */
     protected static function buildFromPositionalArgs(array $args): array
@@ -310,7 +364,11 @@ trait HasDeserialization
             unset($data['data']); // Remove the data parameter if it was null/empty
         }
 
-        static::validateData($data, static::class);
+        static::validateResolvedData(
+            $data,
+            static::class,
+            static fn(array $validationData): array => self::normalizeValidationData($validationData),
+        );
 
         $instance = self::createEmptyInstance();
         return self::hydrateInstance($instance, $data);
@@ -319,8 +377,8 @@ trait HasDeserialization
     /**
      * Normalize input data to array format using HydratorFactory.
      *
-     * @param array|string|object $data Input data
-     * @return array Normalized data
+     * @param array<array-key, mixed>|string|object $data Input data
+     * @return array<array-key, mixed> Normalized data
      */
     protected static function normalizeInputData(array|string|object $data): array
     {
@@ -349,6 +407,7 @@ trait HasDeserialization
      * @throws DateMalformedStringException
      * @throws Exceptions\ReflectionException
      */
+    /** @param array<array-key, mixed> $data */
     protected static function hydrateInstance(object $instance, array $data): static
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
@@ -422,7 +481,7 @@ trait HasDeserialization
      * Create instance using constructor for readonly property compatibility.
      * This method maps data to constructor parameters.
      *
-     * @param array $data Data to use for initialization
+     * @param array<array-key, mixed> $data Data to use for initialization
      * @return static Created instance
      * @throws Exceptions\ReflectionException
      */
@@ -440,27 +499,52 @@ trait HasDeserialization
 
             $parameters = $constructor->getParameters();
             $args = [];
+            $consumedProperties = [];
+            $metadata = MetadataCache::getMetadata(static::class);
+            $classConvention = self::getClassConvention(static::class);
+            $classDateTimeProvider = self::getClassDateTimeProvider(static::class);
 
-            // Map data to constructor parameters
             foreach ($parameters as $param) {
                 $paramName = $param->getName();
+                $property = $reflection->hasProperty($paramName)
+                    ? $reflection->getProperty($paramName)
+                    : null;
+                $phpName = $property?->getName() ?? $paramName;
+                $serializedName = $metadata->getSerializedName($phpName);
+                $hasValue = self::hasValueSetInData($data, $phpName, $serializedName, $classConvention);
 
-                if (array_key_exists($paramName, $data)) {
-                    $args[] = $data[$paramName];
+                if ($hasValue) {
+                    $value = self::findValueInData($data, $phpName, $serializedName, $classConvention);
+                    $args[] = self::convertValueToType(
+                        $value,
+                        $property?->getType() ?? $param->getType(),
+                        $property,
+                        $classDateTimeProvider,
+                    );
+                    if (null !== $property) {
+                        $consumedProperties[] = $phpName;
+                    }
                 } elseif ($param->isDefaultValueAvailable()) {
                     $args[] = $param->getDefaultValue();
                 } elseif ($param->allowsNull()) {
                     $args[] = null;
                 } else {
-                    // Required parameter not found in data, use null and let constructor handle it
-                    $args[] = null;
+                    throw Exceptions\SerializationException::missingRequiredValue(static::class, $paramName);
                 }
             }
 
-            $instance = $reflection->newInstanceArgs($args);
+            try {
+                $instance = $reflection->newInstanceArgs($args);
+            } catch (Throwable $e) {
+                throw Exceptions\SerializationException::deserializationFailed(
+                    static::class,
+                    'constructor hydration',
+                    $e,
+                );
+            }
 
             // Hydrate any remaining properties not handled by constructor
-            return self::hydrateRemainingProperties($instance, $data);
+            return self::hydrateRemainingProperties($instance, $data, $consumedProperties);
 
         } catch (ReflectionException $e) {
             throw Exceptions\ReflectionException::classNotFound(static::class);
@@ -471,17 +555,20 @@ trait HasDeserialization
      * Hydrate properties not handled by constructor.
      *
      * @param object $instance Instance to hydrate
-     * @param array $data Data to hydrate with
+     * @param array<array-key, mixed> $data Data to hydrate with
+     * @param array<int, string> $consumedProperties
      * @return static Hydrated instance
      * @throws DateMalformedStringException
      * @throws Exceptions\ReflectionException
      */
-    protected static function hydrateRemainingProperties(object $instance, array $data): static
+    protected static function hydrateRemainingProperties(object $instance, array $data, array $consumedProperties = []): static
     {
         $properties = ReflectionCache::getPublicProperties(static::class);
         $reflection = ReflectionCache::getClass(static::class);
         $constructor = $reflection->getConstructor();
-        $constructorParams = $constructor ? array_map(fn($p) => $p->getName(), $constructor->getParameters()) : [];
+        $constructorParams = empty($consumedProperties)
+            ? ($constructor ? array_map(fn($p) => $p->getName(), $constructor->getParameters()) : [])
+            : $consumedProperties;
 
         // Get serialization metadata and class convention
         $metadata = MetadataCache::getMetadata(static::class);

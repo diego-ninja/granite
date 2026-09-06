@@ -1,10 +1,13 @@
 <?php
+// ABOUTME: Defines MappingEngine as part of the object mapping pipeline.
+// ABOUTME: Owns the MappingEngine boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Core;
 
-use Exception;
 use Ninja\Granite\Exceptions\GraniteException;
+use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
+use Throwable;
 
 /**
  * Core mapping engine responsible for executing mapping operations.
@@ -17,11 +20,11 @@ final class MappingEngine
     private ObjectFactory $objectFactory;
     private ConfigurationBuilder $configBuilder;
 
-    public function __construct(ConfigurationBuilder $configBuilder)
+    public function __construct(ConfigurationBuilder $configBuilder, Mapper $mapper)
     {
         $this->configBuilder = $configBuilder;
         $this->sourceNormalizer = new SourceNormalizer();
-        $this->dataTransformer = new DataTransformer();
+        $this->dataTransformer = new DataTransformer($mapper);
         $this->objectFactory = new ObjectFactory();
     }
 
@@ -32,23 +35,18 @@ final class MappingEngine
      */
     public function map(mixed $source, string $destinationType): object
     {
-        $this->validateDestinationType($destinationType);
+        $destinationType = $this->validateDestinationType($destinationType);
 
         try {
             $sourceData = $this->sourceNormalizer->normalize($source);
             $config = $this->configBuilder->getConfiguration($source, $destinationType);
-            $transformedData = $this->dataTransformer->transform($sourceData, $config);
-
-            if ( ! class_exists($destinationType)) {
-                $sourceType = is_object($source) ? get_class($source) : 'array';
-                throw new MappingException($sourceType, $destinationType, "Destination type '{$destinationType}' is not a valid class");
-            }
+            $transformedData = $this->dataTransformer->transform($sourceData, $config, $destinationType);
 
             return $this->objectFactory->create($transformedData, $destinationType);
 
         } catch (GraniteException $e) {
             throw $e;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             throw $this->createMappingException($source, $destinationType, $e);
         }
     }
@@ -62,11 +60,13 @@ final class MappingEngine
         try {
             $sourceData = $this->sourceNormalizer->normalize($source);
             $config = $this->configBuilder->getConfiguration($source, get_class($destination));
-            $transformedData = $this->dataTransformer->transform($sourceData, $config);
+            $transformedData = $this->dataTransformer->transform($sourceData, $config, get_class($destination));
 
             return $this->objectFactory->populate($destination, $transformedData);
 
-        } catch (Exception $e) {
+        } catch (GraniteException $e) {
+            throw $e;
+        } catch (Throwable $e) {
             throw $this->createMappingException($source, get_class($destination), $e);
         }
     }
@@ -75,17 +75,20 @@ final class MappingEngine
      * Validate that destination type exists and is instantiable.
      * @throws MappingException
      */
-    private function validateDestinationType(string $destinationType): void
+    /** @return class-string */
+    private function validateDestinationType(string $destinationType): string
     {
         if ( ! class_exists($destinationType)) {
             throw MappingException::destinationTypeNotFound($destinationType);
         }
+
+        return $destinationType;
     }
 
     /**
      * Create a mapping exception with context.
      */
-    private function createMappingException(mixed $source, string $destinationType, Exception $previous): MappingException
+    private function createMappingException(mixed $source, string $destinationType, Throwable $previous): MappingException
     {
         $sourceType = is_object($source) ? get_class($source) : gettype($source);
 

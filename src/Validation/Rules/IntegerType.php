@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines IntegerType as part of validation rule definition and execution.
+// ABOUTME: Owns the IntegerType boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -8,7 +10,7 @@ class IntegerType extends AbstractRule
      * Check if the value is an integer.
      *
      * @param mixed $value
-     * @param array|null $allData
+     * @param array<array-key, mixed>|null $allData
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

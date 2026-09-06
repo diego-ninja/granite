@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines StringHydrator as part of the input hydration and normalization pipeline.
+// ABOUTME: Owns the StringHydrator boundary between external input and typed objects.
 
 namespace Ninja\Granite\Hydration\Hydrators;
 
@@ -20,6 +22,7 @@ class StringHydrator extends AbstractHydrator
         return is_string($data);
     }
 
+    /** @return array<array-key, mixed> */
     public function hydrate(mixed $data, string $targetClass): array
     {
         // All strings should be JSON if they're being used for hydration

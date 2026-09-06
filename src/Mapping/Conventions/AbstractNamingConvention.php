@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines AbstractNamingConvention as part of the object mapping pipeline.
+// ABOUTME: Owns the AbstractNamingConvention boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Conventions;
 
@@ -10,7 +12,7 @@ use Ninja\Granite\Mapping\Contracts\NamingConvention;
 abstract class AbstractNamingConvention implements NamingConvention
 {
     /**
-     * @var array Semantic relationship mapping for improving name matching
+     * @var array<string, list<string>> Semantic relationship mapping for improving name matching
      */
     protected array $semanticRelationships = [
         'profile' => ['avatar', 'picture', 'image', 'photo'],
@@ -142,12 +144,10 @@ abstract class AbstractNamingConvention implements NamingConvention
                 $relatedWords = $this->semanticRelationships[$sourceWord];
 
                 // Ver si alguna palabra de destino está en la lista de relacionadas
-                if (is_array($relatedWords)) {
-                    foreach ($destWords as $destWord) {
-                        if (in_array($destWord, $relatedWords)) {
-                            $hasRelationship = true;
-                            $relationshipStrength += 0.1;
-                        }
+                foreach ($destWords as $destWord) {
+                    if (in_array($destWord, $relatedWords)) {
+                        $hasRelationship = true;
+                        $relationshipStrength += 0.1;
                     }
                 }
             }

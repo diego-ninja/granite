@@ -1,7 +1,9 @@
 <?php
+// ABOUTME: Defines SerializationCache as part of the serialization and date metadata pipeline.
+// ABOUTME: Owns the SerializationCache boundary between metadata and serialized values.
 
 // ABOUTME: WeakMap-based cache for serialized array and JSON results.
-// ABOUTME: Auto-cleans via GC since Granite objects are readonly/immutable.
+// ABOUTME: Auto-cleans via GC while allowing explicit resets for deterministic tests.
 
 namespace Ninja\Granite\Serialization;
 
@@ -9,12 +11,13 @@ use WeakMap;
 
 final class SerializationCache
 {
-    /** @var WeakMap<object, array> */
+    /** @var WeakMap<object, array<array-key, mixed>> */
     private static ?WeakMap $arrayCache = null;
 
     /** @var WeakMap<object, string> */
     private static ?WeakMap $jsonCache = null;
 
+    /** @return array<array-key, mixed>|null */
     public static function get(object $instance): ?array
     {
         if (null === self::$arrayCache) {
@@ -24,6 +27,7 @@ final class SerializationCache
         return self::$arrayCache[$instance] ?? null;
     }
 
+    /** @param array<array-key, mixed> $result */
     public static function set(object $instance, array $result): void
     {
         self::$arrayCache ??= new WeakMap();
@@ -43,5 +47,11 @@ final class SerializationCache
     {
         self::$jsonCache ??= new WeakMap();
         self::$jsonCache[$instance] = $result;
+    }
+
+    public static function clear(): void
+    {
+        self::$arrayCache = null;
+        self::$jsonCache = null;
     }
 }

@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines AttributeProcessor as part of the object mapping pipeline.
+// ABOUTME: Owns the AttributeProcessor boundary between mapping configuration and execution.
 
 namespace Ninja\Granite\Mapping\Core;
 
@@ -11,6 +13,8 @@ use Ninja\Granite\Mapping\Attributes\MapWith;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\CarbonRange;
 use Ninja\Granite\Serialization\Attributes\CarbonRelative;
+use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
+use Ninja\Granite\Serialization\CarbonTransformerFactory;
 use Ninja\Granite\Transformers\CarbonTransformer;
 use ReflectionAttribute;
 use ReflectionProperty;
@@ -44,6 +48,13 @@ final readonly class AttributeProcessor
             $this->processAttribute($attribute, $config);
         }
 
+        if (null === $config['transformer']) {
+            $transformer = $this->buildCarbonTransformer($property);
+            if (null !== $transformer) {
+                $config['transformer'] = $transformer;
+            }
+        }
+
         return $config;
     }
 
@@ -53,50 +64,11 @@ final readonly class AttributeProcessor
      * @param ReflectionProperty $property Property to check for Carbon attributes
      * @return CarbonTransformer|null Carbon transformer or null if no Carbon attributes found
      */
-    public function buildCarbonTransformer(ReflectionProperty $property): ?CarbonTransformer
-    {
-        // Check for comprehensive CarbonDate attribute first
-        $carbonDateAttrs = $property->getAttributes(CarbonDate::class, ReflectionAttribute::IS_INSTANCEOF);
-        if ( ! empty($carbonDateAttrs)) {
-            /** @var CarbonDate $attr */
-            $attr = $carbonDateAttrs[0]->newInstance();
-            return $attr->createTransformer();
-        }
-
-        // Build from individual attributes
-        $parseRelative = true;
-        $min = null;
-        $max = null;
-
-
-        // Process Range
-        $rangeAttrs = $property->getAttributes(CarbonRange::class, ReflectionAttribute::IS_INSTANCEOF);
-        if ( ! empty($rangeAttrs)) {
-            /** @var CarbonRange $rangeAttr */
-            $rangeAttr = $rangeAttrs[0]->newInstance();
-            $min = $rangeAttr->min;
-            $max = $rangeAttr->max;
-        }
-
-        // Process CarbonRelative
-        $relativeAttrs = $property->getAttributes(CarbonRelative::class, ReflectionAttribute::IS_INSTANCEOF);
-        if ( ! empty($relativeAttrs)) {
-            /** @var CarbonRelative $relativeAttr */
-            $relativeAttr = $relativeAttrs[0]->newInstance();
-            $parseRelative = $relativeAttr->enabled;
-        }
-
-        // Only create transformer if we have some Carbon configuration
-        if (null !== $min || null !== $max || ! $parseRelative) {
-
-            return new CarbonTransformer(
-                parseRelative: $parseRelative,
-                min: $min,
-                max: $max,
-            );
-        }
-
-        return null;
+    public function buildCarbonTransformer(
+        ReflectionProperty $property,
+        ?DateTimeProvider $classProvider = null,
+    ): ?CarbonTransformer {
+        return CarbonTransformerFactory::create($property, $classProvider);
     }
 
     /**
@@ -152,7 +124,7 @@ final readonly class AttributeProcessor
     /**
      * Process individual attribute and update configuration.
      *
-     * @param ReflectionAttribute $attribute Attribute to process
+     * @param ReflectionAttribute<object> $attribute Attribute to process
      * @param array<string, mixed> $config Configuration array to update
      * @return void
      */
@@ -199,14 +171,10 @@ final readonly class AttributeProcessor
 
                 // Carbon-specific attributes
             case CarbonDate::class:
-                if ($attrInstance instanceof CarbonDate) {
-                    $config['transformer'] = $attrInstance->createTransformer();
-                }
+                $config['hasCarbonAttributes'] = true;
                 break;
             case CarbonRange::class:
             case CarbonRelative::class:
-                // These are handled by getCarbonTransformerFromAttributes in GraniteDTO
-                // We mark that Carbon attributes are present
                 $config['hasCarbonAttributes'] = true;
                 break;
         }

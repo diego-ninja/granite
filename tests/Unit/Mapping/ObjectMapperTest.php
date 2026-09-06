@@ -26,6 +26,7 @@ use Tests\Fixtures\Automapper\TestMappingProfile;
 use Tests\Fixtures\DTOs\SimpleDTO;
 use Tests\Fixtures\DTOs\UserDTO;
 use Tests\Helpers\TestCase;
+use TypeError;
 
 #[CoversClass(ObjectMapper::class)]
 class ObjectMapperTest extends TestCase
@@ -214,6 +215,19 @@ class ObjectMapperTest extends TestCase
         $this->assertEquals('updated@example.com', $result->email); // Updated
     }
 
+    public function test_map_to_wraps_incompatible_property_type(): void
+    {
+        $destination = new IncompatibleDestinationDTO();
+
+        try {
+            $this->mapper->mapTo(['id' => 'not-an-int'], $destination);
+            $this->fail('Expected a MappingException');
+        } catch (MappingException $exception) {
+            $this->assertSame('id', $exception->getPropertyName());
+            $this->assertInstanceOf(TypeError::class, $exception->getPrevious());
+        }
+    }
+
     public function test_throws_exception_for_non_existent_destination_type(): void
     {
         $this->expectException(MappingException::class);
@@ -381,4 +395,9 @@ class ObjectMapperTest extends TestCase
         $this->assertInstanceOf(UserDTO::class, $result->user);
         $this->assertEquals('John Doe', $result->user->name);
     }
+}
+
+class IncompatibleDestinationDTO
+{
+    public int $id = 0;
 }

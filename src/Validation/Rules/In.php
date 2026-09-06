@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines In as part of validation rule definition and execution.
+// ABOUTME: Owns the In boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -7,7 +9,7 @@ class In extends AbstractRule
     /**
      * Constructor.
      *
-     * @param array $values Allowed values
+     * @param array<array-key, mixed> $values Allowed values
      */
     public function __construct(
         private readonly array $values,
@@ -17,7 +19,7 @@ class In extends AbstractRule
      * Check if the value is one of the allowed values.
      *
      * @param mixed $value
-     * @param array|null $allData
+     * @param array<array-key, mixed>|null $allData
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool

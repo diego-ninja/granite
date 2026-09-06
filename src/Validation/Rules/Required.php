@@ -1,4 +1,6 @@
 <?php
+// ABOUTME: Defines Required as part of validation rule definition and execution.
+// ABOUTME: Owns the Required boundary between rule definitions and validation results.
 
 namespace Ninja\Granite\Validation\Rules;
 
@@ -8,7 +10,7 @@ class Required extends AbstractRule
      * Check if the value is not null.
      *
      * @param mixed $value
-     * @param array|null $allData
+     * @param array<array-key, mixed>|null $allData
      * @return bool Whether the value is valid
      */
     public function validate(mixed $value, ?array $allData = null): bool
