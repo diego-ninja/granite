@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.7.0 - 2026-09-06
 
 ### Fixed
 - Hardened object mapping, source normalization, collection transformers, and validation parsing.
@@ -21,10 +21,12 @@
 - Final `composer audit` verification reports no security vulnerability advisories.
 
 ### Performance
-- Fast paths remain available for scalar/Granite DTOs; arrays use the general path until recursive semantics can be proven equivalent.
+- Added capability-specific hydration, serialization, and comparison fast paths.
+- Cached reflection, validation, Carbon, and serialization metadata across repeated operations.
+- Reduced JSON/object hydration time by 82-87%, array-property hydration by 91%, validated hydration by 49%, and cached serialization by 95-97% in the recorded benchmark.
 - Final PHP 8.5.10 verification reached 82.78% line coverage, up from the 81.94% baseline.
-- The existing benchmark smoke run completed on PHP 8.5.10; scalar creation and property access remain fast-path eligible. Array and nested serialization intentionally use the general path, so historical benchmark values are not directly comparable.
+- Full before/after samples and methodology are recorded in `docs/plans/2026-09-05-optimize-object-performance.md`.
 
 ### Verification
-- Local gate: 2,038 tests, 4,488 assertions, 3 optional skips, with no warnings or deprecations.
+- Local gate: 2,045 tests, 4,503 assertions, 3 optional skips, with no warnings or deprecations.
 - CI remains configured for PHP 8.3, 8.4, and 8.5; the local gate was run on PHP 8.5.10.
