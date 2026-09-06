@@ -90,3 +90,11 @@ Measured on PHP 8.5.10 (Darwin), with OPcache CLI enabled and `XDEBUG_MODE=off`.
 | `mapper.granite` | 1.770 | 1.550 | 12.5% | 1.14x |
 
 The plain constructor control moved by 0.010 µs between adjacent runs; sub-2% changes in already-fast scalar hydration are treated as noise rather than claimed improvements.
+
+### Post-review cold JSON result
+
+A final review found that a cold `json()` call analyzed graph cacheability before calling `array()`, which repeated the same analysis. A dedicated cold nested JSON scenario was added and measured immediately before and after removing that duplicate traversal, using the same PHP, OPcache, Xdebug, iteration, and repetition settings.
+
+| Scenario | Before (µs) | After (µs) | Reduction | Speed-up |
+|---|---:|---:|---:|---:|
+| `serialize.nested.json_cold` | 3.520 | 2.484 | 29.4% | 1.42x |

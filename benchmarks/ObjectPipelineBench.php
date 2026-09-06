@@ -188,6 +188,10 @@ $benchmark->measure('hydrate.validated', static fn() => PipelineValidatedUser::f
 $benchmark->measure('serialize.scalar.array_cached', static fn() => $user->array());
 $benchmark->measure('serialize.scalar.json_cached', static fn() => $user->json());
 $benchmark->measure('serialize.nested.array_cached', static fn() => $order->array());
+$benchmark->measure(
+    'serialize.nested.json_cold',
+    static fn() => (new PipelineOrder(10, new PipelineUser(...$data)))->json(),
+);
 $benchmark->measure('serialize.array_property', static fn() => $tags->array());
 $benchmark->measure('mapper.plain', static fn() => $mapper->map($data, PipelinePlainUser::class));
 $benchmark->measure('mapper.granite', static fn() => $mapper->map($data, PipelineUser::class));

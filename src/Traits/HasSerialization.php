@@ -67,8 +67,18 @@ trait HasSerialization
             return $cached;
         }
 
-        $cacheable = SerializationCachePolicy::isCacheable($this);
-        $json = json_encode($this->array());
+        $array = SerializationCache::get($this);
+        if (null === $array) {
+            $cacheable = SerializationCachePolicy::isCacheable($this);
+            $array = $this->computeArray();
+            if ($cacheable) {
+                SerializationCache::set($this, $array);
+            }
+        } else {
+            $cacheable = true;
+        }
+
+        $json = json_encode($array);
         if (false === $json) {
             throw new RuntimeException('Failed to encode object to JSON');
         }
