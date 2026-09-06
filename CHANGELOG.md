@@ -7,6 +7,7 @@
 - Replaced unsafe persistent mapping cache serialization with validated JSON.
 - Method-based serialized names and hidden properties are now honored by serialization fast paths.
 - Failed `mapTo()` population now rolls back earlier property writes.
+- Cache directory configuration no longer depends on a PHP 8.4-only function.
 
 ### Changed
 - CI now resolves dependencies consistently across PHP 8.3, 8.4, and 8.5.

@@ -40,7 +40,7 @@ class CacheFactory
      */
     public static function setCacheDirectory(string $dir): void
     {
-        self::$cacheDir = mb_rtrim($dir, '/\\');
+        self::$cacheDir = rtrim($dir, '/\\');
     }
 
     /**
