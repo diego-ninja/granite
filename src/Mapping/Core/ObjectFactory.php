@@ -9,6 +9,7 @@ use Ninja\Granite\Mapping\Exceptions\MappingException;
 use Ninja\Granite\Support\ReflectionCache;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionProperty;
 use Throwable;
 
 final readonly class ObjectFactory
@@ -52,6 +53,8 @@ final readonly class ObjectFactory
     {
         try {
             $reflection = ReflectionCache::getClass(get_class($object));
+            /** @var list<array{property: ReflectionProperty, initialized: bool, value: mixed}> $changes */
+            $changes = [];
 
             foreach ($data as $propName => $propValue) {
                 if ( ! is_string($propName) || ! $reflection->hasProperty($propName)) {
@@ -63,9 +66,17 @@ final readonly class ObjectFactory
                     continue;
                 }
 
+                $initialized = $property->isInitialized($object);
+                $changes[] = [
+                    'property' => $property,
+                    'initialized' => $initialized,
+                    'value' => $initialized ? $property->getValue($object) : null,
+                ];
+
                 try {
                     $property->setValue($object, $propValue);
                 } catch (Throwable $e) {
+                    $this->rollback($object, $changes);
                     throw MappingException::propertyHydrationFailed(
                         'array',
                         get_class($object),
@@ -87,6 +98,22 @@ final readonly class ObjectFactory
                 0,
                 $e,
             );
+        }
+    }
+
+    /**
+     * @param list<array{property: ReflectionProperty, initialized: bool, value: mixed}> $changes
+     */
+    private function rollback(object $object, array $changes): void
+    {
+        foreach (array_reverse($changes) as $change) {
+            if ($change['initialized']) {
+                $change['property']->setValue($object, $change['value']);
+                continue;
+            }
+
+            $propertyName = $change['property']->getName();
+            unset($object->{$propertyName});
         }
     }
 

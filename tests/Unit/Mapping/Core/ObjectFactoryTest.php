@@ -153,6 +153,20 @@ class ObjectFactoryTest extends TestCase
         }
     }
 
+    public function test_populate_does_not_partially_modify_object_after_type_error(): void
+    {
+        $object = new TestSimpleClass('Original', 25);
+
+        try {
+            $this->factory->populate($object, ['name' => 'Modified', 'age' => 'invalid']);
+            $this->fail('Expected a MappingException');
+        } catch (MappingException $exception) {
+            $this->assertInstanceOf(TypeError::class, $exception->getPrevious());
+        }
+
+        $this->assertSame(['name' => 'Original', 'age' => 25], get_object_vars($object));
+    }
+
     public function test_create_with_constructor_and_extra_properties(): void
     {
         $data = ['name' => 'Extra', 'age' => 30, 'extra' => 'value'];
