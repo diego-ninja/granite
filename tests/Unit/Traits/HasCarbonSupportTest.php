@@ -3,6 +3,7 @@
 namespace Tests\Unit\Traits;
 
 use DateTimeImmutable;
+use DateTimeInterface;
 use Ninja\Granite\Config\GraniteConfig;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
@@ -215,7 +216,7 @@ class TestClassWithCarbonAttribute
     #[CarbonDate('Y-m-d')]
     public $carbonDate;
 
-    public $regularDate;
+    public DateTimeInterface $regularDate;
 }
 
 #[DateTimeProvider('Carbon\\Carbon')]

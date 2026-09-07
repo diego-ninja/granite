@@ -254,8 +254,15 @@ trait HasTypeConversion
     {
         // Step 1: Check known libraries
         if (interface_exists('Ramsey\Uuid\UuidInterface')
-            && is_subclass_of($typeName, 'Ramsey\Uuid\UuidInterface')) {
-            return self::tryCreateFromValue($value, $typeName);
+            && ('Ramsey\Uuid\UuidInterface' === $typeName
+                || is_subclass_of($typeName, 'Ramsey\Uuid\UuidInterface'))) {
+            return self::tryCreateFromValue(
+                $value,
+                'Ramsey\Uuid\Uuid',
+                in_array($typeName, ['Ramsey\Uuid\Uuid', 'Ramsey\Uuid\UuidInterface'], true)
+                    ? 'Ramsey\Uuid\UuidInterface'
+                    : $typeName,
+            );
         }
 
         if (class_exists('Symfony\Component\Uid\AbstractUid')
@@ -279,10 +286,15 @@ trait HasTypeConversion
      * @param class-string $className Target class name
      * @return mixed Created instance or original value if conversion failed
      */
-    private static function tryCreateFromValue(mixed $value, string $className): mixed
-    {
+    private static function tryCreateFromValue(
+        mixed $value,
+        string $className,
+        ?string $expectedType = null,
+    ): mixed {
+        $expectedType ??= $className;
+
         // Already correct type
-        if ($value instanceof $className) {
+        if ($value instanceof $expectedType) {
             return $value;
         }
 
@@ -290,11 +302,31 @@ trait HasTypeConversion
         $lastError = null;
         $attempted = false;
 
+        if (\Ramsey\Uuid\Uuid::class === $className) {
+            $attempted = true;
+            if ( ! is_string($value)) {
+                throw Exceptions\SerializationException::conversionFailed(
+                    static::class,
+                    $expectedType,
+                    'Ramsey\\Uuid\\UuidFactory',
+                );
+            }
+
+            try {
+                $result = \Ramsey\Uuid\Uuid::getFactory()->fromString($value);
+                if ($result instanceof $expectedType) {
+                    return $result;
+                }
+            } catch (Throwable $e) {
+                $lastError = $e;
+            }
+        }
+
         if (self::canInvokeFactory($className, 'from')) {
             $attempted = true;
             try {
                 $result = $className::from($value);
-                if ($result instanceof $className) {
+                if ($result instanceof $expectedType) {
                     return $result;
                 }
             } catch (Throwable $e) {
@@ -307,7 +339,7 @@ trait HasTypeConversion
             $attempted = true;
             try {
                 $result = $className::fromString($value);
-                if ($result instanceof $className) {
+                if ($result instanceof $expectedType) {
                     return $result;
                 }
             } catch (Throwable $e) {
@@ -321,7 +353,7 @@ trait HasTypeConversion
 
         throw Exceptions\SerializationException::conversionFailed(
             static::class,
-            $className,
+            $expectedType,
             $className,
             $lastError,
         );

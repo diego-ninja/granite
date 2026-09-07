@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Validation\Rules;
 
+use InvalidArgumentException;
 use Ninja\Granite\Validation\Rules\Regex;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -41,6 +42,54 @@ class RegexTest extends TestCase
         $this->assertFalse($rule->validate('Hello')); // Contains uppercase
         $this->assertFalse($rule->validate('hello123')); // Contains numbers
         $this->assertFalse($rule->validate('hello world')); // Contains space
+    }
+
+    public function test_constructor_rejects_invalid_patterns_without_emitting_warnings(): void
+    {
+        $warnings = [];
+        set_error_handler(static function (int $severity, string $message) use (&$warnings): bool {
+            $warnings[] = [$severity, $message];
+
+            return true;
+        });
+
+        try {
+            foreach (['', 'abc', '/[unterminated/', '/valid/z'] as $pattern) {
+                $exception = null;
+
+                try {
+                    new Regex($pattern);
+                } catch (InvalidArgumentException $caught) {
+                    $exception = $caught;
+                }
+
+                $this->assertInstanceOf(InvalidArgumentException::class, $exception, $pattern);
+            }
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame([], $warnings);
+    }
+
+    public function test_validate_never_emits_regex_warnings(): void
+    {
+        $rule = new Regex('/^(foo|bar)$/');
+        $warnings = [];
+        set_error_handler(static function (int $severity, string $message) use (&$warnings): bool {
+            $warnings[] = [$severity, $message];
+
+            return true;
+        });
+
+        try {
+            $this->assertTrue($rule->validate('foo'));
+            $this->assertFalse($rule->validate('baz'));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame([], $warnings);
     }
 
     public function test_validates_digit_pattern(): void

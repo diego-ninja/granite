@@ -489,6 +489,36 @@ class HasTypeConversionTest extends TestCase
         $this->assertEquals($uuidString, $result->toString());
     }
 
+    public function test_convert_to_uuid_like_ramsey_uuid_interface(): void
+    {
+        if ( ! interface_exists('Ramsey\Uuid\UuidInterface')) {
+            $this->markTestSkipped('ramsey/uuid not installed');
+        }
+
+        $uuidString = '550e8400-e29b-41d4-a716-446655440000';
+        $result = (new TestClassWithTypeConversion())->testConvertToUuidLike(
+            $uuidString,
+            \Ramsey\Uuid\UuidInterface::class,
+        );
+
+        $this->assertInstanceOf(\Ramsey\Uuid\UuidInterface::class, $result);
+        $this->assertSame($uuidString, $result->toString());
+    }
+
+    public function test_hydrates_concrete_ramsey_uuid_v4_property_from_string(): void
+    {
+        if ( ! class_exists('Ramsey\Uuid\Rfc4122\UuidV4')) {
+            $this->markTestSkipped('ramsey/uuid not installed');
+        }
+
+        $uuidString = '550e8400-e29b-41d4-a716-446655440000';
+
+        $result = TestRamseyUuidV4Granite::from(['id' => $uuidString]);
+
+        $this->assertInstanceOf(\Ramsey\Uuid\Rfc4122\UuidV4::class, $result->id);
+        $this->assertSame($uuidString, $result->id->toString());
+    }
+
     public function test_convert_to_uuid_like_symfony_uuid(): void
     {
         if ( ! class_exists('Symfony\Component\Uid\Uuid')) {
@@ -675,6 +705,11 @@ class TestTypeConversionClass
 readonly class TestGraniteObject extends GraniteVO
 {
     public string $name;
+}
+
+readonly class TestRamseyUuidV4Granite extends GraniteVO
+{
+    public \Ramsey\Uuid\Rfc4122\UuidV4 $id;
 }
 
 // Test class that returns null from conversion methods

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.0.0 - 2026-09-07
+
+### Added
+- Added `Granite::with()` for immutable updates through the normal hydration and validation pipeline.
+- Added first-class dev integration coverage for Ramsey UUID and Symfony UID.
+- Added CI gates for risky tests, PHPUnit warnings, line coverage, and method coverage.
+
+### Fixed
+- Mapping caches are now isolated by deterministic configuration and code fingerprints and are invalidated after in-place mapping, profile, or convention mutations.
+- Persistent mapping cache writes are locked, atomic, generation-aware, and reject untrusted paths or malformed payloads.
+- Failed `mapTo()` operations restore raw destination state before rethrowing the original error.
+- Pebble now takes defensive deep snapshots, preserves explicit `null`, and fingerprints dates, enums, objects, and cycles deterministically.
+- Granite equality, validation, and immutable updates now use canonical PHP property state instead of serialized aliases or hidden projections.
+- Carbon configuration is composed consistently across global, class, and property-level settings.
+- Validation rule parsing now preserves pipes inside regular expressions and rejects invalid patterns without emitting PHP warnings.
+- UUID conversion now supports both Ramsey's concrete factory and `UuidInterface` targets.
+
+### Changed
+- Serialization results are cached only for readonly, deeply immutable Granite graphs.
+- `ObjectMapper::getCache()` returns a configuration-scoped facade; callers should depend on `MappingCache`, not a concrete backend class.
+- Explicit `null` values passed through `fromNamedParameters()` are retained as overrides.
+- `GraniteVO` is now deprecated alongside the already-deprecated `GraniteDTO`; both are scheduled for removal in v3.0.0.
+- Removed unused development dependencies on Faker, Mockery, Rector, and PHP_CodeSniffer.
+
+### Migration notes
+- Pebble rejects resources and unsupported internal objects instead of retaining mutable references. Convert such values to arrays or scalars before snapshotting.
+- Wrappers around `fromNamedParameters()` must include only intentionally supplied keys; nullable defaults collected with `get_defined_vars()` now overwrite source/default values with `null`.
+- Persistent mapper cache schema v1 and unscoped entries are treated as misses and rebuilt in schema v2.
+
+### Verification
+- Local PHP 8.5.10 gate: 2,155 tests and 4,770 assertions, with no skips, warnings, or deprecations.
+- Coverage gate: 85.14% lines and 72.24% methods.
+
 ## 1.7.0 - 2026-09-06
 
 ### Fixed

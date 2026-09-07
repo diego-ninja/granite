@@ -263,6 +263,12 @@ class EventController
 4. **Refactoring-safe** - Parameter names are explicit
 5. **Optional parameters** - Skip optional parameters easily
 
+An explicit `null` is an override, not an omitted argument. Custom wrappers
+that call the protected `fromNamedParameters()` helper must pass only the keys
+the caller intended to change. Do not forward `get_defined_vars()` from a
+signature with nullable defaults, because omitted defaults would become
+explicit `null` overrides.
+
 ## Mixed Usage
 
 Combine base data with named parameter overrides - perfect for configuration management and API updates:
@@ -374,7 +380,7 @@ Granite automatically converts string values to UUID/ULID objects when property 
 #### Custom ID Classes
 
 Custom ID classes are detected if:
-1. Class name contains: `uuid`, `ulid`, `uid`, or `id` (case-insensitive)
+1. Class name ends with `uuid`, `ulid`, `uid`, or `id` (case-insensitive)
 2. Class has public static `from()` or `fromString()` method
 
 **Example:**
@@ -393,7 +399,7 @@ readonly class OrderId
     }
 }
 
-readonly class Order extends GraniteVO
+readonly class Order extends Granite
 {
     public OrderId $id;
     public string $description;
@@ -410,7 +416,10 @@ Tries from() first (accepts any type)
 Falls back to fromString() (string-specific)
 
 #### Error Handling
-If conversion fails, the original value is returned unchanged. Type errors will surface at PHP's type checking level.
+If a recognized ID factory is invoked and conversion fails, Granite throws a
+`SerializationException` with the target and factory context. Types that do not
+match the ID naming heuristic are left unchanged and may subsequently fail PHP's
+property type check during hydration.
 
 ## Granite Object Cloning
 

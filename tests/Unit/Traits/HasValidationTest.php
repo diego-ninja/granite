@@ -3,6 +3,8 @@
 namespace Tests\Unit\Traits;
 
 use Ninja\Granite\GraniteVO;
+use Ninja\Granite\Serialization\Attributes\Hidden;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
 use Ninja\Granite\Traits\HasValidation;
 use Ninja\Granite\Validation\Attributes\Required;
 use ReflectionProperty;
@@ -136,6 +138,27 @@ class HasValidationTest extends TestCase
         $this->assertTrue($obj->validate(['name' => 'Valid Name']));
         $this->assertTrue($obj->validate(['name' => ''])); // No rules defined, so always valid
     }
+
+    public function test_validate_uses_raw_php_property_names_for_current_state(): void
+    {
+        $obj = new RawStateValidationVO('Alice', 'internal-token');
+
+        $this->assertTrue($obj->validate());
+    }
+
+    public function test_get_validation_errors_uses_raw_php_property_names_for_current_state(): void
+    {
+        $obj = new RawStateValidationVO('Alice', 'internal-token');
+
+        $this->assertSame([], $obj->getValidationErrors());
+    }
+
+    public function test_get_validation_exception_uses_raw_php_property_names_for_current_state(): void
+    {
+        $obj = new RawStateValidationVO('Alice', 'internal-token');
+
+        $this->assertNull($obj->getValidationException());
+    }
 }
 
 readonly class TestValidationClass extends GraniteVO
@@ -219,5 +242,23 @@ readonly class TestValidationWithAttributesClass extends GraniteVO
     public function testValidateProperty(ReflectionProperty $property, mixed $value, array $allData): array
     {
         return $this->validateProperty($property, $value, $allData);
+    }
+}
+
+readonly class RawStateValidationVO extends GraniteVO
+{
+    public function __construct(
+        #[SerializedName('display_name')]
+        public string $name,
+        #[Hidden]
+        public string $secret,
+    ) {}
+
+    protected static function rules(): array
+    {
+        return [
+            'name' => ['required'],
+            'secret' => ['required'],
+        ];
     }
 }

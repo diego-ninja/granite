@@ -155,6 +155,13 @@ class HasDeserializationTest extends TestCase
         $this->assertEquals(['name' => 'Alice', 'age' => 28], $result);
     }
 
+    public function test_build_from_positional_args_preserves_explicit_null(): void
+    {
+        $result = TestPositionalArgsClass::testBuildFromPositionalArgs([null, 28]);
+
+        $this->assertSame(['name' => null, 'age' => 28], $result);
+    }
+
     public function test_normalize_input_data_array(): void
     {
         $result = TestDeserializationClass::testNormalizeInputData(['name' => 'John']);
@@ -258,19 +265,31 @@ class HasDeserializationTest extends TestCase
         $this->assertEquals(35, $result->age); // Named param should override
     }
 
-    public function test_from_named_parameters_filtering_nulls(): void
+    public function test_from_named_parameters_preserves_explicit_null_without_data(): void
     {
         $namedParams = [
             'name' => 'Test',
-            'age' => null,  // Should be filtered out
-            'data' => null,  // Should be removed
+            'nickname' => null,
+            'data' => null,
         ];
 
         $result = TestNamedParametersClass::testFromNamedParameters($namedParams);
 
         $this->assertInstanceOf(TestNamedParametersClass::class, $result);
         $this->assertEquals('Test', $result->name);
-        // We can't access age property if it's not initialized, just check the instance was created
+        $this->assertTrue((new ReflectionProperty($result, 'nickname'))->isInitialized($result));
+        $this->assertNull($result->nickname);
+    }
+
+    public function test_from_named_parameters_explicit_null_overrides_data(): void
+    {
+        $result = TestNamedParametersClass::testFromNamedParameters([
+            'data' => ['name' => 'FromData', 'nickname' => 'base'],
+            'nickname' => null,
+        ]);
+
+        $this->assertSame('FromData', $result->name);
+        $this->assertNull($result->nickname);
     }
 
     public function test_hydrate_instance(): void
@@ -668,6 +687,7 @@ readonly class TestNamedParametersClass extends GraniteVO
     public function __construct(
         public string $name = '',
         public int $age = 0,
+        public ?string $nickname = 'default',
     ) {}
 
     public static function testFromNamedParameters(array $namedParams): static

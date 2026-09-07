@@ -8,6 +8,10 @@ use DateMalformedStringException;
 use InvalidArgumentException;
 use Ninja\Granite\Exceptions\SerializationException;
 
+/**
+ * @deprecated Use Granite instead. This class will be removed in v3.0.0
+ * @see Granite
+ */
 abstract readonly class GraniteVO extends Granite
 {
     /**
@@ -39,23 +43,8 @@ abstract readonly class GraniteVO extends Granite
      */
     public function equals(mixed $other): bool
     {
-        // If comparing with the same instance
-        if ($this === $other) {
-            return true;
-        }
-
-        // If comparing with another Value Object
-        if ($other instanceof self) {
-            // Must be the same class
-            if (get_class($this) !== get_class($other)) {
-                return false;
-            }
-
-            // Convert both to arrays and compare
-            $thisArray = $this->array();
-            $otherArray = $other->array();
-
-            return $thisArray === $otherArray; // Using loose comparison for array values
+        if ($other instanceof Granite) {
+            return parent::equals($other);
         }
 
         // If comparing with an array
@@ -94,15 +83,6 @@ abstract readonly class GraniteVO extends Granite
      */
     public function with(array $modifications): static
     {
-        // Start with the current values
-        $data = $this->array();
-
-        // Apply modifications
-        foreach ($modifications as $property => $value) {
-            $data[$property] = $value;
-        }
-
-        // Create new instance with modified data
-        return static::from($data);
+        return parent::with($modifications);
     }
 }

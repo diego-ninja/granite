@@ -51,6 +51,10 @@ class CacheFactory
     private static function getCachePath(): string
     {
         $dir = self::$cacheDir ?: sys_get_temp_dir();
-        return $dir . '/granite_mapper_cache.php';
+        $projectRoot = realpath(dirname(__DIR__, 3)) ?: dirname(__DIR__, 3);
+        $projectNamespace = substr(hash('sha256', $projectRoot), 0, 20);
+        $userNamespace = function_exists('posix_geteuid') ? (string) posix_geteuid() : get_current_user();
+
+        return $dir . '/granite-mapper/' . $userNamespace . '-' . $projectNamespace . '/mapping-cache-v2.json';
     }
 }

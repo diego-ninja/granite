@@ -1,7 +1,4 @@
 <?php
-// ABOUTME: Defines ValueSerializer as part of the serialization and date metadata pipeline.
-// ABOUTME: Owns the ValueSerializer boundary between metadata and serialized values.
-
 // ABOUTME: Normalizes values into arrays and scalars suitable for Granite serialization.
 // ABOUTME: Recurses through arrays while preserving keys and reporting the complete value path on failure.
 

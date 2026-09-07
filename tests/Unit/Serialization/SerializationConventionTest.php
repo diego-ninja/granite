@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Serialization;
 
 use InvalidArgumentException;
+use Ninja\Granite\Mapping\Contracts\NamingConvention;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\MetadataCache;
 use PHPUnit\Framework\TestCase;
@@ -160,6 +161,34 @@ class SerializationConventionTest extends TestCase
         $attribute->getConvention();
     }
 
+    public function testConventionClassMustImplementNamingConvention(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        (new SerializationConvention(ConventionWithoutContract::class))->getConvention();
+    }
+
+    public function testConventionClassMustBeInstantiable(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        (new SerializationConvention(AbstractTestConvention::class))->getConvention();
+    }
+
+    public function testConventionClassCannotHavePrivateConstructor(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        (new SerializationConvention(PrivateConstructorTestConvention::class))->getConvention();
+    }
+
+    public function testConventionClassCannotRequireConstructorArguments(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        (new SerializationConvention(RequiredConstructorTestConvention::class))->getConvention();
+    }
+
     public function testFallbackWhenConventionFails(): void
     {
         // Test graceful degradation when convention application fails
@@ -202,4 +231,44 @@ class SerializationConventionTest extends TestCase
 
         $this->assertEquals($expected, $decoded);
     }
+}
+
+final class ConventionWithoutContract {}
+
+abstract class AbstractTestConvention implements NamingConvention
+{
+    public function getName(): string
+    {
+        return 'test';
+    }
+
+    public function matches(string $name): bool
+    {
+        return true;
+    }
+
+    public function normalize(string $name): string
+    {
+        return $name;
+    }
+
+    public function denormalize(string $normalized): string
+    {
+        return $normalized;
+    }
+
+    public function calculateMatchConfidence(string $sourceName, string $destinationName): float
+    {
+        return 1.0;
+    }
+}
+
+final class PrivateConstructorTestConvention extends AbstractTestConvention
+{
+    private function __construct() {}
+}
+
+final class RequiredConstructorTestConvention extends AbstractTestConvention
+{
+    public function __construct(string $required) {}
 }

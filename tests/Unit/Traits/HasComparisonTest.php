@@ -5,7 +5,9 @@ namespace Tests\Unit\Traits;
 use DateTime;
 use DateTimeImmutable;
 use DateTimeZone;
+use LogicException;
 use Ninja\Granite\Exceptions\ComparisonException;
+use Ninja\Granite\GraniteDTO;
 use ReflectionProperty;
 use Tests\Fixtures\DTOs\ComplexDTO;
 use Tests\Fixtures\DTOs\NestedDTO;
@@ -443,6 +445,24 @@ final class HasComparisonTest extends TestCase
         $this->assertEquals(['php', 'symfony'], $differences['tags']['new']);
     }
 
+    public function test_differs_does_not_invoke_private_to_array_method(): void
+    {
+        $left = new PrivateToArrayComparisonDTO(new PrivateToArrayComparisonValue('left'));
+        $right = new PrivateToArrayComparisonDTO(new PrivateToArrayComparisonValue('right'));
+
+        $fallback = [
+            '__class' => PrivateToArrayComparisonValue::class,
+            '__string' => PrivateToArrayComparisonValue::class,
+        ];
+
+        $this->assertSame([
+            'payload' => [
+                'current' => $fallback,
+                'new' => $fallback,
+            ],
+        ], $left->differs($right));
+    }
+
     public function test_equals_with_datetime_immutable(): void
     {
         $date1 = new DateTimeImmutable('2024-01-15 10:00:00', new DateTimeZone('UTC'));
@@ -459,5 +479,21 @@ final class HasComparisonTest extends TestCase
         ]);
 
         $this->assertTrue($dto1->equals($dto2));
+    }
+}
+
+final readonly class PrivateToArrayComparisonDTO extends GraniteDTO
+{
+    public function __construct(public object $payload) {}
+}
+
+final class PrivateToArrayComparisonValue
+{
+    public function __construct(public string $value) {}
+
+    /** @return array{value: string} */
+    private function toArray(): array
+    {
+        throw new LogicException('Private toArray() must not be invoked.');
     }
 }

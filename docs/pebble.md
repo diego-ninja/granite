@@ -40,7 +40,9 @@ $json = $userSnapshot->json();
 
 ### Immutability
 
-Pebble objects are completely immutable. Once created, their properties cannot be modified:
+Pebble objects are completely immutable. Nested arrays, dates, `stdClass`, and
+snapshot-compatible userland objects are copied both on input and output, so
+mutating the source or a returned value cannot alter the stored snapshot:
 
 ```php
 $pebble = Pebble::from(['name' => 'John', 'age' => 30]);
@@ -381,7 +383,7 @@ echo "Granite: {$graniteTime}s\n";
 Pebble does not validate input data. If you need validation, use Granite:
 
 ```php
-// Pebble accepts anything
+// Pebble accepts unvalidated scalar/array data
 $pebble = Pebble::from(['email' => 'not-an-email']); // ✓ Works
 
 // Granite validates
@@ -416,8 +418,11 @@ $user = User::from(['firstName' => 'John']);
 $user->json(); // {"first_name": "John"}
 ```
 
-### 4. No Nested Object Handling
-Pebble doesn't automatically convert nested objects:
+### 4. Snapshot-compatible Objects Only
+
+Pebble preserves nested arrays and userland object types as defensive copies; it
+does not convert them into nested Pebble instances. Resources and unsupported
+internal objects are rejected because they cannot be copied safely.
 
 ```php
 $data = [
@@ -427,6 +432,9 @@ $data = [
 
 $pebble = Pebble::from($data);
 $pebble->address; // array (not a Pebble)
+
+Pebble::from(['stream' => fopen('php://memory', 'r')]);
+// Throws InvalidArgumentException
 ```
 
 ## Best Practices

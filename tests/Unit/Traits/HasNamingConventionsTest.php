@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Traits;
 
+use InvalidArgumentException;
 use Ninja\Granite\Mapping\Conventions\CamelCaseConvention;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Traits\HasNamingConventions;
@@ -137,6 +138,13 @@ class HasNamingConventionsTest extends TestCase
 
         $this->assertNull($result);
     }
+
+    public function test_get_class_convention_does_not_silence_invalid_configuration(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        $this->testClass->testGetClassConvention(TestClassWithInvalidConvention::class);
+    }
 }
 
 class TestClassWithNamingConventions
@@ -169,3 +177,6 @@ class TestClassWithUnidirectionalConvention
 {
     public $firstName;
 }
+
+#[SerializationConvention('Tests\\Unit\\Traits\\MissingNamingConvention')]
+class TestClassWithInvalidConvention {}

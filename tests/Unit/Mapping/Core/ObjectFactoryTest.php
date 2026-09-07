@@ -6,6 +6,7 @@ use Ninja\Granite\GraniteVO;
 use Ninja\Granite\Mapping\Core\ObjectFactory;
 use Ninja\Granite\Mapping\Exceptions\MappingException;
 use PHPUnit\Framework\Attributes\CoversClass;
+use ReflectionProperty;
 use stdClass;
 use Tests\Helpers\TestCase;
 use TypeError;
@@ -165,6 +166,157 @@ class ObjectFactoryTest extends TestCase
         }
 
         $this->assertSame(['name' => 'Original', 'age' => 25], get_object_vars($object));
+    }
+
+    public function test_populate_rolls_back_without_reactivating_property_hooks_or_losing_original_error(): void
+    {
+        if (PHP_VERSION_ID < 80400) {
+            $this->markTestSkipped('Property hooks require PHP 8.4 or newer.');
+        }
+
+        if ( ! class_exists(ObjectFactoryHookedRollbackFixture::class, false)) {
+            eval(<<<'PHP'
+                namespace Tests\Unit\Mapping\Core;
+
+                class ObjectFactoryHookedRollbackFixture
+                {
+                    public static int $setCalls = 0;
+
+                    public bool $rejectOriginalValue = false;
+
+                    public string $name {
+                        set {
+                            ++self::$setCalls;
+
+                            if ($this->rejectOriginalValue && 'original' === $value) {
+                                throw new \RuntimeException('Rollback hook was reactivated');
+                            }
+
+                            $this->name = $value;
+                        }
+                    }
+
+                    public int $age = 25;
+
+                    public function __construct()
+                    {
+                        $this->name = 'original';
+                        $this->rejectOriginalValue = true;
+                        self::$setCalls = 0;
+                    }
+                }
+                PHP);
+        }
+
+        $object = new ObjectFactoryHookedRollbackFixture();
+
+        try {
+            $this->factory->populate($object, ['name' => 'modified', 'age' => 'invalid']);
+            $this->fail('Expected a MappingException');
+        } catch (MappingException $exception) {
+            $this->assertSame('age', $exception->getPropertyName());
+            $this->assertInstanceOf(TypeError::class, $exception->getPrevious());
+        }
+
+        $this->assertSame('original', $object->name);
+        $this->assertSame(1, ObjectFactoryHookedRollbackFixture::$setCalls);
+    }
+
+    public function test_populate_rolls_back_public_properties_modified_indirectly_by_a_set_hook(): void
+    {
+        if (PHP_VERSION_ID < 80400) {
+            $this->markTestSkipped('Property hooks require PHP 8.4 or newer.');
+        }
+
+        if ( ! class_exists(ObjectFactoryIndirectHookRollbackFixture::class, false)) {
+            eval(<<<'PHP'
+                namespace Tests\Unit\Mapping\Core;
+
+                class ObjectFactoryIndirectHookRollbackFixture
+                {
+                    public string $audit = 'original-audit';
+
+                    public string $name {
+                        set {
+                            $this->audit = 'hook:' . $value;
+                            $this->name = $value;
+                        }
+                    }
+
+                    public int $age = 25;
+
+                    public function __construct()
+                    {
+                        $this->name = 'original';
+                        $this->audit = 'original-audit';
+                    }
+                }
+                PHP);
+        }
+
+        $object = new ObjectFactoryIndirectHookRollbackFixture();
+
+        try {
+            $this->factory->populate($object, ['name' => 'modified', 'age' => 'invalid']);
+            $this->fail('Expected a MappingException');
+        } catch (MappingException $exception) {
+            $this->assertSame('age', $exception->getPropertyName());
+            $this->assertInstanceOf(TypeError::class, $exception->getPrevious());
+        }
+
+        $this->assertSame('original', $object->name);
+        $this->assertSame('original-audit', $object->audit);
+    }
+
+    public function test_populate_rolls_back_private_properties_modified_indirectly_by_a_set_hook(): void
+    {
+        if (PHP_VERSION_ID < 80400 || ! method_exists(ReflectionProperty::class, 'getRawValue')) {
+            $this->markTestSkipped('Property hooks require PHP 8.4 or newer.');
+        }
+
+        if ( ! class_exists(ObjectFactoryPrivateHookRollbackFixture::class, false)) {
+            eval(<<<'PHP'
+                namespace Tests\Unit\Mapping\Core;
+
+                class ObjectFactoryPrivateHookRollbackFixture
+                {
+                    private string $audit = 'original-audit';
+
+                    public string $name {
+                        set {
+                            $this->audit = 'hook:' . $value;
+                            $this->name = $value;
+                        }
+                    }
+
+                    public int $age = 25;
+
+                    public function __construct()
+                    {
+                        $this->name = 'original';
+                        $this->audit = 'original-audit';
+                    }
+
+                    public function audit(): string
+                    {
+                        return $this->audit;
+                    }
+                }
+                PHP);
+        }
+
+        $object = new ObjectFactoryPrivateHookRollbackFixture();
+
+        try {
+            $this->factory->populate($object, ['name' => 'modified', 'age' => 'invalid']);
+            $this->fail('Expected a MappingException');
+        } catch (MappingException $exception) {
+            $this->assertSame('age', $exception->getPropertyName());
+            $this->assertInstanceOf(TypeError::class, $exception->getPrevious());
+        }
+
+        $this->assertSame('original', $object->name);
+        $this->assertSame('original-audit', $object->audit());
     }
 
     public function test_create_with_constructor_and_extra_properties(): void

@@ -5,14 +5,21 @@
 namespace Ninja\Granite;
 
 use ArrayAccess;
+use BackedEnum;
 use Countable;
 use DateTimeInterface;
 use InvalidArgumentException;
 use JsonException;
 use JsonSerializable;
+use LogicException;
 use Ninja\Granite\Exceptions\SerializationException;
 use ReflectionException;
 use ReflectionMethod;
+use ReflectionObject;
+use ReflectionProperty;
+use ReflectionReference;
+use SplObjectStorage;
+use stdClass;
 use Throwable;
 use UnitEnum;
 
@@ -42,7 +49,7 @@ use UnitEnum;
  * $array = $userSnapshot->array();
  * ```
  *
- * @since 2.1.0
+ * @since 1.5.0
  */
 /** @implements ArrayAccess<int|string, mixed> */
 final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
@@ -68,7 +75,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     private function __construct(array $data)
     {
-        $this->data = $data;
+        $this->data = self::snapshotData($data);
 
         // Compute fingerprint eagerly since we can't modify after construction (readonly)
         $this->fingerprint = self::computeFingerprint($this->data);
@@ -82,7 +89,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function __get(string $name): mixed
     {
-        return $this->data[$name] ?? null;
+        return self::snapshotValue($this->data[$name] ?? null, self::newObjectCopies());
     }
 
     /**
@@ -145,7 +152,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function __debugInfo(): array
     {
-        return $this->data;
+        return self::snapshotData($this->data);
     }
 
     /**
@@ -175,7 +182,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function array(): array
     {
-        return $this->data;
+        return self::snapshotData($this->data);
     }
 
     /**
@@ -186,7 +193,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function json(): string
     {
-        return json_encode($this->data, JSON_THROW_ON_ERROR);
+        return json_encode(self::snapshotData($this->data), JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -196,7 +203,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function jsonSerialize(): array
     {
-        return $this->data;
+        return self::snapshotData($this->data);
     }
 
     /**
@@ -279,7 +286,11 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     public function get(string $name, mixed $default = null): mixed
     {
-        return $this->data[$name] ?? $default;
+        if ( ! array_key_exists($name, $this->data)) {
+            return $default;
+        }
+
+        return self::snapshotValue($this->data[$name], self::newObjectCopies());
     }
 
     /**
@@ -352,7 +363,8 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
         if ( ! is_string($offset) && ! is_int($offset)) {
             return null;
         }
-        return $this->data[$offset] ?? null;
+
+        return self::snapshotValue($this->data[$offset] ?? null, self::newObjectCopies());
     }
 
     /**
@@ -443,7 +455,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
         }
 
         // Strategy 2: toArray() method
-        if (method_exists($source, 'toArray')) {
+        if (is_callable([$source, 'toArray'])) {
             /** @var mixed $result */
             $result = $source->toArray();
             /** @var array<string, mixed> $arrayResult */
@@ -556,7 +568,7 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      */
     private static function computeFingerprint(array $data): string
     {
-        $normalized = self::normalizeForHash($data);
+        $normalized = self::normalizeForHash($data, self::newReferenceMap());
         $json = json_encode(
             $normalized,
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION,
@@ -577,7 +589,8 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
      * @param mixed $value Value to normalize
      * @return mixed Normalized value
      */
-    private static function normalizeForHash(mixed $value): mixed
+    /** @param SplObjectStorage<object, mixed> $seen */
+    private static function normalizeForHash(mixed $value, SplObjectStorage $seen): mixed
     {
         if (is_array($value)) {
             $isAssoc = array_keys($value) !== range(0, count($value) - 1);
@@ -585,31 +598,227 @@ final readonly class Pebble implements JsonSerializable, ArrayAccess, Countable
                 ksort($value);
             }
             foreach ($value as $k => $v) {
-                $value[$k] = self::normalizeForHash($v);
+                $value[$k] = self::normalizeForHash($v, $seen);
             }
             return $value;
         }
 
-        if ($value instanceof JsonSerializable) {
-            return self::normalizeForHash($value->jsonSerialize());
-        }
-
         if ($value instanceof DateTimeInterface) {
-            return $value->format(DATE_ATOM);
+            return [
+                '__type' => 'datetime',
+                'class' => $value::class,
+                'instant' => $value->format('U.u'),
+                'timezone' => $value->getTimezone()->getName(),
+            ];
         }
 
         if ($value instanceof UnitEnum) {
-            return property_exists($value, 'value') ? $value->value : $value->name;
+            return [
+                '__type' => 'enum',
+                'class' => $value::class,
+                'value' => $value instanceof BackedEnum ? $value->value : $value->name,
+            ];
         }
 
         if (is_object($value)) {
-            return self::normalizeForHash(get_object_vars($value));
+            if (isset($seen[$value])) {
+                return ['__reference' => $seen[$value]];
+            }
+
+            $seen[$value] = count($seen);
+            return [
+                '__type' => 'object',
+                'class' => $value::class,
+                'state' => self::normalizeForHash((array) $value, $seen),
+            ];
         }
 
         if (is_resource($value)) {
-            return get_resource_type($value);
+            throw new InvalidArgumentException('Cannot snapshot resource of type ' . get_resource_type($value));
         }
 
         return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private static function snapshotData(array $data): array
+    {
+        $copies = self::newObjectCopies();
+        $activeArrayReferences = [];
+
+        foreach ($data as $key => $value) {
+            $data[$key] = self::snapshotValue($value, $copies, $activeArrayReferences);
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param SplObjectStorage<object, mixed> $copies
+     * @param array<string, true> $activeArrayReferences
+     */
+    private static function snapshotValue(
+        mixed $value,
+        SplObjectStorage $copies,
+        array &$activeArrayReferences = [],
+    ): mixed {
+        if (is_array($value)) {
+            $snapshot = [];
+            foreach ($value as $key => $nestedValue) {
+                $reference = ReflectionReference::fromArrayElement($value, $key);
+                $referenceId = null === $reference ? null : bin2hex($reference->getId());
+                if (null !== $referenceId && isset($activeArrayReferences[$referenceId])) {
+                    throw new InvalidArgumentException('Cannot snapshot recursive array');
+                }
+
+                if (null !== $referenceId) {
+                    $activeArrayReferences[$referenceId] = true;
+                }
+
+                try {
+                    $snapshot[$key] = self::snapshotValue($nestedValue, $copies, $activeArrayReferences);
+                } finally {
+                    if (null !== $referenceId) {
+                        unset($activeArrayReferences[$referenceId]);
+                    }
+                }
+            }
+
+            return $snapshot;
+        }
+
+        if (is_resource($value)) {
+            throw new InvalidArgumentException('Cannot snapshot resource of type ' . get_resource_type($value));
+        }
+
+        if ($value instanceof UnitEnum) {
+            return $value;
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            return clone $value;
+        }
+
+        if (is_object($value)) {
+            return self::snapshotObject($value, $copies, $activeArrayReferences);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param SplObjectStorage<object, mixed> $copies
+     * @param array<string, true> $activeArrayReferences
+     */
+    private static function snapshotObject(
+        object $value,
+        SplObjectStorage $copies,
+        array &$activeArrayReferences,
+    ): object {
+        if (isset($copies[$value])) {
+            $copy = $copies[$value];
+            if ( ! is_object($copy)) {
+                throw new LogicException('Invalid Pebble object snapshot state');
+            }
+
+            return $copy;
+        }
+
+        if ($value instanceof stdClass) {
+            $copy = new stdClass();
+            $copies[$value] = $copy;
+            foreach (get_object_vars($value) as $property => $propertyValue) {
+                $copy->{$property} = self::snapshotValue($propertyValue, $copies, $activeArrayReferences);
+            }
+
+            return $copy;
+        }
+
+        $reflection = new ReflectionObject($value);
+        $hierarchy = $reflection;
+        while (false !== $hierarchy) {
+            if ($hierarchy->isInternal()) {
+                throw new InvalidArgumentException(sprintf('Cannot snapshot object of type %s', $value::class));
+            }
+            $hierarchy = $hierarchy->getParentClass();
+        }
+
+        try {
+            $copy = $reflection->newInstanceWithoutConstructor();
+        } catch (ReflectionException $exception) {
+            if ( ! $reflection->isCloneable()) {
+                throw new InvalidArgumentException(
+                    sprintf('Cannot snapshot object of type %s', $value::class),
+                    previous: $exception,
+                );
+            }
+
+            $copy = clone $value;
+        }
+
+        $copies[$value] = $copy;
+
+        $class = $reflection;
+        while (false !== $class) {
+            foreach ($class->getProperties() as $property) {
+                if ($property->getDeclaringClass()->getName() !== $class->getName()
+                    || $property->isStatic()
+                    || ! $property->isInitialized($value)) {
+                    continue;
+                }
+
+                $propertyValue = self::getPropertyValue($property, $value);
+                self::setPropertyValue(
+                    $property,
+                    $copy,
+                    self::snapshotValue($propertyValue, $copies, $activeArrayReferences),
+                );
+            }
+            $class = $class->getParentClass();
+        }
+
+        foreach (get_object_vars($value) as $property => $propertyValue) {
+            if ($reflection->hasProperty($property)) {
+                continue;
+            }
+
+            $copy->{$property} = self::snapshotValue($propertyValue, $copies, $activeArrayReferences);
+        }
+
+        return $copy;
+    }
+
+    private static function getPropertyValue(ReflectionProperty $property, object $object): mixed
+    {
+        if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
+            return $property->getRawValue($object);
+        }
+
+        return $property->getValue($object);
+    }
+
+    private static function setPropertyValue(ReflectionProperty $property, object $object, mixed $value): void
+    {
+        if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
+            $property->setRawValue($object, $value);
+            return;
+        }
+
+        $property->setValue($object, $value);
+    }
+
+    /** @return SplObjectStorage<object, mixed> */
+    private static function newObjectCopies(): SplObjectStorage
+    {
+        return new SplObjectStorage();
+    }
+
+    /** @return SplObjectStorage<object, mixed> */
+    private static function newReferenceMap(): SplObjectStorage
+    {
+        return new SplObjectStorage();
     }
 }

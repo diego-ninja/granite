@@ -4,6 +4,8 @@
 
 namespace Ninja\Granite\Validation\Rules;
 
+use InvalidArgumentException;
+
 class Regex extends AbstractRule
 {
     /**
@@ -13,7 +15,11 @@ class Regex extends AbstractRule
      */
     public function __construct(
         private readonly string $pattern,
-    ) {}
+    ) {
+        if ('' === $this->pattern || ! $this->isValidPattern()) {
+            throw new InvalidArgumentException(sprintf('Invalid regular expression pattern: %s', $this->pattern));
+        }
+    }
 
     /**
      * Check if the value matches the pattern.
@@ -44,5 +50,15 @@ class Regex extends AbstractRule
     protected function defaultMessage(string $property): string
     {
         return sprintf("%s must match the pattern %s", $property, $this->pattern);
+    }
+
+    private function isValidPattern(): bool
+    {
+        set_error_handler(static fn(): bool => true);
+        try {
+            return false !== preg_match($this->pattern, '');
+        } finally {
+            restore_error_handler();
+        }
     }
 }

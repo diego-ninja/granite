@@ -16,7 +16,7 @@ A powerful, zero-dependency PHP library for building **immutable**, **serializab
 
 ## 🪶 Pebble - Lightweight Immutable Snapshots
 
-**Pebble** is a lightweight alternative to Granite for when you need immutable snapshots without validation overhead — ideal for caching, Eloquent snapshots, and fast comparisons.
+**Pebble** is a lightweight alternative to Granite for defensive, immutable snapshots without validation overhead — ideal for caching, Eloquent snapshots, and fast comparisons. Nested arrays, userland objects, and dates are copied so later source mutations cannot change the snapshot.
 
 ```php
 $snapshot = Pebble::from($eloquentModel);
@@ -152,7 +152,7 @@ composer bench:objects -- --json --iterations=100000 --repetitions=7
 
 ## ⚠️ Deprecation Notice
 
-`GraniteDTO` and `GraniteVO` are deprecated since v2.0.0 in favor of the unified `Granite` base class. Both still extend `Granite` for backward compatibility but will be removed in v3.0.0.
+`GraniteDTO` was already deprecated before v2.0.0, and `GraniteVO` is deprecated as of v2.0.0, in favor of the unified `Granite` base class. Both still extend `Granite` for backward compatibility but will be removed in v3.0.0.
 
 ```php
 // ❌ Deprecated — use Granite instead

@@ -317,7 +317,7 @@ trait HasDeserialization
         $result = [];
 
         foreach ($properties as $index => $property) {
-            if ( ! isset($args[$index])) {
+            if ( ! array_key_exists($index, $args)) {
                 break;
             }
 
@@ -333,15 +333,8 @@ trait HasDeserialization
      * Child classes can override from() with their specific parameter signature
      * and use this method to create instances.
      *
-     * Example usage in child class:
-     * public static function from(
-     *     array|string|GraniteObject $data = [],
-     *     ?string $name = null,
-     *     ?int $age = null,
-     *     ?string $email = null
-     * ): static {
-     *     return self::fromNamedParameters(get_defined_vars());
-     * }
+     * Explicit null values are intentional overrides. Callers that assemble
+     * this array must include only keys that were actually supplied.
      *
      * @param array<string, mixed> $namedParams Associative array of parameter name => value
      * @return static New instance
@@ -350,19 +343,14 @@ trait HasDeserialization
      */
     protected static function fromNamedParameters(array $namedParams): static
     {
-        // If 'data' parameter is provided and not empty, use it as primary source
-        if ( ! empty($namedParams['data'])
-            && (is_array($namedParams['data']) || is_string($namedParams['data'])
-             || is_object($namedParams['data']))) {
-            $data = self::normalizeInputData($namedParams['data']);
-            // Merge with other named parameters (named params take precedence)
-            unset($namedParams['data']);
-            $data = array_merge($data, array_filter($namedParams, fn($v) => null !== $v));
-        } else {
-            // Use named parameters directly, filtering out null values
-            $data = array_filter($namedParams, fn($v) => null !== $v);
-            unset($data['data']); // Remove the data parameter if it was null/empty
+        $source = $namedParams['data'] ?? null;
+        unset($namedParams['data']);
+
+        $data = [];
+        if ((is_array($source) || is_object($source) || is_string($source)) && '' !== $source) {
+            $data = self::normalizeInputData($source);
         }
+        $data = array_merge($data, $namedParams);
 
         static::validateResolvedData(
             $data,

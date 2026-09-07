@@ -201,6 +201,43 @@ class ObjectMapperExtendedTest extends TestCase
         $this->assertInstanceOf(MappingCache::class, $cache);
     }
 
+    public function test_shared_cache_facade_interoperates_with_public_type_pair_keys(): void
+    {
+        $mapper = new ObjectMapper(
+            MapperConfig::create()
+                ->withSharedCache()
+                ->withoutWarmup()
+                ->withoutConventions(),
+        );
+        $mapper->clearCache();
+
+        try {
+            $mapper->map([
+                'id' => 1,
+                'name' => 'Initial',
+                'email' => 'initial@example.com',
+            ], SimpleDTO::class);
+
+            $cache = $mapper->getCache();
+            $this->assertTrue($cache->has('array', SimpleDTO::class));
+            $configuration = $cache->get('array', SimpleDTO::class);
+            $this->assertNotNull($configuration);
+
+            $configuration['name']['source'] = 'display_name';
+            $cache->put('array', SimpleDTO::class, $configuration);
+
+            $mapped = $mapper->map([
+                'id' => 2,
+                'display_name' => 'From public cache',
+                'email' => 'cached@example.com',
+            ], SimpleDTO::class);
+
+            $this->assertSame('From public cache', $mapped->name);
+        } finally {
+            $mapper->clearCache();
+        }
+    }
+
     public function test_warmup_cache_with_profiles(): void
     {
         $profile = new ExtendedTestMappingProfile();

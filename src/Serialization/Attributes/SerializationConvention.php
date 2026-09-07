@@ -7,6 +7,7 @@ namespace Ninja\Granite\Serialization\Attributes;
 use Attribute;
 use InvalidArgumentException;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
+use ReflectionClass;
 
 /**
  * Attribute to apply a naming convention to all properties in a class during serialization.
@@ -42,6 +43,17 @@ readonly class SerializationConvention
             throw new InvalidArgumentException("Convention class '{$this->convention}' does not exist");
         }
 
-        return new $this->convention();
+        if ( ! is_subclass_of($this->convention, NamingConvention::class)) {
+            throw new InvalidArgumentException("Convention class '{$this->convention}' must implement NamingConvention");
+        }
+
+        $reflection = new ReflectionClass($this->convention);
+        $constructor = $reflection->getConstructor();
+        if ( ! $reflection->isInstantiable()
+            || (null !== $constructor && $constructor->getNumberOfRequiredParameters() > 0)) {
+            throw new InvalidArgumentException("Convention class '{$this->convention}' must be instantiable without arguments");
+        }
+
+        return $reflection->newInstance();
     }
 }

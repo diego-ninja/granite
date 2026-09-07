@@ -2,16 +2,49 @@
 
 namespace Tests\Unit;
 
+use ArrayObject;
+use Closure;
+use DateTime;
+use DateTimeImmutable;
+use DateTimeZone;
 use InvalidArgumentException;
 use JsonSerializable;
+use LogicException;
 use Ninja\Granite\Pebble;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use stdClass;
 use Tests\Helpers\TestCase;
+use Throwable;
 
 #[CoversClass(Pebble::class)]
 class PebbleTest extends TestCase
 {
+    /**
+     * @return array<string, array{Closure(Pebble): array{object, DateTime}}>
+     */
+    public static function mutableAccessorProvider(): array
+    {
+        return [
+            'array()' => [static function (Pebble $pebble): array {
+                $data = $pebble->array();
+
+                return [$data['profile'], $data['occurredAt']];
+            }],
+            'get()' => [static fn(Pebble $pebble): array => [
+                $pebble->get('profile'),
+                $pebble->get('occurredAt'),
+            ]],
+            '__get()' => [static fn(Pebble $pebble): array => [
+                $pebble->profile,
+                $pebble->occurredAt,
+            ]],
+            'offsetGet()' => [static fn(Pebble $pebble): array => [
+                $pebble['profile'],
+                $pebble['occurredAt'],
+            ]],
+        ];
+    }
     public function test_can_create_from_array(): void
     {
         $data = ['name' => 'John', 'age' => 30, 'email' => 'john@example.com'];
@@ -581,4 +614,322 @@ class PebbleTest extends TestCase
 
         $this->assertEquals(0, count($pebble));
     }
+
+    public function test_nested_array_source_is_snapshotted_at_creation_time(): void
+    {
+        $source = ['profile' => ['name' => 'Original']];
+        $pebble = Pebble::from($source);
+
+        $source['profile']['name'] = 'Changed';
+
+        $this->assertSame('Original', $pebble->array()['profile']['name']);
+    }
+
+    public function test_mutating_source_objects_after_creation_does_not_change_snapshot_or_fingerprint(): void
+    {
+        $profile = (object) ['name' => 'Original'];
+        $occurredAt = new DateTime('2026-09-06 10:11:12.123456', new DateTimeZone('Europe/Madrid'));
+        $source = (object) [
+            'profile' => $profile,
+            'occurredAt' => $occurredAt,
+        ];
+        $pebble = Pebble::from($source);
+        $fingerprint = $pebble->fingerprint();
+
+        $profile->name = 'Changed';
+        $occurredAt->modify('+1 day');
+
+        $snapshot = $pebble->array();
+        $this->assertSame('Original', $snapshot['profile']->name);
+        $this->assertSame('2026-09-06 10:11:12.123456 Europe/Madrid', $snapshot['occurredAt']->format('Y-m-d H:i:s.u e'));
+        $this->assertSame($fingerprint, $pebble->fingerprint());
+    }
+
+    #[DataProvider('mutableAccessorProvider')]
+    public function test_read_accessors_return_defensive_copies(Closure $readAccessor): void
+    {
+        $pebble = Pebble::from([
+            'profile' => (object) ['name' => 'Original'],
+            'occurredAt' => new DateTime('2026-09-06 10:11:12.123456', new DateTimeZone('Europe/Madrid')),
+        ]);
+        $fingerprint = $pebble->fingerprint();
+
+        [$profile, $occurredAt] = $readAccessor($pebble);
+        $profile->name = 'Changed';
+        $occurredAt->modify('+1 day');
+
+        $snapshot = $pebble->array();
+        $this->assertSame('Original', $snapshot['profile']->name);
+        $this->assertSame('2026-09-06 10:11:12.123456 Europe/Madrid', $snapshot['occurredAt']->format('Y-m-d H:i:s.u e'));
+        $this->assertSame($fingerprint, $pebble->fingerprint());
+    }
+
+    public function test_date_fingerprints_include_microseconds(): void
+    {
+        $first = Pebble::from(['value' => new DateTimeImmutable('2026-09-06T10:11:12.123456+00:00')]);
+        $second = Pebble::from(['value' => new DateTimeImmutable('2026-09-06T10:11:12.654321+00:00')]);
+
+        $this->assertNotSame($first->fingerprint(), $second->fingerprint());
+    }
+
+    public function test_date_fingerprints_include_timezone_name(): void
+    {
+        $first = Pebble::from([
+            'value' => new DateTimeImmutable('2026-01-15 10:11:12', new DateTimeZone('Europe/Madrid')),
+        ]);
+        $second = Pebble::from([
+            'value' => new DateTimeImmutable('2026-01-15 10:11:12', new DateTimeZone('Africa/Algiers')),
+        ]);
+
+        $this->assertNotSame($first->fingerprint(), $second->fingerprint());
+    }
+
+    public function test_date_fingerprints_include_concrete_class(): void
+    {
+        $mutable = Pebble::from(['value' => new DateTime('2026-09-06T10:11:12.123456+00:00')]);
+        $immutable = Pebble::from(['value' => new DateTimeImmutable('2026-09-06T10:11:12.123456+00:00')]);
+
+        $this->assertNotSame($mutable->fingerprint(), $immutable->fingerprint());
+    }
+
+    public function test_enum_fingerprints_include_concrete_class(): void
+    {
+        $first = Pebble::from(['value' => PebbleFirstStatus::Ready]);
+        $second = Pebble::from(['value' => PebbleSecondStatus::Ready]);
+
+        $this->assertNotSame($first->fingerprint(), $second->fingerprint());
+    }
+
+    public function test_get_returns_present_null_instead_of_default(): void
+    {
+        $pebble = Pebble::from(['present-null' => null]);
+
+        $this->assertNull($pebble->get('present-null', 'default'));
+    }
+
+    public function test_private_to_array_falls_back_to_json_serializable(): void
+    {
+        $source = new class implements JsonSerializable {
+            private function toArray(): array
+            {
+                throw new LogicException('Private adapter must not be invoked');
+            }
+
+            public function jsonSerialize(): array
+            {
+                return ['source' => 'json'];
+            }
+        };
+
+        try {
+            $pebble = Pebble::from($source);
+        } catch (Throwable $exception) {
+            self::fail('Private toArray() was invoked: ' . $exception->getMessage());
+        }
+
+        $this->assertSame('json', $pebble->source);
+    }
+
+    public function test_private_to_array_falls_back_to_public_properties(): void
+    {
+        $source = new class {
+            public string $source = 'property';
+
+            private function toArray(): array
+            {
+                throw new LogicException('Private adapter must not be invoked');
+            }
+        };
+
+        try {
+            $pebble = Pebble::from($source);
+        } catch (Throwable $exception) {
+            self::fail('Private toArray() was invoked: ' . $exception->getMessage());
+        }
+
+        $this->assertSame('property', $pebble->source);
+    }
+
+    public function test_resources_are_rejected_as_unsnapshotable(): void
+    {
+        $resource = fopen('php://memory', 'r');
+        self::assertIsResource($resource);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot snapshot resource');
+
+        try {
+            Pebble::from(['resource' => $resource]);
+        } finally {
+            fclose($resource);
+        }
+    }
+
+    public function test_autoreferential_arrays_are_rejected_deterministically(): void
+    {
+        if ( ! function_exists('proc_open')) {
+            $this->markTestSkipped('proc_open() is required to bound this regression test.');
+        }
+
+        $autoloadPath = dirname(__DIR__, 2) . '/vendor/autoload.php';
+        $script = <<<'PHP'
+            require %s;
+
+            $recursive = [];
+            $recursive['self'] = &$recursive;
+
+            try {
+                \Ninja\Granite\Pebble::from(['value' => $recursive]);
+            } catch (\InvalidArgumentException $exception) {
+                exit(str_contains($exception->getMessage(), 'recursive array') ? 0 : 2);
+            }
+
+            exit(3);
+            PHP;
+        $process = proc_open(
+            [PHP_BINARY, '-d', 'memory_limit=64M', '-r', sprintf($script, var_export($autoloadPath, true))],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+        );
+
+        $this->assertIsResource($process);
+        $startedAt = microtime(true);
+        $status = proc_get_status($process);
+
+        while ($status['running'] && microtime(true) - $startedAt < 2.0) {
+            usleep(10_000);
+            $status = proc_get_status($process);
+        }
+
+        if ($status['running']) {
+            proc_terminate($process);
+            foreach ($pipes as $pipe) {
+                fclose($pipe);
+            }
+            proc_close($process);
+
+            $this->fail('Pebble::from() did not reject the recursive array within 2 seconds.');
+        }
+
+        $output = stream_get_contents($pipes[1]);
+        $errors = stream_get_contents($pipes[2]);
+        foreach ($pipes as $pipe) {
+            fclose($pipe);
+        }
+
+        $exitCode = proc_close($process);
+        if (-1 === $exitCode) {
+            $exitCode = $status['exitcode'];
+        }
+
+        $this->assertSame(0, $exitCode, trim($output . "\n" . $errors));
+    }
+
+    public function test_array_object_state_is_preserved_or_explicitly_rejected(): void
+    {
+        try {
+            $first = Pebble::from(['value' => new ArrayObject(['name' => 'first'])]);
+            $second = Pebble::from(['value' => new ArrayObject(['name' => 'second'])]);
+        } catch (InvalidArgumentException $exception) {
+            $this->assertStringContainsString('Cannot snapshot object', $exception->getMessage());
+            return;
+        }
+
+        $firstValue = $first->get('value');
+        $secondValue = $second->get('value');
+
+        $this->assertInstanceOf(ArrayObject::class, $firstValue);
+        $this->assertInstanceOf(ArrayObject::class, $secondValue);
+        $this->assertSame(['name' => 'first'], $firstValue->getArrayCopy());
+        $this->assertSame(['name' => 'second'], $secondValue->getArrayCopy());
+        $this->assertNotSame($first->fingerprint(), $second->fingerprint());
+    }
+
+    public function test_userland_array_object_subclass_is_rejected_instead_of_losing_internal_parent_state(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot snapshot object');
+
+        Pebble::from(['value' => new PebbleArrayObjectChild(['name' => 'original'])]);
+    }
+
+    public function test_inherited_private_state_is_preserved_or_explicitly_rejected(): void
+    {
+        try {
+            $first = Pebble::from(['value' => new PebblePrivateStateChild('first')]);
+            $second = Pebble::from(['value' => new PebblePrivateStateChild('second')]);
+        } catch (InvalidArgumentException $exception) {
+            $this->assertStringContainsString('Cannot snapshot object', $exception->getMessage());
+            return;
+        }
+
+        $firstValue = $first->get('value');
+        $secondValue = $second->get('value');
+
+        $this->assertInstanceOf(PebblePrivateStateChild::class, $firstValue);
+        $this->assertInstanceOf(PebblePrivateStateChild::class, $secondValue);
+        $this->assertSame('first', $firstValue->state());
+        $this->assertSame('second', $secondValue->state());
+        $this->assertNotSame($first->fingerprint(), $second->fingerprint());
+    }
+
+    public function test_fingerprint_and_json_do_not_mutate_internal_json_serializable_snapshot(): void
+    {
+        $source = new PebbleMutableJsonValue();
+        $pebble = Pebble::from(['value' => $source]);
+
+        $this->assertSame(0, $source->calls);
+        $this->assertSame(0, $pebble->get('value')->calls);
+        $fingerprint = $pebble->fingerprint();
+
+        $firstJson = $pebble->json();
+        $secondJson = $pebble->json();
+
+        $this->assertSame($firstJson, $secondJson);
+        $this->assertSame($fingerprint, $pebble->fingerprint());
+        $this->assertSame(0, $pebble->get('value')->calls);
+    }
+
+    public function test_get_returns_missing_default_with_original_identity(): void
+    {
+        $default = new stdClass();
+        $pebble = Pebble::from([]);
+
+        $this->assertSame($default, $pebble->get('missing', $default));
+    }
+}
+
+class PebblePrivateStateParent
+{
+    public function __construct(private string $state) {}
+
+    public function state(): string
+    {
+        return $this->state;
+    }
+}
+
+final class PebblePrivateStateChild extends PebblePrivateStateParent {}
+
+final class PebbleArrayObjectChild extends ArrayObject {}
+
+final class PebbleMutableJsonValue implements JsonSerializable
+{
+    public int $calls = 0;
+
+    /** @return array{calls: int} */
+    public function jsonSerialize(): array
+    {
+        return ['calls' => ++$this->calls];
+    }
+}
+
+enum PebbleFirstStatus: string
+{
+    case Ready = 'ready';
+}
+
+enum PebbleSecondStatus: string
+{
+    case Ready = 'ready';
 }

@@ -29,7 +29,7 @@ class ObjectHydrator extends AbstractHydrator
     {
         /** @var object $data */
         // Strategy 1: If object has toArray() method, use it
-        if (method_exists($data, 'toArray')) {
+        if (is_callable([$data, 'toArray'])) {
             $result = $data->toArray();
             return $this->ensureArray($result);
         }

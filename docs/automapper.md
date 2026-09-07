@@ -361,6 +361,13 @@ $config = MapperConfig::create()->withCacheType(CacheType::Shared);
 $config = MapperConfig::create()->withCacheType(CacheType::Persistent);
 ```
 
+Shared and persistent entries are scoped by a deterministic fingerprint of the
+effective mappings, profiles, conventions, compiler rules, and participating
+class code. Mutating any of that state produces a cache miss instead of reusing
+stale configuration. Persistent schema v2 uses per-user/project paths, validates
+ownership and permissions, rejects symlinks, and performs locked atomic writes.
+Malformed, legacy, or unsupported entries are ignored and rebuilt.
+
 ### Cache Warming
 
 ```php
@@ -498,8 +505,11 @@ $mapper = new ObjectMapper(
 
 ```php
 // Get cache statistics
-$stats = $mapper->getCache()->getStats();
-echo "Hit Rate: " . $stats['hit_rate'];
+$cache = $mapper->getCache();
+if (method_exists($cache, 'getStats')) {
+    $stats = $cache->getStats(); // Populated by the shared backend.
+    echo "Hit Rate: " . ($stats['hit_rate'] ?? 0);
+}
 
 // Verify conventions through the public mapping result
 $destination = $mapper->map($source, DestClass::class);

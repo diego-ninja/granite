@@ -1,7 +1,4 @@
 <?php
-// ABOUTME: Defines ClassProfile as part of shared reflection, comparison and date support.
-// ABOUTME: Owns the ClassProfile boundary within shared reflection, comparison and date support.
-
 // ABOUTME: Pre-computed class metadata for fast-path object creation.
 // ABOUTME: Detects simple DTOs (primitive or Granite types, no attributes) to bypass the hydration pipeline.
 
@@ -398,9 +395,9 @@ final class ClassProfile
             // then the method has been overridden
             $declaringClass = $rulesMethod->getDeclaringClass()->getName();
 
-            // rules() is defined in HasValidation trait, used by Granite.
-            // If declaring class matches the concrete class, it's overridden.
-            return $declaringClass === $reflection->getName();
+            // The trait method is hosted by Granite. Any other declaring class,
+            // including an abstract parent, supplies custom rules.
+            return Granite::class !== $declaringClass;
         } catch (ReflectionException) {
             return false;
         }

@@ -223,7 +223,7 @@ final readonly class CarbonTransformer implements Transformer
         }
 
         // Get effective timezone (attribute > global config > null)
-        $timezone = $this->timezone ?? GraniteConfig::getInstance()->getCarbonTimezone() ?? 'UTC';
+        $timezone = $this->getEffectiveTimezone();
 
         // Get effective format (attribute > global config > null)
         $format = $this->format ?? GraniteConfig::getInstance()->getCarbonParseFormat() ?? null;
@@ -265,23 +265,14 @@ final readonly class CarbonTransformer implements Transformer
      */
     private function isRelativeString(string $value): bool
     {
-        $relativeWords = [
-            'now', 'today', 'tomorrow', 'yesterday',
-            'next', 'last', 'this', 'ago',
-            'week', 'month', 'year', 'day',
-            'hour', 'minute', 'second',
-            '+', '-',
-        ];
-
-        $lowerValue = strtolower($value);
-
-        foreach ($relativeWords as $word) {
-            if (str_contains($lowerValue, $word)) {
-                return true;
-            }
+        if (CarbonSupport::isAvailable()) {
+            return \Carbon\Carbon::hasRelativeKeywords($value);
         }
 
-        return false;
+        return 1 === preg_match(
+            '/(?:^|\s)(?:now|today|tomorrow|yesterday|next|last|this|ago|[+-]\s*\d+\s+(?:years?|months?|weeks?|days?|hours?|minutes?|seconds?))(?:$|\s)/i',
+            trim($value),
+        );
     }
 
     /**
@@ -321,7 +312,12 @@ final readonly class CarbonTransformer implements Transformer
             return $date;
         }
 
-        return CarbonSupport::create($date, null, $this->timezone, $this->immutable);
+        return CarbonSupport::create($date, null, $this->getEffectiveTimezone(), $this->immutable);
+    }
+
+    private function getEffectiveTimezone(): string
+    {
+        return $this->timezone ?? GraniteConfig::getInstance()->getCarbonTimezone() ?? 'UTC';
     }
 
     /**

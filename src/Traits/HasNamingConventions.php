@@ -4,7 +4,7 @@
 
 namespace Ninja\Granite\Traits;
 
-use Exception;
+use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Mapping\Contracts\NamingConvention;
 use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\MetadataCache;
@@ -100,7 +100,7 @@ trait HasNamingConventions
 
             // Only return if bidirectional is enabled
             return $conventionAttr->bidirectional ? $conventionAttr->getConvention() : null;
-        } catch (Exception $e) {
+        } catch (ReflectionException) {
             return null;
         }
     }
