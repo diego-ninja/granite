@@ -1,7 +1,4 @@
 <?php
-// ABOUTME: Defines CarbonTransformerFactory as part of the serialization and date metadata pipeline.
-// ABOUTME: Owns the CarbonTransformerFactory boundary between metadata and serialized values.
-
 // ABOUTME: Combines Carbon property, class, and global configuration.
 // ABOUTME: Produces one transformer with deterministic precedence rules.
 
@@ -9,15 +6,18 @@ declare(strict_types=1);
 
 namespace Ninja\Granite\Serialization;
 
+use DateTimeInterface;
 use Exception;
 use Ninja\Granite\Config\GraniteConfig;
 use Ninja\Granite\Serialization\Attributes\CarbonDate;
 use Ninja\Granite\Serialization\Attributes\CarbonRange;
 use Ninja\Granite\Serialization\Attributes\CarbonRelative;
 use Ninja\Granite\Serialization\Attributes\DateTimeProvider;
+use Ninja\Granite\Support\CarbonSupport;
 use Ninja\Granite\Support\ReflectionCache;
 use Ninja\Granite\Transformers\CarbonTransformer;
 use ReflectionAttribute;
+use ReflectionNamedType;
 use ReflectionProperty;
 
 final class CarbonTransformerFactory
@@ -41,9 +41,16 @@ final class CarbonTransformerFactory
         $carbonRange = self::attribute($property, CarbonRange::class);
         $carbonRelative = self::attribute($property, CarbonRelative::class);
         $config = GraniteConfig::getInstance();
+        $propertyType = self::propertyType($property);
+        $propertyCarbonType = self::carbonPropertyType($property);
+        $hasPropertyConfiguration = null !== $carbonDate || null !== $carbonRange || null !== $carbonRelative;
+        $hasClassProvider = null !== $classProvider && $classProvider->isCarbonProvider();
+        $isTemporalProperty = null !== $propertyType && is_a($propertyType, DateTimeInterface::class, true);
+        $hasGlobalConfiguration = null !== $propertyCarbonType
+            || (null !== $propertyType && $config->shouldAutoConvertToCarbon($propertyType));
 
-        if (null === $carbonDate && null === $carbonRange && null === $carbonRelative
-            && (null === $classProvider || ! $classProvider->isCarbonProvider())) {
+        if ( ! $hasPropertyConfiguration
+            && ( ! $isTemporalProperty || ( ! $hasClassProvider && ! $hasGlobalConfiguration))) {
             self::$cache[$cacheKey] = null;
             return self::$cache[$cacheKey];
         }
@@ -61,18 +68,19 @@ final class CarbonTransformerFactory
             format: $format,
             timezone: $timezone,
             locale: $locale,
-            immutable: null !== $carbonDate
-                ? $carbonDate->immutable
-                : (null !== $classProvider ? $classProvider->isCarbonImmutable() : $config->shouldPreferCarbonImmutable()),
-            parseRelative: null !== $carbonDate
-                ? $carbonDate->parseRelative
-                : (null !== $carbonRelative
-                    ? $carbonRelative->enabled
+            immutable: 'Carbon\\CarbonImmutable' === $propertyCarbonType
+                || (null === $propertyCarbonType && (null !== $carbonDate
+                    ? $carbonDate->immutable
+                    : (null !== $classProvider ? $classProvider->isCarbonImmutable() : $config->shouldPreferCarbonImmutable()))),
+            parseRelative: null !== $carbonRelative
+                ? $carbonRelative->enabled
+                : (null !== $carbonDate
+                    ? $carbonDate->parseRelative
                     : (null !== $classProvider ? $classProvider->parseRelative : $config->isCarbonParseRelativeEnabled())),
             serializeFormat: $serializeFormat,
             serializeTimezone: null !== $carbonDate ? $carbonDate->serializeTimezone : $config->getCarbonSerializeTimezone(),
-            min: null !== $carbonDate ? $carbonDate->min : (null !== $carbonRange ? $carbonRange->min : null),
-            max: null !== $carbonDate ? $carbonDate->max : (null !== $carbonRange ? $carbonRange->max : null),
+            min: null !== $carbonRange ? $carbonRange->min : (null !== $carbonDate ? $carbonDate->min : null),
+            max: null !== $carbonRange ? $carbonRange->max : (null !== $carbonDate ? $carbonDate->max : null),
             relativeBaseDate: null !== $carbonRelative ? $carbonRelative->baseDate : null,
         );
 
@@ -124,5 +132,18 @@ final class CarbonTransformerFactory
         return $property->getDeclaringClass()->getName()
             . '::' . $property->getName()
             . ':' . (null === $classProvider ? '' : serialize($classProvider));
+    }
+
+    private static function carbonPropertyType(ReflectionProperty $property): ?string
+    {
+        $type = self::propertyType($property);
+
+        return null !== $type && CarbonSupport::isCarbonClass($type) ? $type : null;
+    }
+
+    private static function propertyType(ReflectionProperty $property): ?string
+    {
+        $type = $property->getType();
+        return $type instanceof ReflectionNamedType && ! $type->isBuiltin() ? $type->getName() : null;
     }
 }

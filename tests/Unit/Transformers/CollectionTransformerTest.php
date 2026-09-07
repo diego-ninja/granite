@@ -49,6 +49,17 @@ class CollectionTransformerTest extends TestCase
         $this->assertInstanceOf(CollectionTransformer::class, $transformer);
     }
 
+    public function test_constructor_rejects_invalid_item_transformer(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('item transformer');
+
+        new CollectionTransformer(
+            destinationType: SimpleDTO::class,
+            itemTransformer: new stdClass(),
+        );
+    }
+
     public function test_set_mapper_returns_self(): void
     {
         $transformer = new CollectionTransformer('TestClass');

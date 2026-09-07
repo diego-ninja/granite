@@ -41,28 +41,38 @@
         "php": "^8.3"
     },
     "require-dev": {
-        "fakerphp/faker": "^1.23",
         "laravel/pint": "^1.24",
-        "mockery/mockery": "^1.6",
         "nesbot/carbon": "^3.10",
-        "phpstan/phpstan": "^2",
+        "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^11.0",
-        "rector/rector": "^2.0",
-        "squizlabs/php_codesniffer": "^3.13.6"
+        "ramsey/uuid": "^4.7",
+        "symfony/uid": "^7.1"
     },
     "scripts": {
         "bench:objects": "@php -d opcache.enable_cli=1 benchmarks/ObjectPipelineBench.php",
-        "test": "phpunit",
-        "test:unit": "phpunit --testsuite=Unit",
-        "test:integration": "phpunit --testsuite=Integration",
+        "test": "phpunit --no-coverage",
+        "test:unit": "phpunit --testsuite=Unit --no-coverage",
+        "test:integration": "phpunit --testsuite=Integration --no-coverage",
         "test:coverage": "phpunit --coverage-clover coverage/clover.xml --coverage-html coverage/html --coverage-text=coverage/coverage.txt",
         "test:coverage-clover": "phpunit --coverage-clover coverage/clover.xml",
-        "test:support": "phpunit --testsuite=Support",
-        "test:exceptions": "phpunit --testsuite=Exceptions",
+        "test:support": "phpunit --testsuite=Support --no-coverage",
+        "test:exceptions": "phpunit --testsuite=Exceptions --no-coverage",
         "analyse": "phpstan analyse --memory-limit=512M",
         "check:aboutme": "php tools/check-aboutme.php",
+        "check:coverage": "php tools/check-coverage.php coverage/clover.xml",
         "cs:check": "pint --test src tests",
         "cs:fix": "pint src tests"
+    },
+    "archive": {
+        "exclude": [
+            "/.DS_Store",
+            "/.idea",
+            "/.phpunit.cache",
+            "/coverage",
+            "/graphify-out",
+            "/var",
+            "/vendor"
+        ]
     },
     "config": {
         "sort-packages": true,

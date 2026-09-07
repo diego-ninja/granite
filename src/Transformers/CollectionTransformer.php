@@ -24,7 +24,13 @@ final class CollectionTransformer implements Transformer
         private readonly bool   $preserveKeys = false,
         private readonly bool   $recursive = false,
         private readonly mixed $itemTransformer = null,
-    ) {}
+    ) {
+        if (null !== $this->itemTransformer
+            && ! is_callable($this->itemTransformer)
+            && ! $this->itemTransformer instanceof Transformer) {
+            throw new InvalidArgumentException('Collection item transformer must be callable or implement Transformer');
+        }
+    }
 
     public function setMapper(Mapper $mapper): self
     {
@@ -71,9 +77,8 @@ final class CollectionTransformer implements Transformer
             if (is_callable($this->itemTransformer)) {
                 return ($this->itemTransformer)($item);
             }
-            if ($this->itemTransformer instanceof Transformer) {
-                return $this->itemTransformer->transform($item);
-            }
+
+            return $this->itemTransformer->transform($item);
         }
 
         // Handle recursive transformation for nested arrays

@@ -9,6 +9,7 @@ use Ninja\Granite\Enums\CacheType;
 use Ninja\Granite\Exceptions\GraniteException;
 use Ninja\Granite\Exceptions\ReflectionException;
 use Ninja\Granite\Mapping\Cache\CacheFactory;
+use Ninja\Granite\Mapping\Cache\ScopedMappingCache;
 use Ninja\Granite\Mapping\Contracts\Mapper;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
 use Ninja\Granite\Mapping\Contracts\MappingStorage;
@@ -26,6 +27,7 @@ final class ObjectMapper implements Mapper, MappingStorage
     private MappingEngine $engine;
     private ConfigurationBuilder $configBuilder;
     private MappingCache $cache;
+    private MappingCache $publicCache;
     /** @var array<int, MappingProfile> */
     private array $profiles = [];
 
@@ -47,6 +49,11 @@ final class ObjectMapper implements Mapper, MappingStorage
             $config->useConventions,
             $config->conventionThreshold,
             $config->conventions,
+        );
+        $this->publicCache = new ScopedMappingCache(
+            $this->cache,
+            fn(string $sourceType, string $destinationType): string => $this->configBuilder
+                ->scopeCacheSourceType($sourceType, $destinationType),
         );
         $this->engine = new MappingEngine($this->configBuilder, $this);
 
@@ -238,7 +245,19 @@ final class ObjectMapper implements Mapper, MappingStorage
 
     public function getCache(): MappingCache
     {
-        return $this->cache;
+        return $this->publicCache;
+    }
+
+    /** @internal Used by mapping preloaders that must respect cache namespaces. */
+    public function hasCachedConfiguration(string $sourceType, string $destinationType): bool
+    {
+        return $this->configBuilder->hasCachedConfiguration($sourceType, $destinationType);
+    }
+
+    /** @internal Used by MappingPreloader after validating a type pair. */
+    public function preloadConfiguration(string $sourceType, string $destinationType): void
+    {
+        $this->configBuilder->preloadConfiguration($sourceType, $destinationType);
     }
 
     // ======================

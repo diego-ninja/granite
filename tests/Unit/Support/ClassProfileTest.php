@@ -7,6 +7,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support;
 
+use Ninja\Granite\Exceptions\ValidationException;
+use Ninja\Granite\Granite;
 use Ninja\Granite\Support\ClassProfile;
 use Ninja\Granite\Support\ValueComparator;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -276,4 +278,33 @@ class ClassProfileTest extends TestCase
         $this->assertFalse(ValueComparator::equals(UserStatus::ACTIVE, Priority::HIGH));
         $this->assertTrue(ValueComparator::equals(UserStatus::ACTIVE, UserStatus::ACTIVE));
     }
+
+    public function test_inherited_rules_disable_hydration_fast_path(): void
+    {
+        $profile = ClassProfile::build(GraniteWithInheritedRules::class);
+
+        $this->assertFalse($profile->canHydrateFastPath);
+    }
+
+    public function test_inherited_rules_are_executed_during_hydration(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        GraniteWithInheritedRules::from(['name' => 'x']);
+    }
+}
+
+abstract readonly class GraniteRulesParent extends Granite
+{
+    protected static function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'min:3'],
+        ];
+    }
+}
+
+final readonly class GraniteWithInheritedRules extends GraniteRulesParent
+{
+    public function __construct(public string $name) {}
 }

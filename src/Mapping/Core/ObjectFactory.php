@@ -53,8 +53,7 @@ final readonly class ObjectFactory
     {
         try {
             $reflection = ReflectionCache::getClass(get_class($object));
-            /** @var list<array{property: ReflectionProperty, initialized: bool, value: mixed}> $changes */
-            $changes = [];
+            $changes = $this->snapshotMutableState($reflection, $object);
 
             foreach ($data as $propName => $propValue) {
                 if ( ! is_string($propName) || ! $reflection->hasProperty($propName)) {
@@ -65,13 +64,6 @@ final readonly class ObjectFactory
                 if ( ! $property->isPublic() || $property->isReadOnly()) {
                     continue;
                 }
-
-                $initialized = $property->isInitialized($object);
-                $changes[] = [
-                    'property' => $property,
-                    'initialized' => $initialized,
-                    'value' => $initialized ? $property->getValue($object) : null,
-                ];
 
                 try {
                     $property->setValue($object, $propValue);
@@ -107,14 +99,75 @@ final readonly class ObjectFactory
     private function rollback(object $object, array $changes): void
     {
         foreach (array_reverse($changes) as $change) {
-            if ($change['initialized']) {
-                $change['property']->setValue($object, $change['value']);
-                continue;
-            }
+            try {
+                if ($change['initialized']) {
+                    $this->setRawPropertyValue($change['property'], $object, $change['value']);
+                    continue;
+                }
 
-            $propertyName = $change['property']->getName();
-            unset($object->{$propertyName});
+                $this->unsetProperty($change['property'], $object);
+            } catch (Throwable) {
+                // Preserve the original hydration failure even if best-effort rollback fails.
+            }
         }
+    }
+
+    /**
+     * @param ReflectionClass<object> $reflection
+     * @return list<array{property: ReflectionProperty, initialized: bool, value: mixed}>
+     */
+    private function snapshotMutableState(ReflectionClass $reflection, object $object): array
+    {
+        $state = [];
+        $class = $reflection;
+        while (false !== $class) {
+            foreach ($class->getProperties() as $property) {
+                if ($property->getDeclaringClass()->getName() !== $class->getName()
+                    || $property->isStatic()
+                    || $property->isReadOnly()
+                    || (PHP_VERSION_ID >= 80400 && $property->isVirtual())) {
+                    continue;
+                }
+
+                $initialized = $property->isInitialized($object);
+                $state[] = [
+                    'property' => $property,
+                    'initialized' => $initialized,
+                    'value' => $initialized ? $this->getRawPropertyValue($property, $object) : null,
+                ];
+            }
+            $class = $class->getParentClass();
+        }
+
+        return $state;
+    }
+
+    private function getRawPropertyValue(ReflectionProperty $property, object $object): mixed
+    {
+        if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
+            return $property->getRawValue($object);
+        }
+
+        return $property->getValue($object);
+    }
+
+    private function setRawPropertyValue(ReflectionProperty $property, object $object, mixed $value): void
+    {
+        if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
+            $property->setRawValue($object, $value);
+            return;
+        }
+
+        $property->setValue($object, $value);
+    }
+
+    private function unsetProperty(ReflectionProperty $property, object $object): void
+    {
+        $unset = static function (object $target, string $propertyName): void {
+            unset($target->{$propertyName});
+        };
+        $scopedUnset = $unset->bindTo(null, $property->getDeclaringClass()->getName());
+        $scopedUnset($object, $property->getName());
     }
 
     /**

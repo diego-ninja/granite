@@ -3,6 +3,8 @@
 namespace Tests\Unit\Mapping\Cache;
 
 use Ninja\Granite\Mapping\Cache\SharedMappingCache;
+use Ninja\Granite\Mapping\MapperConfig;
+use Ninja\Granite\Mapping\ObjectMapper;
 use Tests\Helpers\TestCase;
 
 class SharedMappingCacheTest extends TestCase
@@ -179,4 +181,27 @@ class SharedMappingCacheTest extends TestCase
         $this->assertTrue($cache2->has('Source', 'Destination'));
         $this->assertEquals(['test' => 'value'], $cache2->get('Source', 'Destination'));
     }
+
+    public function test_shared_cache_does_not_contaminate_mappers_with_different_mappings(): void
+    {
+        $config = MapperConfig::create()->withSharedCache()->withoutWarmup();
+        $firstMapper = new ObjectMapper($config);
+        $firstMapper->createMap('array', SharedCacheDestination::class)
+            ->forMember('value', fn($mapping) => $mapping->mapFrom('first'));
+
+        $source = ['first' => 'from first mapper', 'second' => 'from second mapper'];
+        $this->assertSame('from first mapper', $firstMapper->map($source, SharedCacheDestination::class)->value);
+
+        $secondMapper = new ObjectMapper($config);
+        $secondMapper->createMap('array', SharedCacheDestination::class)
+            ->forMember('value', fn($mapping) => $mapping->mapFrom('second'));
+
+        $this->assertSame('from second mapper', $secondMapper->map($source, SharedCacheDestination::class)->value);
+        $this->assertSame('from first mapper', $firstMapper->map($source, SharedCacheDestination::class)->value);
+    }
+}
+
+final class SharedCacheDestination
+{
+    public function __construct(public string $value = '') {}
 }

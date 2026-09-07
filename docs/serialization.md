@@ -525,9 +525,12 @@ public Carbon $eventDate;
 `CarbonDate` accepts `format`, `timezone`, `locale`, `immutable`,
 `parseRelative`, `serializeFormat`, `serializeTimezone`, `min` and `max`.
 `format`/`timezone` configure input parsing; `serializeFormat`/
-`serializeTimezone` configure output. A property attribute overrides the class
-provider and global Carbon configuration. Serialization formats a clone, so a
-mutable `Carbon` instance is never modified.
+`serializeTimezone` configure output. Configuration is composed field by field:
+property-level values override the class provider, which overrides global
+defaults. `CarbonRelative` controls relative parsing/base date and `CarbonRange`
+controls bounds when combined with `CarbonDate`. Exact `Carbon` and
+`CarbonImmutable` property types determine mutability even without an attribute.
+Serialization formats a clone, so a mutable `Carbon` instance is never modified.
 
 **`#[CarbonRelative]`** - Enable relative date parsing
 ```php

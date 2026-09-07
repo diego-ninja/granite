@@ -56,10 +56,8 @@ final class CarbonIntegrationTest extends TestCase
 
         $array = $dto->array();
 
-        $this->assertIsString($array['createdAt']);
-        $this->assertIsString($array['updatedAt']);
-        $this->assertStringContainsString('2023-01-01T12:00:00', $array['createdAt']);
-        $this->assertStringContainsString('2023-01-02T15:30:00', $array['updatedAt']);
+        $this->assertSame('2023-01-01T12:00:00+00:00', $array['createdAt']);
+        $this->assertSame('2023-01-02T15:30:00+00:00', $array['updatedAt']);
     }
 
     public function testCarbonWithCustomFormat(): void
@@ -120,9 +118,7 @@ final class CarbonIntegrationTest extends TestCase
             'strictDate' => 'tomorrow', // Should be rejected
         ]);
 
-        // The relative parsing may still work depending on implementation
-        // Just verify the DTO was created
-        $this->assertTrue(true);
+        $this->assertNull($dto->strictDate);
 
         // Absolute dates should still work
         $dto = NoRelativeCarbonDTO::from([
@@ -202,8 +198,7 @@ final class CarbonIntegrationTest extends TestCase
         ]);
 
         $this->assertInstanceOf(Carbon::class, $dto->timestamp);
-        // Global timezone config might not be implemented yet
-        $this->assertNotNull($dto->timestamp->getTimezone());
+        $this->assertSame('Europe/Madrid', $dto->timestamp->getTimezone()->getName());
 
         $array = $dto->array();
         $this->assertEquals('2023-01-01', $array['timestamp']);
@@ -336,7 +331,7 @@ final readonly class RangeCarbonDTO extends GraniteDTO
 final readonly class NoRelativeCarbonDTO extends GraniteDTO
 {
     public function __construct(
-        #[CarbonDate(format: 'Y-m-d H:i:s', parseRelative: true)]
+        #[CarbonDate(format: 'Y-m-d H:i:s', parseRelative: false)]
         public ?Carbon $strictDate = null,
     ) {}
 }

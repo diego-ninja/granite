@@ -20,13 +20,14 @@ foreach ($iterator as $file) {
     if (false === $lines
         || '<?php' !== ($lines[0] ?? null)
         || ! str_starts_with($lines[1] ?? '', '// ABOUTME:')
-        || ! str_starts_with($lines[2] ?? '', '// ABOUTME:')) {
+        || ! str_starts_with($lines[2] ?? '', '// ABOUTME:')
+        || str_starts_with($lines[3] ?? '', '// ABOUTME:')) {
         $violations[] = $file->getPathname();
     }
 }
 
 if ([] !== $violations) {
-    fwrite(STDERR, "Missing ABOUTME headers:\n" . implode("\n", $violations) . "\n");
+    fwrite(STDERR, "Invalid ABOUTME headers:\n" . implode("\n", $violations) . "\n");
     exit(1);
 }
 

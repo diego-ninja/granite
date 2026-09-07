@@ -8,6 +8,7 @@ use Ninja\Granite\Mapping\Cache\InMemoryMappingCache;
 use Ninja\Granite\Mapping\Cache\PersistentMappingCache;
 use Ninja\Granite\Mapping\Cache\SharedMappingCache;
 use Ninja\Granite\Mapping\Contracts\MappingCache;
+use ReflectionProperty;
 use Tests\Helpers\TestCase;
 
 class CacheFactoryTest extends TestCase
@@ -113,6 +114,46 @@ class CacheFactoryTest extends TestCase
         $cache = CacheFactory::create(CacheType::Persistent);
 
         $this->assertInstanceOf(PersistentMappingCache::class, $cache);
+    }
+
+    public function test_default_persistent_cache_uses_json_file(): void
+    {
+        $cache = CacheFactory::create(CacheType::Persistent);
+        $cachePath = (new ReflectionProperty($cache, 'cachePath'))->getValue($cache);
+
+        $this->assertIsString($cachePath);
+        $this->assertStringEndsWith('.json', $cachePath);
+    }
+
+    public function test_default_persistent_cache_path_is_stable_across_working_directories(): void
+    {
+        $originalDirectory = getcwd();
+        $this->assertIsString($originalDirectory);
+
+        $tempDirectory = sys_get_temp_dir() . '/granite_cache_projects_' . uniqid();
+        $firstProject = $tempDirectory . '/first';
+        $secondProject = $tempDirectory . '/second';
+        mkdir($firstProject, 0777, true);
+        mkdir($secondProject, 0777, true);
+
+        try {
+            chdir($firstProject);
+            $firstCache = CacheFactory::create(CacheType::Persistent);
+            $firstPath = (new ReflectionProperty($firstCache, 'cachePath'))->getValue($firstCache);
+
+            chdir($secondProject);
+            $secondCache = CacheFactory::create(CacheType::Persistent);
+            $secondPath = (new ReflectionProperty($secondCache, 'cachePath'))->getValue($secondCache);
+
+            $this->assertIsString($firstPath);
+            $this->assertIsString($secondPath);
+            $this->assertSame($firstPath, $secondPath);
+        } finally {
+            chdir($originalDirectory);
+            rmdir($firstProject);
+            rmdir($secondProject);
+            rmdir($tempDirectory);
+        }
     }
 
     public function test_all_cache_types_implement_mapping_cache(): void

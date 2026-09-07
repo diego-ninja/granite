@@ -37,7 +37,7 @@ class RuleParser
         }
 
         $rules = [];
-        $ruleParts = explode('|', $ruleString);
+        $ruleParts = self::splitRules($ruleString);
 
         foreach ($ruleParts as $position => $rulePart) {
             if ('' === $rulePart) {
@@ -59,6 +59,63 @@ class RuleParser
         }
 
         return $rules;
+    }
+
+    /** @return list<string> */
+    private static function splitRules(string $ruleString): array
+    {
+        $parts = [];
+        $current = '';
+        $regexOpeningDelimiter = null;
+        $regexClosingDelimiter = null;
+        $regexDelimiterDepth = 0;
+        $escaped = false;
+        $length = strlen($ruleString);
+
+        for ($index = 0; $index < $length; $index++) {
+            $character = $ruleString[$index];
+
+            if (null !== $regexClosingDelimiter) {
+                $current .= $character;
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ('\\' === $character) {
+                    $escaped = true;
+                } elseif ($regexOpeningDelimiter !== $regexClosingDelimiter
+                    && $character === $regexOpeningDelimiter) {
+                    $regexDelimiterDepth++;
+                } elseif ($character === $regexClosingDelimiter) {
+                    $regexDelimiterDepth--;
+                    if (0 === $regexDelimiterDepth) {
+                        $regexOpeningDelimiter = null;
+                        $regexClosingDelimiter = null;
+                    }
+                }
+                continue;
+            }
+
+            if ('|' === $character) {
+                $parts[] = $current;
+                $current = '';
+                continue;
+            }
+
+            $current .= $character;
+            if (7 === strlen($current) && str_starts_with($current, 'regex:')) {
+                $regexOpeningDelimiter = $current[6];
+                $regexClosingDelimiter = match ($regexOpeningDelimiter) {
+                    '(' => ')',
+                    '[' => ']',
+                    '{' => '}',
+                    '<' => '>',
+                    default => $regexOpeningDelimiter,
+                };
+                $regexDelimiterDepth = 1;
+            }
+        }
+
+        $parts[] = $current;
+        return $parts;
     }
 
     /**

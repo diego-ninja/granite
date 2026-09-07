@@ -5,6 +5,7 @@
 namespace Ninja\Granite;
 
 use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Support\ObjectState;
 use Ninja\Granite\Traits\HasCarbonSupport;
 use Ninja\Granite\Traits\HasComparison;
 use Ninja\Granite\Traits\HasDeserialization;
@@ -39,4 +40,14 @@ abstract readonly class Granite implements GraniteObject
     use HasSerialization;
     use HasTypeConversion;
     use HasValidation;
+
+    /**
+     * Create a new instance with selected PHP properties replaced.
+     *
+     * @param array<array-key, mixed> $modifications
+     */
+    public function with(array $modifications): static
+    {
+        return static::from(array_replace(ObjectState::extract($this), $modifications));
+    }
 }

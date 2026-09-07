@@ -18,6 +18,8 @@ trait MappingStorageTrait
      */
     protected array $mappings = [];
 
+    protected int $mappingRevision = 0;
+
     /**
      * Add property mapping.
      *
@@ -30,7 +32,18 @@ trait MappingStorageTrait
     public function addPropertyMapping(string $sourceType, string $destinationType, string $property, PropertyMapping $mapping): void
     {
         $key = $sourceType . '->' . $destinationType;
+        $existingMapping = $this->mappings[$key][$property] ?? null;
+        if ($existingMapping instanceof PropertyMapping) {
+            $existingMapping->stopObservingMutations($this);
+        }
         $this->mappings[$key][$property] = $mapping;
+        $this->mappingRevision++;
+        $this->observeMapping($mapping);
+    }
+
+    public function getMappingRevision(): int
+    {
+        return $this->mappingRevision;
     }
 
     /**
@@ -58,5 +71,12 @@ trait MappingStorageTrait
     {
         $key = $sourceType . '->' . $destinationType;
         return $this->mappings[$key] ?? [];
+    }
+
+    protected function observeMapping(PropertyMapping $mapping): void
+    {
+        $mapping->observeMutations($this, function (): void {
+            $this->mappingRevision++;
+        });
     }
 }

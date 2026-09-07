@@ -6,8 +6,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Serialization;
 
+use InvalidArgumentException;
+use Ninja\Granite\Contracts\GraniteObject;
+use Ninja\Granite\Serialization\Attributes\SerializationConvention;
 use Ninja\Granite\Serialization\Metadata;
 use Ninja\Granite\Serialization\MetadataCache;
+use Ninja\Granite\Serialization\SerializationCachePolicy;
 use PHPUnit\Framework\Attributes\CoversClass;
 use ReflectionClass;
 use Tests\Fixtures\DTOs\AttributeBasedDTO;
@@ -20,7 +24,9 @@ use Tests\Fixtures\DTOs\ProtectedMethodsDTO;
 use Tests\Fixtures\DTOs\SerializableDTO;
 use Tests\Helpers\TestCase;
 
-#[CoversClass(MetadataCache::class)] class MetadataCacheTest extends TestCase
+#[CoversClass(MetadataCache::class)]
+#[CoversClass(SerializationCachePolicy::class)]
+class MetadataCacheTest extends TestCase
 {
     protected function tearDown(): void
     {
@@ -174,6 +180,13 @@ use Tests\Helpers\TestCase;
         MetadataCache::getMetadata('NonExistentClass');
     }
 
+    public function test_invalid_serialization_convention_is_not_silenced(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        MetadataCache::getMetadata(InvalidConventionMetadataFixture::class);
+    }
+
     public function test_handles_class_with_protected_serialization_methods(): void
     {
         $metadata = MetadataCache::getMetadata(ProtectedMethodsDTO::class);
@@ -208,6 +221,13 @@ use Tests\Helpers\TestCase;
         $this->assertLessThan($firstCallTime, $cachedCallsTime);
     }
 
+    public function test_mutable_granite_object_implementor_is_not_cacheable_with_scalar_state(): void
+    {
+        $instance = new MutableGraniteObject('initial');
+
+        $this->assertFalse(SerializationCachePolicy::isCacheable($instance));
+    }
+
     /**
      * Reset the metadata cache for test isolation
      */
@@ -220,4 +240,30 @@ use Tests\Helpers\TestCase;
             $cacheProperty->setValue(null, []);
         }
     }
+}
+
+final class MutableGraniteObject implements GraniteObject
+{
+    public function __construct(public string $value) {}
+
+    public static function from(mixed ...$args): static
+    {
+        return new static((string) ($args[0] ?? ''));
+    }
+
+    public function array(): array
+    {
+        return ['value' => $this->value];
+    }
+
+    public function json(): string
+    {
+        return json_encode($this->array(), JSON_THROW_ON_ERROR);
+    }
+}
+
+#[SerializationConvention('Tests\\Unit\\Serialization\\MissingMetadataNamingConvention')]
+final class InvalidConventionMetadataFixture
+{
+    public string $firstName = '';
 }

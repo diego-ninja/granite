@@ -173,20 +173,15 @@ class MetadataCache
      */
     private static function getClassConvention(string $class): ?NamingConvention
     {
-        try {
-            $reflection = ReflectionCache::getClass($class);
-            $conventionAttrs = $reflection->getAttributes(SerializationConvention::class, ReflectionAttribute::IS_INSTANCEOF);
+        $reflection = ReflectionCache::getClass($class);
+        $conventionAttrs = $reflection->getAttributes(SerializationConvention::class, ReflectionAttribute::IS_INSTANCEOF);
 
-            if (empty($conventionAttrs)) {
-                return null;
-            }
-
-            $conventionAttr = $conventionAttrs[0]->newInstance();
-            return $conventionAttr->getConvention();
-        } catch (Exception $e) {
-            // Log error and return null to fallback gracefully
+        if (empty($conventionAttrs)) {
             return null;
         }
+
+        $conventionAttr = $conventionAttrs[0]->newInstance();
+        return $conventionAttr->getConvention();
     }
 
     /**

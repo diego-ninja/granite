@@ -36,25 +36,39 @@ final class CarbonTransformerTest extends TestCase
         ];
     }
 
-    /**
-     * @return array<string, array{string, bool}>
-     */
+    /** @return array<string, array{string}> */
     public static function relativeStringProvider(): array
     {
         return [
-            'now' => ['now', true],
-            'today' => ['today', true],
-            'tomorrow' => ['tomorrow', true],
-            'yesterday' => ['yesterday', true],
-            'next week' => ['next week', true],
-            'last month' => ['last month', true],
-            '+1 day' => ['+1 day', true],
-            '-2 hours' => ['-2 hours', true],
-            'this year' => ['this year', true],
-            '2 weeks ago' => ['2 weeks ago', true],
-            'absolute date' => ['2023-01-01', false],
-            'absolute datetime' => ['2023-01-01 12:00:00', false],
-            'formatted date' => ['01/01/2023', false],
+            'now' => ['now'],
+            'today' => ['today'],
+            'tomorrow' => ['tomorrow'],
+            'yesterday' => ['yesterday'],
+            'next week' => ['next week'],
+            'last month' => ['last month'],
+            '+1 day' => ['+1 day'],
+            '-2 hours' => ['-2 hours'],
+            'this year' => ['this year'],
+            '2 weeks ago' => ['2 weeks ago'],
+        ];
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function absoluteIsoStringProvider(): array
+    {
+        return [
+            'positive offset' => ['2024-01-15T10:30:45+02:30', '2024-01-15T10:30:45+02:30'],
+            'negative offset' => ['2024-01-15T10:30:45-05:00', '2024-01-15T10:30:45-05:00'],
+            'UTC designator' => ['2024-01-15T10:30:45Z', '2024-01-15T10:30:45+00:00'],
+        ];
+    }
+
+    /** @return array<string, array{string, string|null, string|null}> */
+    public static function globalRangeTimezoneProvider(): array
+    {
+        return [
+            'minimum in a positive timezone' => ['Pacific/Kiritimati', '2024-01-15 00:00:00', null],
+            'maximum in a negative timezone' => ['Pacific/Honolulu', null, '2024-01-15 00:00:00'],
         ];
     }
 
@@ -152,6 +166,21 @@ final class CarbonTransformerTest extends TestCase
         // Date after max
         $result = $transformer->transform('2024-01-01');
         $this->assertNull($result);
+    }
+
+    #[DataProvider('globalRangeTimezoneProvider')]
+    public function test_string_range_boundaries_use_the_same_effective_global_timezone_as_the_value(
+        string $timezone,
+        ?string $min,
+        ?string $max,
+    ): void {
+        GraniteConfig::getInstance()->carbonTimezone($timezone);
+        $transformer = new CarbonTransformer(min: $min, max: $max);
+
+        $result = $transformer->transform('2024-01-15 00:00:00');
+
+        $this->assertNotNull($result);
+        $this->assertSame($timezone, $result->getTimezone()->getName());
     }
 
     public function testTransformNull(): void
@@ -290,17 +319,20 @@ final class CarbonTransformerTest extends TestCase
     }
 
     #[DataProvider('relativeStringProvider')]
-    public function testRelativeStringDetection(string $input, bool $shouldBeRelative): void
+    public function testRelativeStringsAreRejectedWhenParsingIsDisabled(string $input): void
     {
         $transformer = new CarbonTransformer(parseRelative: false);
-        $result = $transformer->transform($input);
 
-        if ($shouldBeRelative) {
-            $this->assertNull($result, "Expected '{$input}' to be detected as relative and rejected");
-        } else {
-            // For non-relative strings, we might still get null if they're invalid dates
-            // but we shouldn't reject them just for being relative
-            $this->assertTrue(true, "Non-relative string '{$input}' was not incorrectly rejected");
-        }
+        $this->assertNull($transformer->transform($input));
+    }
+
+    #[DataProvider('absoluteIsoStringProvider')]
+    public function testAbsoluteIsoStringsWithOffsetsAreAcceptedWhenRelativeParsingIsDisabled(
+        string $input,
+        string $expected,
+    ): void {
+        $transformer = new CarbonTransformer(parseRelative: false);
+
+        $this->assertSame($expected, $transformer->transform($input)?->format('Y-m-d\TH:i:sP'));
     }
 }

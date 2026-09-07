@@ -2,9 +2,13 @@
 
 namespace Tests\Unit;
 
+use DateTimeImmutable;
 use Ninja\Granite\Granite;
+use Ninja\Granite\Serialization\Attributes\Hidden;
+use Ninja\Granite\Serialization\Attributes\SerializedName;
 use PHPUnit\Framework\Attributes\CoversClass;
 use ReflectionClass;
+use Tests\Fixtures\Enums\UserStatus;
 use Tests\Helpers\TestCase;
 
 #[CoversClass(Granite::class)]
@@ -122,6 +126,34 @@ class GraniteTest extends TestCase
             $this->assertTrue($hasConversionMethod);
         }
     }
+
+    public function test_direct_granite_descendant_exposes_with(): void
+    {
+        $this->assertTrue(method_exists(RawStateGranite::class, 'with'));
+    }
+
+    public function test_with_preserves_raw_state_when_serialization_changes_its_shape(): void
+    {
+        $this->assertTrue(method_exists(RawStateGranite::class, 'with'));
+
+        $occurredAt = new DateTimeImmutable('2024-01-15 10:00:00.123456+00:00');
+        $original = new RawStateGranite(
+            name: 'Alice',
+            secret: 'internal-token',
+            occurredAt: $occurredAt,
+            status: UserStatus::ACTIVE,
+        );
+
+        $updated = $original->with(['name' => 'Bob']);
+
+        $this->assertSame('Bob', $updated->name);
+        $this->assertSame('internal-token', $updated->secret);
+        $this->assertSame('1705312800.123456', $updated->occurredAt->format('U.u'));
+        $this->assertSame($occurredAt, $updated->occurredAt);
+        $this->assertSame(UserStatus::ACTIVE, $updated->status);
+        $this->assertArrayHasKey('display_name', $updated->array());
+        $this->assertArrayNotHasKey('secret', $updated->array());
+    }
 }
 
 // Concrete test class to test the abstract Granite class
@@ -130,5 +162,17 @@ readonly class TestGraniteClass extends Granite
     public function __construct(
         public string $name,
         public int $age,
+    ) {}
+}
+
+readonly class RawStateGranite extends Granite
+{
+    public function __construct(
+        #[SerializedName('display_name')]
+        public string $name,
+        #[Hidden]
+        public string $secret,
+        public DateTimeImmutable $occurredAt,
+        public UserStatus $status,
     ) {}
 }

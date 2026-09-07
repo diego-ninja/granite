@@ -4,11 +4,15 @@
 
 namespace Ninja\Granite\Mapping;
 
+use Closure;
 use Ninja\Granite\Mapping\Contracts\Transformer;
 use Ninja\Granite\Mapping\Core\TransformerInvoker;
 
 class PropertyMapping
 {
+    private int $revision = 0;
+    /** @var array<int, array{listener: Closure(): void, registrations: int}> */
+    private array $mutationListeners = [];
     private ?string $sourceProperty = null;
     private mixed $transformer = null;
     private bool $ignore = false;
@@ -25,6 +29,7 @@ class PropertyMapping
     public function mapFrom(string $sourceProperty): self
     {
         $this->sourceProperty = $sourceProperty;
+        $this->markChanged();
         return $this;
     }
 
@@ -34,6 +39,7 @@ class PropertyMapping
     public function using(callable|Transformer $transformer): self
     {
         $this->transformer = $transformer;
+        $this->markChanged();
         return $this;
     }
 
@@ -43,6 +49,7 @@ class PropertyMapping
     public function ignore(): self
     {
         $this->ignore = true;
+        $this->markChanged();
         return $this;
     }
 
@@ -55,6 +62,7 @@ class PropertyMapping
     public function onlyIf(callable $condition): self
     {
         $this->condition = $condition;
+        $this->markChanged();
         return $this;
     }
 
@@ -74,6 +82,7 @@ class PropertyMapping
             recursive: $recursive,
             itemTransformer: $itemTransformer,
         );
+        $this->markChanged();
 
         return $this;
     }
@@ -88,6 +97,7 @@ class PropertyMapping
     {
         $this->defaultValue = $value;
         $this->hasDefaultValue = true;
+        $this->markChanged();
         return $this;
     }
 
@@ -140,6 +150,43 @@ class PropertyMapping
         return $this->sourceProperty;
     }
 
+    public function getRevision(): int
+    {
+        return $this->revision;
+    }
+
+    /** @internal Used by mapping owners to propagate revisions in O(1). */
+    public function observeMutations(object $owner, callable $listener): void
+    {
+        $ownerId = spl_object_id($owner);
+        if (isset($this->mutationListeners[$ownerId])) {
+            $this->mutationListeners[$ownerId]['registrations']++;
+            return;
+        }
+
+        $callback = Closure::fromCallable($listener);
+        $this->mutationListeners[$ownerId] = [
+            'listener' => static function () use ($callback): void {
+                $callback();
+            },
+            'registrations' => 1,
+        ];
+    }
+
+    /** @internal */
+    public function stopObservingMutations(object $owner): void
+    {
+        $ownerId = spl_object_id($owner);
+        if ( ! isset($this->mutationListeners[$ownerId])) {
+            return;
+        }
+
+        $this->mutationListeners[$ownerId]['registrations']--;
+        if (0 === $this->mutationListeners[$ownerId]['registrations']) {
+            unset($this->mutationListeners[$ownerId]);
+        }
+    }
+
     public function isIgnored(): bool
     {
         return $this->ignore;
@@ -186,5 +233,13 @@ class PropertyMapping
         }
 
         return $this;
+    }
+
+    private function markChanged(): void
+    {
+        $this->revision++;
+        foreach ($this->mutationListeners as $registration) {
+            $registration['listener']();
+        }
     }
 }

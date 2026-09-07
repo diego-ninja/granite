@@ -1,7 +1,4 @@
 <?php
-// ABOUTME: Defines TransformerInvoker as part of the object mapping pipeline.
-// ABOUTME: Owns the TransformerInvoker boundary between mapping configuration and execution.
-
 // ABOUTME: Centralizes transformer invocation across mapping execution paths.
 // ABOUTME: Normalizes callable arity and reports invalid transformer configuration.
 

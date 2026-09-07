@@ -192,7 +192,7 @@ trait HasComparison
                 return (string) $value;
             }
 
-            if (method_exists($value, 'toArray')) {
+            if (is_callable([$value, 'toArray'])) {
                 return $value->toArray();
             }
 

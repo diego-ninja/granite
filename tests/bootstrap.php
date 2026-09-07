@@ -31,12 +31,3 @@ foreach ($directories as $directory) {
 
 // Load test helpers
 require_once __DIR__ . '/Helpers/TestCase.php';
-
-// Initialize Mockery
-if (class_exists('Mockery')) {
-    register_shutdown_function(function (): void {
-        if (class_exists('Mockery')) {
-            Mockery::close();
-        }
-    });
-}

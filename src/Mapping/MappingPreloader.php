@@ -35,7 +35,7 @@ class MappingPreloader
             }
 
             // Skip if already cached
-            if ($mapper->getCache()->has($sourceType, $destinationType)) {
+            if ($mapper->hasCachedConfiguration($sourceType, $destinationType)) {
                 continue;
             }
 
@@ -51,6 +51,7 @@ class MappingPreloader
             if ( ! $mapping->isSealed()) {
                 $mapping->seal();
             }
+            $mapper->preloadConfiguration($sourceType, $destinationType);
 
             $count++;
         }

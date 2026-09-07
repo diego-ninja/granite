@@ -6,6 +6,7 @@ namespace Ninja\Granite\Traits;
 
 use Ninja\Granite\Exceptions\SerializationException;
 use Ninja\Granite\Exceptions\ValidationException;
+use Ninja\Granite\Support\ObjectState;
 use Ninja\Granite\Validation\GraniteValidator;
 use Ninja\Granite\Validation\RuleCollection;
 use Ninja\Granite\Validation\RuleExtractor;
@@ -33,7 +34,7 @@ trait HasValidation
     public function validate(?array $data = null): bool
     {
         try {
-            $allData = $data ?? $this->array();
+            $allData = $data ?? ObjectState::extract($this);
             static::validateData($allData, static::class);
             return true;
         } catch (ValidationException) {
@@ -67,7 +68,7 @@ trait HasValidation
     public function getValidationErrors(?array $data = null): array
     {
         try {
-            $allData = $data ?? $this->array();
+            $allData = $data ?? ObjectState::extract($this);
             static::validateData($allData, static::class);
             return []; // No errors
         } catch (ValidationException $e) {
@@ -88,7 +89,7 @@ trait HasValidation
     public function getValidationException(?array $data = null): ?ValidationException
     {
         try {
-            $allData = $data ?? $this->array();
+            $allData = $data ?? ObjectState::extract($this);
             static::validateData($allData, static::class);
             return null; // No errors
         } catch (ValidationException $e) {

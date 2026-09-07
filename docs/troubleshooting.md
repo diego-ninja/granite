@@ -383,8 +383,9 @@ $end = microtime(true);
 echo "Mapping took: " . ($end - $start) . " seconds\n";
 
 // Check cache stats
-if ($mapper->getCache() instanceof SharedMappingCache) {
-    var_dump($mapper->getCache()->getStats());
+$cache = $mapper->getCache();
+if (method_exists($cache, 'getStats')) {
+    var_dump($cache->getStats());
 }
 ```
 

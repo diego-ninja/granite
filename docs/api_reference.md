@@ -4,10 +4,10 @@ Complete API reference for Granite classes, methods, and attributes.
 
 ## ⚠️ Deprecation Notice
 
-**Important:** As of version 2.0.0, `Granite` and `Granite` are **deprecated** and will be removed in favor of the unified `Granite` base class.
+**Important:** `GraniteDTO` was already deprecated before v2.0.0, and `GraniteVO` is **deprecated** as of v2.0.0. Both will be removed in favor of the unified `Granite` base class in v3.0.0.
 
-- ❌ **Deprecated:** `Ninja\Granite\Granite` (will be removed in v2.0.0)
-- ❌ **Deprecated:** `Ninja\Granite\Granite` (will be removed in v2.0.0)
+- ❌ **Deprecated:** `Ninja\Granite\GraniteDTO` (will be removed in v3.0.0)
+- ❌ **Deprecated:** `Ninja\Granite\GraniteVO` (will be removed in v3.0.0)
 - ✅ **Use instead:** `Ninja\Granite\Granite`
 
 All examples in this document use the new `Granite` class. Legacy classes remain functional for backward compatibility but should not be used in new code.
@@ -281,9 +281,9 @@ protected static function rules(): array
 
 ### Deprecated Classes
 
-#### Granite ⚠️ DEPRECATED
+#### GraniteDTO ⚠️ DEPRECATED
 
-**Deprecated since:** v2.0.0
+**Deprecated since:** before v2.0.0
 **Will be removed in:** v3.0.0
 **Use instead:** `Granite`
 
@@ -291,13 +291,13 @@ Legacy base class for Data Transfer Objects. Functionality has been merged into 
 
 ```php
 // ❌ Old (deprecated)
-final readonly class User extends Granite { }
+final readonly class User extends GraniteDTO { }
 
 // ✅ New (recommended)
 final readonly class User extends Granite { }
 ```
 
-#### Granite ⚠️ DEPRECATED
+#### GraniteVO ⚠️ DEPRECATED
 
 **Deprecated since:** v2.0.0
 **Will be removed in:** v3.0.0
@@ -307,7 +307,7 @@ Legacy base class for Value Objects with validation. All validation features are
 
 ```php
 // ❌ Old (deprecated)
-final readonly class Email extends Granite { }
+final readonly class Email extends GraniteVO { }
 
 // ✅ New (recommended)
 final readonly class Email extends Granite { }
@@ -986,10 +986,13 @@ $mapper->clearCache();
 ```
 
 ##### `getCache(): MappingCache`
-Gets the current cache instance.
+Gets a configuration-scoped cache facade. Public source and destination class
+names are translated to isolated backend keys, so callers should depend on the
+`MappingCache` contract rather than checking for a concrete backend class.
 
 ```php
 $cache = $mapper->getCache();
+$cached = $cache->get(Source::class, Destination::class);
 ```
 
 ### TypeMapping

@@ -83,6 +83,35 @@ use Tests\Helpers\TestCase;
             ],
         ];
     }
+
+    /**
+     * @return array<string, array{string, string, string}>
+     */
+    public static function regexWithPipeProvider(): array
+    {
+        return [
+            'slash delimiter with alternation' => [
+                'required|regex:/^(foo|bar)$/|string',
+                'bar',
+                'baz',
+            ],
+            'hash delimiter with escaped delimiter' => [
+                'required|regex:#^(foo|bar)\#baz$#|string',
+                'foo#baz',
+                'foo-baz',
+            ],
+            'tilde delimiter with escaped and unescaped pipes' => [
+                'required|regex:~^(?:foo\|bar|baz)$~|string',
+                'foo|bar',
+                'foo',
+            ],
+            'paired delimiter with a quantifier' => [
+                'required|regex:{^(?:foo{1}|bar)$}|string',
+                'foo',
+                'baz',
+            ],
+        ];
+    }
     public function test_parses_simple_rules(): void
     {
         $rules = RuleParser::parse('required|string');
@@ -201,6 +230,22 @@ use Tests\Helpers\TestCase;
 
         $this->assertCount(1, $rules);
         $this->assertInstanceOf(Regex::class, $rules[0]);
+    }
+
+    #[DataProvider('regexWithPipeProvider')]
+    public function test_preserves_pipes_and_escaped_delimiters_inside_regex(
+        string $ruleString,
+        string $valid,
+        string $invalid,
+    ): void {
+        $rules = RuleParser::parse($ruleString);
+
+        $this->assertCount(3, $rules);
+        $this->assertInstanceOf(Required::class, $rules[0]);
+        $this->assertInstanceOf(Regex::class, $rules[1]);
+        $this->assertInstanceOf(StringType::class, $rules[2]);
+        $this->assertTrue($rules[1]->validate($valid));
+        $this->assertFalse($rules[1]->validate($invalid));
     }
 
     public function test_rejects_unknown_rules_with_position(): void

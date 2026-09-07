@@ -51,18 +51,11 @@ use Tests\Helpers\TestCase;
 
         $array = $dto->array();
 
-        // Should use serialized names
-        $this->assertArrayHasKey('first_name', $array);
-        $this->assertArrayHasKey('last_name', $array);
-        $this->assertArrayHasKey('email', $array);
-
-        // Should hide password
-        $this->assertArrayNotHasKey('password', $array);
-
-        // Check values
-        $this->assertEquals('John', $array['first_name']);
-        $this->assertEquals('Doe', $array['last_name']);
-        $this->assertEquals('john@example.com', $array['email']);
+        $this->assertSame([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john@example.com',
+        ], $array);
     }
 
     public function test_serializes_validated_scalar_dto_with_method_metadata(): void
@@ -86,10 +79,11 @@ use Tests\Helpers\TestCase;
         $this->assertJson($json);
 
         $decoded = json_decode($json, true);
-        $this->assertArrayHasKey('first_name', $decoded);
-        $this->assertArrayHasKey('last_name', $decoded);
-        $this->assertArrayNotHasKey('password', $decoded);
-        $this->assertEquals('John', $decoded['first_name']);
+        $this->assertSame([
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john@example.com',
+        ], $decoded);
     }
 
     public function test_handles_null_values_in_serialization(): void
@@ -209,8 +203,8 @@ use Tests\Helpers\TestCase;
         $carbon->addDay();
         $second = $dto->array();
 
-        $this->assertNotSame($first['createdAt'], $second['createdAt']);
-        $this->assertStringContainsString('2024-01-02T12:00:00', $second['createdAt']);
+        $this->assertSame('2024-01-01T12:00:00+00:00', $first['createdAt']);
+        $this->assertSame('2024-01-02T12:00:00+00:00', $second['createdAt']);
         $this->assertNull(SerializationCache::get($dto));
     }
 
@@ -222,7 +216,7 @@ use Tests\Helpers\TestCase;
         $dto->array();
         $carbon->addDay();
 
-        $this->assertStringContainsString('2024-01-02T12:00:00', $dto->array()['items']['date']);
+        $this->assertSame('2024-01-02T12:00:00+00:00', $dto->array()['items']['date']);
         $this->assertNull(SerializationCache::get($dto));
     }
 
@@ -270,13 +264,10 @@ use Tests\Helpers\TestCase;
         $instance = new \Tests\Fixtures\DTOs\UninitializedDTO('Test');
         $array = $instance->array();
 
-        $this->assertArrayHasKey('name', $array);
-        $this->assertArrayHasKey('description', $array); // Has default value
-        $this->assertEquals('Test', $array['name']);
-        $this->assertNull($array['description']);
-
-        // uninitializedProperty should not appear since it's not initialized
-        // Note: This test might need adjustment based on actual GraniteDTO behavior
+        $this->assertSame([
+            'name' => 'Test',
+            'description' => null,
+        ], $array);
     }
 
     public function test_throws_exception_for_unsupported_types(): void
@@ -335,15 +326,9 @@ use Tests\Helpers\TestCase;
 
         $dto = SerializableDTO::from($data);
 
-        // Check which name actually wins based on implementation behavior
-        // The actual behavior depends on the order of processing in GraniteDTO
-        $this->assertTrue(
-            'John' === $dto->firstName || 'Jane' === $dto->firstName,
-            "firstName should be either 'John' (serialized name wins) or 'Jane' (PHP name wins), got: " . $dto->firstName,
-        );
-
-        $this->assertEquals('Smith', $dto->lastName); // Uses PHP name (no conflict)
-        $this->assertEquals('john@example.com', $dto->email);
+        $this->assertSame('Jane', $dto->firstName);
+        $this->assertSame('Smith', $dto->lastName);
+        $this->assertSame('john@example.com', $dto->email);
     }
 
     public function test_serialized_name_takes_precedence_when_only_serialized_provided(): void

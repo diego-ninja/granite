@@ -14,6 +14,8 @@ use Ninja\Granite\Support\CarbonSupport;
  */
 final class GraniteConfig
 {
+    private static int $revision = 0;
+
     /**
      * Singleton instance.
      */
@@ -78,6 +80,11 @@ final class GraniteConfig
         return self::$instance;
     }
 
+    public static function getRevision(): int
+    {
+        return self::$revision;
+    }
+
     /**
      * Reset configuration to defaults (useful for testing).
      *
@@ -110,6 +117,20 @@ final class GraniteConfig
             ->preferCarbon($preferCarbon)
             ->preferCarbonImmutable($preferImmutable)
             ->carbonTimezone($timezone);
+    }
+
+    public function fingerprint(): string
+    {
+        return hash('sha256', serialize([
+            'preferCarbon' => $this->preferCarbon,
+            'preferCarbonImmutable' => $this->preferCarbonImmutable,
+            'carbonTimezone' => $this->carbonTimezone,
+            'carbonLocale' => $this->carbonLocale,
+            'carbonParseFormat' => $this->carbonParseFormat,
+            'carbonSerializeFormat' => $this->carbonSerializeFormat,
+            'carbonSerializeTimezone' => $this->carbonSerializeTimezone,
+            'carbonParseRelative' => $this->carbonParseRelative,
+        ]));
     }
 
     // =============================================================================
@@ -426,6 +447,7 @@ final class GraniteConfig
 
     private static function invalidateCaches(): void
     {
+        self::$revision++;
         CarbonTransformerFactory::clearCache();
         SerializationCache::clear();
     }
